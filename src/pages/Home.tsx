@@ -174,7 +174,7 @@ const Home = () => {
 
       <div className="max-w-7xl mx-auto px-3 py-4">
         {/* First Section - Inkuru Nyamukuru */}
-        <div className="mb-6 rounded-lg overflow-hidden border border-[#2b2f36] bg-[#e5e7eb]">
+        <div className="mb-6 rounded-lg overflow-hidden border border-[#2b2f36] bg-[#181a20]">
           <div className="bg-emerald-700 text-white px-4 py-2">
             <h2 className="text-sm md:text-base font-extrabold uppercase tracking-wide">Inkuru Nyamukuru</h2>
           </div>
@@ -182,14 +182,14 @@ const Home = () => {
           <div className="p-3 md:p-4 grid grid-cols-1 lg:grid-cols-12 gap-3 md:gap-4">
             <div className="lg:col-span-3 space-y-3">
               {leftPrimary && (
-                <Link to={`/post/${leftPrimary.slug}`} className="block group bg-white">
+                <Link to={`/post/${leftPrimary.slug}`} className="block group bg-[#0b0e11] rounded">
                   <img
                     src={getImageUrl(leftPrimary.featuredImage)}
                     alt={leftPrimary.title}
                     className="w-full h-44 object-cover"
                   />
                   <div className="p-2">
-                    <h3 className="text-[#0b0e11] font-semibold text-sm line-clamp-2 group-hover:text-emerald-700 transition-colors">
+                    <h3 className="text-white font-semibold text-sm line-clamp-2 group-hover:text-[#fcd535] transition-colors">
                       {leftPrimary.title}
                     </h3>
                   </div>
@@ -197,13 +197,13 @@ const Home = () => {
               )}
 
               {leftSecondary && (
-                <Link to={`/post/${leftSecondary.slug}`} className="flex gap-2 bg-white p-2 group">
+                <Link to={`/post/${leftSecondary.slug}`} className="flex gap-2 bg-[#0b0e11] p-2 rounded group">
                   <img
                     src={getImageUrl(leftSecondary.featuredImage)}
                     alt={leftSecondary.title}
                     className="w-20 h-16 object-cover flex-shrink-0"
                   />
-                  <h4 className="text-[#0b0e11] text-sm line-clamp-2 group-hover:text-emerald-700 transition-colors">
+                  <h4 className="text-gray-300 text-sm line-clamp-2 group-hover:text-[#fcd535] transition-colors">
                     {leftSecondary.title}
                   </h4>
                 </Link>
@@ -212,8 +212,8 @@ const Home = () => {
 
             <div className="lg:col-span-6 space-y-3">
               {middleTop && (
-                <Link to={`/post/${middleTop.slug}`} className="block bg-white p-2 group">
-                  <h3 className="text-[#0b0e11] font-semibold text-base line-clamp-2 group-hover:text-emerald-700 transition-colors">
+                <Link to={`/post/${middleTop.slug}`} className="block bg-[#0b0e11] rounded p-2 group">
+                  <h3 className="text-white font-semibold text-base line-clamp-2 group-hover:text-[#fcd535] transition-colors">
                     {middleTop.title}
                   </h3>
                 </Link>
@@ -221,7 +221,7 @@ const Home = () => {
 
               {mainHighlight && (
                 <Link to={`/post/${mainHighlight.slug}`} className="block group">
-                  <div className="relative overflow-hidden bg-white">
+                  <div className="relative overflow-hidden bg-[#0b0e11] rounded">
                     <img
                       src={getImageUrl(mainHighlight.featuredImage)}
                       alt={mainHighlight.title}
@@ -239,13 +239,13 @@ const Home = () => {
 
             <div className="lg:col-span-3 space-y-2">
               {rightColumnPosts.map((post) => (
-                <Link key={post.id} to={`/post/${post.slug}`} className="flex gap-2 bg-white p-2 group">
+                <Link key={post.id} to={`/post/${post.slug}`} className="flex gap-2 bg-[#0b0e11] p-2 rounded group">
                   <img
                     src={getImageUrl(post.featuredImage)}
                     alt={post.title}
                     className="w-24 h-16 object-cover flex-shrink-0"
                   />
-                  <h4 className="text-[#0b0e11] text-sm line-clamp-3 group-hover:text-emerald-700 transition-colors">
+                  <h4 className="text-gray-300 text-sm line-clamp-3 group-hover:text-[#fcd535] transition-colors">
                     {post.title}
                   </h4>
                 </Link>
