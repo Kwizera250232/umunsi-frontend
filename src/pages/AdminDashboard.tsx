@@ -891,6 +891,34 @@ const AdminDashboard = () => {
               </div>
             </div>
 
+            <div className="bg-[#181a20] rounded-2xl border border-[#2b2f36] overflow-hidden">
+              <div className="px-6 py-5 border-b border-[#2b2f36]">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 bg-amber-500/10 rounded-lg">
+                    <Users className="w-5 h-5 text-amber-400" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-white">User Management Tools</h3>
+                </div>
+              </div>
+
+              <div className="p-4 space-y-3">
+                <button
+                  onClick={() => navigate('/admin/users')}
+                  className="w-full flex items-center justify-between p-3 bg-[#1e2329] rounded-xl text-gray-300 hover:text-[#fcd535] transition-colors"
+                >
+                  <span>Manage Users</span>
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => navigate('/admin/ads-management')}
+                  className="w-full flex items-center justify-between p-3 bg-[#1e2329] rounded-xl text-gray-300 hover:text-[#fcd535] transition-colors"
+                >
+                  <span>Ads Management</span>
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
             {/* System Status */}
           <div className="bg-[#181a20] rounded-2xl border border-[#2b2f36] overflow-hidden">
             <div className="px-6 py-5 border-b border-[#2b2f36]">

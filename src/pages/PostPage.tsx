@@ -39,68 +39,9 @@ const normalizeArticleHtml = (content?: string) => {
   ) || '';
 };
 
-const splitAfterThirdParagraph = (html: string) => {
-  if (!html?.trim()) {
-    return { before: '', after: '', hasThirdParagraph: false };
-  }
-
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(html, 'text/html');
-  const blockSelector = 'p,div,h1,h2,h3,h4,h5,h6,li,blockquote';
-  const blockElements = Array.from(doc.body.querySelectorAll(blockSelector));
-
-  const readableBlocks = blockElements.filter((element) => {
-    const text = (element.textContent || '').replace(/\s+/g, ' ').trim();
-    return text.length > 0;
-  });
-
-  if (readableBlocks.length === 0) {
-    return { before: html, after: '', hasThirdParagraph: false };
-  }
-
-  const insertionBlock = readableBlocks[Math.min(2, readableBlocks.length - 1)];
-  const markerId = '__adsense_split_marker__';
-  insertionBlock.insertAdjacentHTML('afterend', `<span id="${markerId}"></span>`);
-
-  const serialized = doc.body.innerHTML;
-  const markerHtml = `<span id="${markerId}"></span>`;
-  const markerIndex = serialized.indexOf(markerHtml);
-
-  if (markerIndex === -1) {
-    return { before: html, after: '', hasThirdParagraph: false };
-  }
-
-  return {
-    before: serialized.slice(0, markerIndex),
-    after: serialized.slice(markerIndex + markerHtml.length),
-    hasThirdParagraph: true
-  };
-};
-
 const PostPage = () => {
   const { slug, id } = useParams<{ slug?: string; id?: string }>();
   const { user, isAuthenticated } = useAuth();
-  const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 768 : false);
-  const [adsSettings, setAdsSettings] = useState(() => {
-    const defaults = {
-      enabled: true,
-      desktopEnabled: true,
-      mobileEnabled: true,
-      adClient: 'ca-pub-3584259871242471',
-      desktopSlot: '2693936589',
-      mobileSlot: '2693936589'
-    };
-
-    if (typeof window === 'undefined') return defaults;
-
-    try {
-      const stored = localStorage.getItem('umunsi_ads_settings');
-      if (!stored) return defaults;
-      return { ...defaults, ...JSON.parse(stored) };
-    } catch {
-      return defaults;
-    }
-  });
   const showAds = user?.role !== 'ADMIN';
   const canSeeViews = user?.role === 'ADMIN';
   const [post, setPost] = useState<Post | null>(null);
@@ -128,44 +69,7 @@ const PostPage = () => {
     }
   }, [postIdentifier]);
 
-  useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 768);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  useEffect(() => {
-    const handleStorage = (event: StorageEvent) => {
-      if (event.key !== 'umunsi_ads_settings') return;
-      try {
-        const parsed = event.newValue ? JSON.parse(event.newValue) : {};
-        setAdsSettings((prev) => ({ ...prev, ...parsed }));
-      } catch {
-        // Ignore malformed settings and keep current config.
-      }
-    };
-
-    window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
-  }, []);
-
   const normalizedContent = normalizeArticleHtml(post?.content);
-  const { before: contentBeforeAd, after: contentAfterAd, hasThirdParagraph } = splitAfterThirdParagraph(normalizedContent);
-  const deviceAdEnabled = isMobile ? adsSettings.mobileEnabled : adsSettings.desktopEnabled;
-  const activeAdSlot = isMobile ? adsSettings.mobileSlot : adsSettings.desktopSlot;
-  const shouldRenderInlineAd = showAds && adsSettings.enabled && deviceAdEnabled && hasThirdParagraph;
-
-  useEffect(() => {
-    if (!shouldRenderInlineAd || !post?.id) {
-      return;
-    }
-
-    try {
-      ((window as any).adsbygoogle = (window as any).adsbygoogle || []).push({});
-    } catch (error) {
-      console.error('AdSense push error:', error);
-    }
-  }, [shouldRenderInlineAd, post?.id, activeAdSlot]);
 
   const fetchPost = async () => {
     try {
@@ -450,39 +354,8 @@ const PostPage = () => {
                 <div 
                   className="prose prose-invert prose-lg max-w-none text-gray-300"
                   style={{ wordBreak: 'break-word' }}
-                  dangerouslySetInnerHTML={{ __html: contentBeforeAd }}
+                  dangerouslySetInnerHTML={{ __html: normalizedContent }}
                 />
-
-                {shouldRenderInlineAd && (
-                  <>
-                    {/* csftx */}
-                    <div className="my-6 p-2 border border-[#2b2f36] rounded-lg bg-[#0b0e11]">
-                      <ins
-                        className="adsbygoogle"
-                        style={{ display: 'block' }}
-                        data-ad-client={adsSettings.adClient}
-                        data-ad-slot={activeAdSlot}
-                        data-ad-format="auto"
-                        data-full-width-responsive="true"
-                      />
-                    </div>
-                    {contentAfterAd && (
-                      <div
-                        className="prose prose-invert prose-lg max-w-none text-gray-300"
-                        style={{ wordBreak: 'break-word' }}
-                        dangerouslySetInnerHTML={{ __html: contentAfterAd }}
-                      />
-                    )}
-                  </>
-                )}
-
-                {!shouldRenderInlineAd && contentAfterAd && (
-                  <div
-                    className="prose prose-invert prose-lg max-w-none text-gray-300"
-                    style={{ wordBreak: 'break-word' }}
-                    dangerouslySetInnerHTML={{ __html: contentAfterAd }}
-                  />
-                )}
 
                 {/* Tags */}
                 {post.tags && post.tags.length > 0 && (
