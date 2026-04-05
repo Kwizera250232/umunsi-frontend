@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Clock, Eye, ChevronRight, Loader2, Heart, TrendingUp, Zap, AlertCircle, Mail, Calendar, MapPin, CloudSun, Send, ThumbsUp } from 'lucide-react';
 import { apiClient, Post, Category } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 
 const getServerBaseUrl = () => {
   if (import.meta.env.DEV) {
@@ -11,6 +12,10 @@ const getServerBaseUrl = () => {
 };
 
 const Home = () => {
+  const { user } = useAuth();
+  const showAds = user?.role !== 'ADMIN';
+  const canSeeViews = user?.role === 'ADMIN';
+
   const [loading, setLoading] = useState(true);
   const [posts, setPosts] = useState<Post[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -102,8 +107,13 @@ const Home = () => {
     );
   }
 
-  const otherPosts = posts.filter(p => p.id !== featuredPost?.id);
-  const topPosts = otherPosts.slice(0, 4);
+  const mainHighlight = featuredPost || posts[0] || null;
+  const topSectionPool = posts.filter((p) => p.id !== mainHighlight?.id);
+  const leftPrimary = topSectionPool[0] || null;
+  const leftSecondary = topSectionPool[1] || null;
+  const middleTop = topSectionPool[2] || null;
+  const rightColumnPosts = topSectionPool.slice(3, 8);
+  const otherPosts = posts.filter(p => p.id !== mainHighlight?.id);
   const trendingPosts = [...posts].sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0)).slice(0, 6);
   const latestPosts = activeTab === 'all' ? otherPosts.slice(0, 8) : filteredPosts.slice(0, 8);
   const breakingNews = posts.slice(0, 5);
@@ -163,73 +173,86 @@ const Home = () => {
                       </div>
 
       <div className="max-w-7xl mx-auto px-3 py-4">
-        {/* Hero Section - Featured + Top Stories */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 mb-6">
-          {/* Main Featured Article */}
-          <div className="lg:col-span-7">
-            {featuredPost && (
-              <Link to={`/post/${featuredPost.slug}`} className="block group">
-                <div className="relative rounded-lg overflow-hidden bg-[#181a20]">
-                  <img 
-                    src={getImageUrl(featuredPost.featuredImage)} 
-                    alt={featuredPost.title}
-                    className="w-full h-[300px] md:h-[400px] object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent"></div>
-                  <div className="absolute bottom-0 left-0 right-0 p-4 md:p-6">
-                    {featuredPost.category && (
-                      <span className="inline-block bg-[#fcd535] text-[#0b0e11] text-xs font-bold px-3 py-1 rounded mb-3">
-                        {featuredPost.category.name}
-                      </span>
-                    )}
-                    <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-white mb-2 group-hover:text-[#fcd535] transition-colors line-clamp-3">
-                      {featuredPost.title}
-                    </h2>
-                    <p className="text-gray-300 text-sm line-clamp-2 mb-2 hidden md:block">
-                      {featuredPost.excerpt}
-                    </p>
-                    <div className="flex items-center gap-4 text-sm text-gray-300">
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-4 h-4" />
-                        {formatDate(featuredPost.publishedAt || featuredPost.createdAt)}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Eye className="w-4 h-4" />
-                        {featuredPost.viewCount}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </Link>
-            )}
+        {/* First Section - Inkuru Nyamukuru */}
+        <div className="mb-6 rounded-lg overflow-hidden border border-[#2b2f36] bg-[#e5e7eb]">
+          <div className="bg-emerald-700 text-white px-4 py-2">
+            <h2 className="text-sm md:text-base font-extrabold uppercase tracking-wide">Inkuru Nyamukuru</h2>
           </div>
 
-          {/* Secondary Stories */}
-          <div className="lg:col-span-5 grid grid-cols-2 gap-4">
-            {topPosts.map((post) => (
-              <Link key={post.id} to={`/post/${post.slug}`} className="block group">
-                <div className="relative rounded-lg overflow-hidden bg-[#181a20] h-full">
-                  <img 
-                    src={getImageUrl(post.featuredImage)} 
-                    alt={post.title}
-                    className="w-full h-[140px] md:h-[190px] object-cover group-hover:scale-105 transition-transform duration-500"
+          <div className="p-3 md:p-4 grid grid-cols-1 lg:grid-cols-12 gap-3 md:gap-4">
+            <div className="lg:col-span-3 space-y-3">
+              {leftPrimary && (
+                <Link to={`/post/${leftPrimary.slug}`} className="block group bg-white">
+                  <img
+                    src={getImageUrl(leftPrimary.featuredImage)}
+                    alt={leftPrimary.title}
+                    className="w-full h-44 object-cover"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent"></div>
-                  <div className="absolute bottom-0 left-0 right-0 p-3">
-                    {post.category && (
-                      <span className="inline-block bg-[#fcd535] text-[#0b0e11] text-[10px] font-bold px-2 py-0.5 rounded mb-2">
-                        {post.category.name}
-                      </span>
-                    )}
-                    <h3 className="text-sm font-bold text-white group-hover:text-[#fcd535] transition-colors line-clamp-2">
-                      {post.title}
+                  <div className="p-2">
+                    <h3 className="text-[#0b0e11] font-semibold text-sm line-clamp-2 group-hover:text-emerald-700 transition-colors">
+                      {leftPrimary.title}
                     </h3>
                   </div>
-                </div>
-              </Link>
-                ))}
-              </div>
+                </Link>
+              )}
+
+              {leftSecondary && (
+                <Link to={`/post/${leftSecondary.slug}`} className="flex gap-2 bg-white p-2 group">
+                  <img
+                    src={getImageUrl(leftSecondary.featuredImage)}
+                    alt={leftSecondary.title}
+                    className="w-20 h-16 object-cover flex-shrink-0"
+                  />
+                  <h4 className="text-[#0b0e11] text-sm line-clamp-2 group-hover:text-emerald-700 transition-colors">
+                    {leftSecondary.title}
+                  </h4>
+                </Link>
+              )}
             </div>
+
+            <div className="lg:col-span-6 space-y-3">
+              {middleTop && (
+                <Link to={`/post/${middleTop.slug}`} className="block bg-white p-2 group">
+                  <h3 className="text-[#0b0e11] font-semibold text-base line-clamp-2 group-hover:text-emerald-700 transition-colors">
+                    {middleTop.title}
+                  </h3>
+                </Link>
+              )}
+
+              {mainHighlight && (
+                <Link to={`/post/${mainHighlight.slug}`} className="block group">
+                  <div className="relative overflow-hidden bg-white">
+                    <img
+                      src={getImageUrl(mainHighlight.featuredImage)}
+                      alt={mainHighlight.title}
+                      className="w-full h-[260px] md:h-[340px] object-cover"
+                    />
+                    <div className="absolute inset-x-0 bottom-0 bg-black/45 px-3 py-3">
+                      <h2 className="text-white text-lg md:text-2xl font-bold leading-tight line-clamp-2 group-hover:text-[#fcd535] transition-colors">
+                        {mainHighlight.title}
+                      </h2>
+                    </div>
+                  </div>
+                </Link>
+              )}
+            </div>
+
+            <div className="lg:col-span-3 space-y-2">
+              {rightColumnPosts.map((post) => (
+                <Link key={post.id} to={`/post/${post.slug}`} className="flex gap-2 bg-white p-2 group">
+                  <img
+                    src={getImageUrl(post.featuredImage)}
+                    alt={post.title}
+                    className="w-24 h-16 object-cover flex-shrink-0"
+                  />
+                  <h4 className="text-[#0b0e11] text-sm line-clamp-3 group-hover:text-emerald-700 transition-colors">
+                    {post.title}
+                  </h4>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </div>
 
         {/* Category Tabs */}
         <div className="mb-4 overflow-x-auto scrollbar-hide">
@@ -260,21 +283,22 @@ const Home = () => {
           </div>
         </div>
 
-        {/* Top Full Width Ad - Before Posts */}
-        <div className="mb-6 bg-[#181a20] rounded-lg overflow-hidden">
-          <div className="p-2 border-b border-[#2b2f36]">
-            <p className="text-gray-500 text-[10px] text-center uppercase tracking-wider">Kwamamaza</p>
-          </div>
-          <div className="p-4">
-            <div className="bg-[#0b0e11] rounded-lg border-2 border-dashed border-[#2b2f36] flex flex-col items-center justify-center h-[120px] hover:border-[#fcd535]/50 transition-colors">
-              <div className="text-center">
-                <span className="text-3xl mb-2 block">🎯</span>
-                <p className="text-gray-400 text-sm font-medium">Leaderboard Banner</p>
-                <p className="text-[#fcd535] text-xs font-bold">970 x 120 px</p>
+        {showAds && (
+          <div className="mb-6 bg-[#181a20] rounded-lg overflow-hidden">
+            <div className="p-2 border-b border-[#2b2f36]">
+              <p className="text-gray-500 text-[10px] text-center uppercase tracking-wider">Kwamamaza</p>
+            </div>
+            <div className="p-4">
+              <div className="bg-[#0b0e11] rounded-lg border-2 border-dashed border-[#2b2f36] flex flex-col items-center justify-center h-[120px] hover:border-[#fcd535]/50 transition-colors">
+                <div className="text-center">
+                  <span className="text-3xl mb-2 block">🎯</span>
+                  <p className="text-gray-400 text-sm font-medium">Leaderboard Banner</p>
+                  <p className="text-[#fcd535] text-xs font-bold">970 x 120 px</p>
+                </div>
               </div>
             </div>
           </div>
-                </div>
+        )}
 
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -319,10 +343,12 @@ const Home = () => {
                           <Clock className="w-3 h-3" />
                           {formatDate(post.publishedAt || post.createdAt)}
                         </span>
-                        <span className="flex items-center gap-1">
-                          <Eye className="w-3 h-3" />
-                          {post.viewCount}
-                        </span>
+                        {canSeeViews && (
+                          <span className="flex items-center gap-1">
+                            <Eye className="w-3 h-3" />
+                            {post.viewCount}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </Link>
@@ -330,24 +356,25 @@ const Home = () => {
               </div>
             </div>
 
-            {/* Advertisement Banner */}
-            <div className="bg-[#181a20] rounded-lg overflow-hidden">
-              <div className="p-2 border-b border-[#2b2f36]">
-                <p className="text-gray-500 text-xs text-center uppercase tracking-wider">Kwamamaza</p>
-              </div>
-                    <div className="p-4">
-                <div className="bg-[#0b0e11] rounded-lg border-2 border-dashed border-[#2b2f36] flex flex-col items-center justify-center h-[250px] hover:border-[#fcd535]/50 transition-colors">
-                  <div className="text-center">
-                    <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-[#1e2329] flex items-center justify-center">
-                      <span className="text-2xl">🎬</span>
+            {showAds && (
+              <div className="bg-[#181a20] rounded-lg overflow-hidden">
+                <div className="p-2 border-b border-[#2b2f36]">
+                  <p className="text-gray-500 text-xs text-center uppercase tracking-wider">Kwamamaza</p>
+                </div>
+                <div className="p-4">
+                  <div className="bg-[#0b0e11] rounded-lg border-2 border-dashed border-[#2b2f36] flex flex-col items-center justify-center h-[250px] hover:border-[#fcd535]/50 transition-colors">
+                    <div className="text-center">
+                      <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-[#1e2329] flex items-center justify-center">
+                        <span className="text-2xl">🎬</span>
+                      </div>
+                      <p className="text-gray-400 text-sm font-medium mb-1">Ahantu h'Ubucuruzi</p>
+                      <p className="text-[#fcd535] text-xs font-bold mb-2">GIF / Banner Ad</p>
+                      <p className="text-gray-500 text-xs">728 x 250 px</p>
                     </div>
-                    <p className="text-gray-400 text-sm font-medium mb-1">Ahantu h'Ubucuruzi</p>
-                    <p className="text-[#fcd535] text-xs font-bold mb-2">GIF / Banner Ad</p>
-                    <p className="text-gray-500 text-xs">728 x 250 px</p>
                   </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* Categories with Posts */}
             {categories.slice(0, 2).map((category) => {
@@ -436,31 +463,34 @@ const Home = () => {
                       <h3 className="text-gray-300 text-sm group-hover:text-[#fcd535] transition-colors line-clamp-2">
                         {post.title}
                       </h3>
-                      <div className="flex items-center gap-2 text-xs text-gray-500 mt-1">
-                        <Eye className="w-3 h-3" />
-                        {post.viewCount}
-                      </div>
+                      {canSeeViews && (
+                        <div className="flex items-center gap-2 text-xs text-gray-500 mt-1">
+                          <Eye className="w-3 h-3" />
+                          {post.viewCount}
+                        </div>
+                      )}
                     </div>
                   </Link>
                 ))}
               </div>
             </div>
 
-            {/* Sidebar Ad Space - Rectangle */}
-            <div className="bg-[#181a20] rounded-lg overflow-hidden">
-              <div className="p-2 border-b border-[#2b2f36]">
-                <p className="text-gray-500 text-[10px] text-center uppercase tracking-wider">Kwamamaza</p>
+            {showAds && (
+              <div className="bg-[#181a20] rounded-lg overflow-hidden">
+                <div className="p-2 border-b border-[#2b2f36]">
+                  <p className="text-gray-500 text-[10px] text-center uppercase tracking-wider">Kwamamaza</p>
+                </div>
+                <div className="p-3">
+                  <div className="bg-[#0b0e11] rounded-lg border-2 border-dashed border-[#2b2f36] flex flex-col items-center justify-center h-[200px] hover:border-[#fcd535]/50 transition-colors">
+                    <div className="text-center">
+                      <span className="text-3xl mb-2 block">🎬</span>
+                      <p className="text-gray-400 text-xs font-medium">GIF / Banner</p>
+                      <p className="text-[#fcd535] text-[10px] font-bold">300 x 250 px</p>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div className="p-3">
-                <div className="bg-[#0b0e11] rounded-lg border-2 border-dashed border-[#2b2f36] flex flex-col items-center justify-center h-[200px] hover:border-[#fcd535]/50 transition-colors">
-                  <div className="text-center">
-                    <span className="text-3xl mb-2 block">🎬</span>
-                    <p className="text-gray-400 text-xs font-medium">GIF / Banner</p>
-                    <p className="text-[#fcd535] text-[10px] font-bold">300 x 250 px</p>
-            </div>
-          </div>
-              </div>
-            </div>
+            )}
 
             {/* Categories List */}
             <div className="bg-[#181a20] rounded-lg overflow-hidden">
@@ -487,21 +517,22 @@ const Home = () => {
               </div>
             </div>
 
-            {/* Sidebar Ad Space 1 - Square */}
-            <div className="bg-[#181a20] rounded-lg overflow-hidden">
-              <div className="p-2 border-b border-[#2b2f36]">
-                <p className="text-gray-500 text-[10px] text-center uppercase tracking-wider">Kwamamaza</p>
+            {showAds && (
+              <div className="bg-[#181a20] rounded-lg overflow-hidden">
+                <div className="p-2 border-b border-[#2b2f36]">
+                  <p className="text-gray-500 text-[10px] text-center uppercase tracking-wider">Kwamamaza</p>
+                </div>
+                <div className="p-3">
+                  <div className="bg-[#0b0e11] rounded-lg border-2 border-dashed border-[#2b2f36] flex flex-col items-center justify-center aspect-square hover:border-[#fcd535]/50 transition-colors">
+                    <div className="text-center">
+                      <span className="text-3xl mb-2 block">📢</span>
+                      <p className="text-gray-400 text-xs font-medium">Square Ad</p>
+                      <p className="text-[#fcd535] text-[10px] font-bold">300 x 300 px</p>
                     </div>
-              <div className="p-3">
-                <div className="bg-[#0b0e11] rounded-lg border-2 border-dashed border-[#2b2f36] flex flex-col items-center justify-center aspect-square hover:border-[#fcd535]/50 transition-colors">
-                  <div className="text-center">
-                    <span className="text-3xl mb-2 block">📢</span>
-                    <p className="text-gray-400 text-xs font-medium">Square Ad</p>
-                    <p className="text-[#fcd535] text-[10px] font-bold">300 x 300 px</p>
                   </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* Top Liked in Sidebar */}
             <div className="bg-[#181a20] rounded-lg overflow-hidden">
@@ -534,21 +565,22 @@ const Home = () => {
               </div>
             </div>
 
-            {/* Sidebar Ad Space 2 - Vertical */}
-            <div className="bg-[#181a20] rounded-lg overflow-hidden">
-              <div className="p-2 border-b border-[#2b2f36]">
-                <p className="text-gray-500 text-[10px] text-center uppercase tracking-wider">Kwamamaza</p>
-              </div>
-              <div className="p-3">
-                <div className="bg-[#0b0e11] rounded-lg border-2 border-dashed border-[#2b2f36] flex flex-col items-center justify-center h-[400px] hover:border-[#fcd535]/50 transition-colors">
-                  <div className="text-center">
-                    <span className="text-3xl mb-2 block">🎯</span>
-                    <p className="text-gray-400 text-xs font-medium">Skyscraper Ad</p>
-                    <p className="text-[#fcd535] text-[10px] font-bold">300 x 600 px</p>
+            {showAds && (
+              <div className="bg-[#181a20] rounded-lg overflow-hidden">
+                <div className="p-2 border-b border-[#2b2f36]">
+                  <p className="text-gray-500 text-[10px] text-center uppercase tracking-wider">Kwamamaza</p>
+                </div>
+                <div className="p-3">
+                  <div className="bg-[#0b0e11] rounded-lg border-2 border-dashed border-[#2b2f36] flex flex-col items-center justify-center h-[400px] hover:border-[#fcd535]/50 transition-colors">
+                    <div className="text-center">
+                      <span className="text-3xl mb-2 block">🎯</span>
+                      <p className="text-gray-400 text-xs font-medium">Skyscraper Ad</p>
+                      <p className="text-[#fcd535] text-[10px] font-bold">300 x 600 px</p>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
 
@@ -613,21 +645,22 @@ const Home = () => {
           </div>
         </div>
 
-        {/* Full Width Leaderboard Ad */}
-        <div className="mt-6 bg-[#181a20] rounded-lg overflow-hidden">
-          <div className="p-2 border-b border-[#2b2f36]">
-            <p className="text-gray-500 text-[10px] text-center uppercase tracking-wider">Kwamamaza</p>
-          </div>
-          <div className="p-4">
-            <div className="bg-[#0b0e11] rounded-lg border-2 border-dashed border-[#2b2f36] flex flex-col items-center justify-center h-[120px] hover:border-[#fcd535]/50 transition-colors">
-              <div className="text-center">
-                <span className="text-3xl mb-2 block">📢</span>
-                <p className="text-gray-400 text-sm font-medium">Leaderboard Banner</p>
-                <p className="text-[#fcd535] text-xs font-bold">970 x 120 px</p>
+        {showAds && (
+          <div className="mt-6 bg-[#181a20] rounded-lg overflow-hidden">
+            <div className="p-2 border-b border-[#2b2f36]">
+              <p className="text-gray-500 text-[10px] text-center uppercase tracking-wider">Kwamamaza</p>
+            </div>
+            <div className="p-4">
+              <div className="bg-[#0b0e11] rounded-lg border-2 border-dashed border-[#2b2f36] flex flex-col items-center justify-center h-[120px] hover:border-[#fcd535]/50 transition-colors">
+                <div className="text-center">
+                  <span className="text-3xl mb-2 block">📢</span>
+                  <p className="text-gray-400 text-sm font-medium">Leaderboard Banner</p>
+                  <p className="text-[#fcd535] text-xs font-bold">970 x 120 px</p>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* More Articles Grid */}
         {posts.length > 12 && (
