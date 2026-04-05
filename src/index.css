@@ -2,6 +2,67 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Day mode theme overrides */
+html.day-mode {
+  color-scheme: light;
+}
+
+html.day-mode body {
+  background: #f5f7fb;
+  color: #111827;
+}
+
+html.day-mode .bg-\[\#0b0e11\] {
+  background-color: #f5f7fb !important;
+}
+
+html.day-mode .bg-\[\#181a20\] {
+  background-color: #ffffff !important;
+}
+
+html.day-mode .bg-\[\#1e2329\] {
+  background-color: #f3f4f6 !important;
+}
+
+html.day-mode .bg-\[\#2b2f36\] {
+  background-color: #e5e7eb !important;
+}
+
+html.day-mode .border-\[\#2b2f36\] {
+  border-color: #d1d5db !important;
+}
+
+html.day-mode .text-white {
+  color: #111827 !important;
+}
+
+html.day-mode .text-gray-300 {
+  color: #374151 !important;
+}
+
+html.day-mode .text-gray-400 {
+  color: #4b5563 !important;
+}
+
+html.day-mode .text-gray-500 {
+  color: #6b7280 !important;
+}
+
+html.day-mode .hover\:bg-\[\#1e2329\]:hover {
+  background-color: #e5e7eb !important;
+}
+
+html.day-mode .prose-invert {
+  --tw-prose-body: #111827;
+  --tw-prose-headings: #111827;
+  --tw-prose-links: #0f766e;
+  --tw-prose-bold: #111827;
+}
+
+html.day-mode img {
+  filter: none;
+}
+
 /* Custom scrollbar hiding for mobile navigation */
 .scrollbar-hide {
   -ms-overflow-style: none;  /* Internet Explorer 10+ */
