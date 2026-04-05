@@ -1,5 +1,5 @@
 // API Base Configuration
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? 'https://umunsi.com/api' : 'http://localhost:5000/api');
 
 // API Response Types
 export interface ApiResponse<T = any> {
@@ -192,6 +192,11 @@ export interface DashboardStats {
   totalMedia: number;
   totalPosts: number;
   totalViews: number;
+  todayViews: number;
+  dailyViews?: Array<{
+    date: string;
+    views: number;
+  }>;
   totalLikes: number;
   userGrowthPercentage: number;
   articleGrowthPercentage: number;
@@ -256,6 +261,35 @@ export interface AnalyticsData {
     date: string;
     articles: number;
   }>;
+}
+
+export interface MaintenanceStatus {
+  success: boolean;
+  enabled: boolean;
+  message: string;
+  updatedAt: string;
+}
+
+export interface AdBannerSlot {
+  enabled: boolean;
+  imageUrl: string;
+  targetUrl: string;
+  altText: string;
+  size: string;
+  label: string;
+}
+
+export interface AdsBannersState {
+  success?: boolean;
+  updatedAt: string;
+  slots: {
+    leaderboardTop970x120: AdBannerSlot;
+    business728x250: AdBannerSlot;
+    sidebar300x250: AdBannerSlot;
+    square300x300: AdBannerSlot;
+    skyscraper300x600: AdBannerSlot;
+    leaderboardBottom970x120: AdBannerSlot;
+  };
 }
 
 // API Client Class
@@ -392,7 +426,7 @@ class ApiClient {
     const formData = new FormData();
     formData.append('avatar', file);
 
-    const response = await fetch(`${this.baseUrl}/auth/avatar`, {
+    const response = await fetch(`${this.baseURL}/auth/avatar`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${this.token}`
@@ -609,6 +643,37 @@ class ApiClient {
 
   async getAnalytics(period: string = '30d'): Promise<AnalyticsData> {
     const response = await this.request<AnalyticsData>(`/analytics?period=${period}`);
+    return response;
+  }
+
+  async getMaintenanceStatus(): Promise<MaintenanceStatus> {
+    const response = await this.request<MaintenanceStatus>('/admin/maintenance');
+    return response;
+  }
+
+  async updateMaintenanceStatus(payload: { enabled: boolean; message: string }): Promise<MaintenanceStatus> {
+    const response = await this.request<MaintenanceStatus>('/admin/maintenance', {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+    return response;
+  }
+
+  async getAdsBanners(): Promise<AdsBannersState> {
+    const response = await this.request<AdsBannersState>('/ads-banners');
+    return response;
+  }
+
+  async getAdminAdsBanners(): Promise<AdsBannersState> {
+    const response = await this.request<AdsBannersState>('/admin/ads-banners');
+    return response;
+  }
+
+  async updateAdminAdsBanners(payload: { slots: AdsBannersState['slots'] }): Promise<AdsBannersState> {
+    const response = await this.request<AdsBannersState>('/admin/ads-banners', {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
     return response;
   }
 

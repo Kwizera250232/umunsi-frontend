@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Clock, Eye, ChevronRight, Loader2, Heart, TrendingUp, Zap, AlertCircle, Mail, Calendar, MapPin, CloudSun, Send, ThumbsUp } from 'lucide-react';
-import { apiClient, Post, Category } from '../services/api';
+import { apiClient, Post, Category, AdsBannersState } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
 const getServerBaseUrl = () => {
@@ -23,11 +23,25 @@ const Home = () => {
   const [activeTab, setActiveTab] = useState<string>('all');
   const [currentTime, setCurrentTime] = useState(new Date());
   const [email, setEmail] = useState('');
+  const [adsBanners, setAdsBanners] = useState<AdsBannersState | null>(null);
 
   useEffect(() => {
     fetchHomeData();
     const timer = setInterval(() => setCurrentTime(new Date()), 60000);
     return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const loadAdsBanners = async () => {
+      try {
+        const banners = await apiClient.getAdsBanners();
+        setAdsBanners(banners);
+      } catch (error) {
+        console.error('Failed to load ads banners:', error);
+      }
+    };
+
+    loadAdsBanners();
   }, []);
 
   const fetchHomeData = async () => {
@@ -94,6 +108,46 @@ const Home = () => {
     e.preventDefault();
     alert('Murakoze kwiyandikisha!');
     setEmail('');
+  };
+
+  const renderBannerSlot = (
+    slotKey: keyof AdsBannersState['slots'],
+    placeholderLabel: string,
+    className: string
+  ) => {
+    const slot = adsBanners?.slots?.[slotKey];
+
+    if (slot?.enabled && slot.imageUrl) {
+      const bannerImage = (
+        <img
+          src={slot.imageUrl}
+          alt={slot.altText || slot.label}
+          className="w-full h-full object-cover"
+          loading="lazy"
+        />
+      );
+
+      return (
+        <div className={className}>
+          {slot.targetUrl ? (
+            <a href={slot.targetUrl} target="_blank" rel="noopener noreferrer" className="block w-full h-full">
+              {bannerImage}
+            </a>
+          ) : (
+            bannerImage
+          )}
+        </div>
+      );
+    }
+
+    return (
+      <div className={`${className} bg-[#0b0e11] rounded-lg border-2 border-dashed border-[#2b2f36] flex flex-col items-center justify-center hover:border-[#fcd535]/50 transition-colors`}>
+        <div className="text-center">
+          <p className="text-gray-400 text-sm font-medium">Kwamamaza</p>
+          <p className="text-[#fcd535] text-xs font-bold">{placeholderLabel}</p>
+        </div>
+      </div>
+    );
   };
 
   if (loading) {
@@ -289,13 +343,7 @@ const Home = () => {
               <p className="text-gray-500 text-[10px] text-center uppercase tracking-wider">Kwamamaza</p>
             </div>
             <div className="p-4">
-              <div className="bg-[#0b0e11] rounded-lg border-2 border-dashed border-[#2b2f36] flex flex-col items-center justify-center h-[120px] hover:border-[#fcd535]/50 transition-colors">
-                <div className="text-center">
-                  <span className="text-3xl mb-2 block">🎯</span>
-                  <p className="text-gray-400 text-sm font-medium">Leaderboard Banner</p>
-                  <p className="text-[#fcd535] text-xs font-bold">970 x 120 px</p>
-                </div>
-              </div>
+              {renderBannerSlot('leaderboardTop970x120', '970 x 120 px', 'h-[120px] rounded-lg overflow-hidden')}
             </div>
           </div>
         )}
@@ -362,16 +410,7 @@ const Home = () => {
                   <p className="text-gray-500 text-xs text-center uppercase tracking-wider">Kwamamaza</p>
                 </div>
                 <div className="p-4">
-                  <div className="bg-[#0b0e11] rounded-lg border-2 border-dashed border-[#2b2f36] flex flex-col items-center justify-center h-[250px] hover:border-[#fcd535]/50 transition-colors">
-                    <div className="text-center">
-                      <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-[#1e2329] flex items-center justify-center">
-                        <span className="text-2xl">🎬</span>
-                      </div>
-                      <p className="text-gray-400 text-sm font-medium mb-1">Ahantu h'Ubucuruzi</p>
-                      <p className="text-[#fcd535] text-xs font-bold mb-2">GIF / Banner Ad</p>
-                      <p className="text-gray-500 text-xs">728 x 250 px</p>
-                    </div>
-                  </div>
+                  {renderBannerSlot('business728x250', "Ahantu h'Ubucuruzi - 728 x 250 px", 'h-[250px] rounded-lg overflow-hidden')}
                 </div>
               </div>
             )}
@@ -481,13 +520,7 @@ const Home = () => {
                   <p className="text-gray-500 text-[10px] text-center uppercase tracking-wider">Kwamamaza</p>
                 </div>
                 <div className="p-3">
-                  <div className="bg-[#0b0e11] rounded-lg border-2 border-dashed border-[#2b2f36] flex flex-col items-center justify-center h-[200px] hover:border-[#fcd535]/50 transition-colors">
-                    <div className="text-center">
-                      <span className="text-3xl mb-2 block">🎬</span>
-                      <p className="text-gray-400 text-xs font-medium">GIF / Banner</p>
-                      <p className="text-[#fcd535] text-[10px] font-bold">300 x 250 px</p>
-                    </div>
-                  </div>
+                  {renderBannerSlot('sidebar300x250', '300 x 250 px', 'h-[200px] rounded-lg overflow-hidden')}
                 </div>
               </div>
             )}
@@ -523,13 +556,7 @@ const Home = () => {
                   <p className="text-gray-500 text-[10px] text-center uppercase tracking-wider">Kwamamaza</p>
                 </div>
                 <div className="p-3">
-                  <div className="bg-[#0b0e11] rounded-lg border-2 border-dashed border-[#2b2f36] flex flex-col items-center justify-center aspect-square hover:border-[#fcd535]/50 transition-colors">
-                    <div className="text-center">
-                      <span className="text-3xl mb-2 block">📢</span>
-                      <p className="text-gray-400 text-xs font-medium">Square Ad</p>
-                      <p className="text-[#fcd535] text-[10px] font-bold">300 x 300 px</p>
-                    </div>
-                  </div>
+                  {renderBannerSlot('square300x300', '300 x 300 px', 'aspect-square rounded-lg overflow-hidden')}
                 </div>
               </div>
             )}
@@ -571,13 +598,7 @@ const Home = () => {
                   <p className="text-gray-500 text-[10px] text-center uppercase tracking-wider">Kwamamaza</p>
                 </div>
                 <div className="p-3">
-                  <div className="bg-[#0b0e11] rounded-lg border-2 border-dashed border-[#2b2f36] flex flex-col items-center justify-center h-[400px] hover:border-[#fcd535]/50 transition-colors">
-                    <div className="text-center">
-                      <span className="text-3xl mb-2 block">🎯</span>
-                      <p className="text-gray-400 text-xs font-medium">Skyscraper Ad</p>
-                      <p className="text-[#fcd535] text-[10px] font-bold">300 x 600 px</p>
-                    </div>
-                  </div>
+                  {renderBannerSlot('skyscraper300x600', '300 x 600 px', 'h-[400px] rounded-lg overflow-hidden')}
                 </div>
               </div>
             )}
@@ -651,13 +672,7 @@ const Home = () => {
               <p className="text-gray-500 text-[10px] text-center uppercase tracking-wider">Kwamamaza</p>
             </div>
             <div className="p-4">
-              <div className="bg-[#0b0e11] rounded-lg border-2 border-dashed border-[#2b2f36] flex flex-col items-center justify-center h-[120px] hover:border-[#fcd535]/50 transition-colors">
-                <div className="text-center">
-                  <span className="text-3xl mb-2 block">📢</span>
-                  <p className="text-gray-400 text-sm font-medium">Leaderboard Banner</p>
-                  <p className="text-[#fcd535] text-xs font-bold">970 x 120 px</p>
-                </div>
-              </div>
+              {renderBannerSlot('leaderboardBottom970x120', '970 x 120 px', 'h-[120px] rounded-lg overflow-hidden')}
             </div>
           </div>
         )}
