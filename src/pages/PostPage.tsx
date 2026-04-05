@@ -80,6 +80,27 @@ const splitAfterThirdParagraph = (html: string) => {
 const PostPage = () => {
   const { slug, id } = useParams<{ slug?: string; id?: string }>();
   const { user, isAuthenticated } = useAuth();
+  const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 768 : false);
+  const [adsSettings, setAdsSettings] = useState(() => {
+    const defaults = {
+      enabled: true,
+      desktopEnabled: true,
+      mobileEnabled: true,
+      adClient: 'ca-pub-3584259871242471',
+      desktopSlot: '2693936589',
+      mobileSlot: '2693936589'
+    };
+
+    if (typeof window === 'undefined') return defaults;
+
+    try {
+      const stored = localStorage.getItem('umunsi_ads_settings');
+      if (!stored) return defaults;
+      return { ...defaults, ...JSON.parse(stored) };
+    } catch {
+      return defaults;
+    }
+  });
   const showAds = user?.role !== 'ADMIN';
   const canSeeViews = user?.role === 'ADMIN';
   const [post, setPost] = useState<Post | null>(null);
@@ -107,11 +128,35 @@ const PostPage = () => {
     }
   }, [postIdentifier]);
 
-  const normalizedContent = normalizeArticleHtml(post?.content);
-  const { before: contentBeforeAd, after: contentAfterAd, hasThirdParagraph } = splitAfterThirdParagraph(normalizedContent);
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
-    if (!showAds || !hasThirdParagraph || !post?.id) {
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key !== 'umunsi_ads_settings') return;
+      try {
+        const parsed = event.newValue ? JSON.parse(event.newValue) : {};
+        setAdsSettings((prev) => ({ ...prev, ...parsed }));
+      } catch {
+        // Ignore malformed settings and keep current config.
+      }
+    };
+
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
+
+  const normalizedContent = normalizeArticleHtml(post?.content);
+  const { before: contentBeforeAd, after: contentAfterAd, hasThirdParagraph } = splitAfterThirdParagraph(normalizedContent);
+  const deviceAdEnabled = isMobile ? adsSettings.mobileEnabled : adsSettings.desktopEnabled;
+  const activeAdSlot = isMobile ? adsSettings.mobileSlot : adsSettings.desktopSlot;
+  const shouldRenderInlineAd = showAds && adsSettings.enabled && deviceAdEnabled && hasThirdParagraph;
+
+  useEffect(() => {
+    if (!shouldRenderInlineAd || !post?.id) {
       return;
     }
 
@@ -120,7 +165,7 @@ const PostPage = () => {
     } catch (error) {
       console.error('AdSense push error:', error);
     }
-  }, [showAds, hasThirdParagraph, post?.id]);
+  }, [shouldRenderInlineAd, post?.id, activeAdSlot]);
 
   const fetchPost = async () => {
     try {
@@ -408,15 +453,15 @@ const PostPage = () => {
                   dangerouslySetInnerHTML={{ __html: contentBeforeAd }}
                 />
 
-                {showAds && hasThirdParagraph && (
+                {shouldRenderInlineAd && (
                   <>
                     {/* csftx */}
                     <div className="my-6 p-2 border border-[#2b2f36] rounded-lg bg-[#0b0e11]">
                       <ins
                         className="adsbygoogle"
                         style={{ display: 'block' }}
-                        data-ad-client="ca-pub-3584259871242471"
-                        data-ad-slot="2693936589"
+                        data-ad-client={adsSettings.adClient}
+                        data-ad-slot={activeAdSlot}
                         data-ad-format="auto"
                         data-full-width-responsive="true"
                       />
@@ -431,7 +476,7 @@ const PostPage = () => {
                   </>
                 )}
 
-                {(!showAds || !hasThirdParagraph) && contentAfterAd && (
+                {!shouldRenderInlineAd && contentAfterAd && (
                   <div
                     className="prose prose-invert prose-lg max-w-none text-gray-300"
                     style={{ wordBreak: 'break-word' }}

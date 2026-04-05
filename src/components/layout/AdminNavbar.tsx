@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   Search, 
@@ -19,7 +19,9 @@ import {
   Image,
   Shield,
   Crown,
-  BookOpen
+  BookOpen,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -40,11 +42,20 @@ const AdminNavbar: React.FC<AdminNavbarProps> = ({ user: propUser }) => {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [theme, setTheme] = useState<'dark' | 'day'>(() => {
+    if (typeof window === 'undefined') return 'dark';
+    return localStorage.getItem('umunsi_theme') === 'day' ? 'day' : 'dark';
+  });
   const location = useLocation();
   const navigate = useNavigate();
   const { user: authUser, logout } = useAuth();
 
   const user = propUser || authUser;
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('day-mode', theme === 'day');
+    localStorage.setItem('umunsi_theme', theme);
+  }, [theme]);
 
   const navigation = [
     { name: 'Dashboard', href: '/admin', icon: BarChart3 },
@@ -136,6 +147,14 @@ const AdminNavbar: React.FC<AdminNavbarProps> = ({ user: propUser }) => {
 
             {/* Right side - Actions */}
             <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setTheme((prev) => (prev === 'day' ? 'dark' : 'day'))}
+                className="p-2.5 text-gray-400 hover:text-white hover:bg-[#2b2f36] rounded-xl transition-all"
+                title={theme === 'day' ? 'Switch to Night mode' : 'Switch to Day mode'}
+                aria-label={theme === 'day' ? 'Switch to Night mode' : 'Switch to Day mode'}
+              >
+                {theme === 'day' ? <Moon size={20} /> : <Sun size={20} />}
+              </button>
               
               {/* Mobile search button */}
               <button
