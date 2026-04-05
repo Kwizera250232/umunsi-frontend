@@ -36,7 +36,9 @@ import {
   Award,
   Zap,
   Crown,
-  Menu
+  Menu,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useDashboardStats } from '../../hooks/useDashboardStats';
@@ -84,6 +86,10 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ isCollapsed, onToggleCollap
     categories: 0
   });
   const [countsLoading, setCountsLoading] = useState(true);
+  const [theme, setTheme] = useState<'dark' | 'day'>(() => {
+    if (typeof window === 'undefined') return 'dark';
+    return localStorage.getItem('umunsi_theme') === 'day' ? 'day' : 'dark';
+  });
 
   // Fetch database counts
   useEffect(() => {
@@ -112,6 +118,11 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ isCollapsed, onToggleCollap
 
     fetchCounts();
   }, []);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('day-mode', theme === 'day');
+    localStorage.setItem('umunsi_theme', theme);
+  }, [theme]);
 
   const sidebarItems: SidebarItem[] = [
     // Main Dashboard
@@ -633,6 +644,18 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ isCollapsed, onToggleCollap
 
           {/* Quick Actions */}
           <div className="space-y-1">
+            <button
+              onClick={() => setTheme((prev) => (prev === 'day' ? 'dark' : 'day'))}
+              className={`w-full flex items-center px-3 py-2.5 text-gray-400 hover:bg-[#1e2329] hover:text-white rounded-xl transition-all duration-200 ${isCollapsed ? 'justify-center' : ''}`}
+              title={theme === 'day' ? 'Switch to Night mode' : 'Switch to Day mode'}
+              aria-label={theme === 'day' ? 'Switch to Night mode' : 'Switch to Day mode'}
+            >
+              <div className="p-2 bg-[#2b2f36]/50 rounded-lg">
+                {theme === 'day' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+              </div>
+              {!isCollapsed && <span className="ml-3 text-sm font-medium">{theme === 'day' ? 'Night Mode' : 'Day Mode'}</span>}
+            </button>
+
             <Link
               to="/"
               className={`flex items-center px-3 py-2.5 text-gray-400 hover:bg-[#1e2329] hover:text-white rounded-xl transition-all duration-200 ${isCollapsed ? 'justify-center' : ''}`}
