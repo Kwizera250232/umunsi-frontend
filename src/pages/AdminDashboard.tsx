@@ -35,6 +35,11 @@ interface DashboardStats {
   totalCategories: number;
   totalComments: number;
   totalViews: number;
+  todayViews: number;
+  dailyViews: Array<{
+    date: string;
+    views: number;
+  }>;
   totalLikes: number;
 }
 
@@ -63,6 +68,11 @@ interface SystemStatus {
   server: string;
 }
 
+interface MaintenanceState {
+  enabled: boolean;
+  message: string;
+}
+
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -73,6 +83,8 @@ const AdminDashboard = () => {
     totalCategories: 0,
     totalComments: 0,
     totalViews: 0,
+    todayViews: 0,
+    dailyViews: [],
     totalLikes: 0
   });
 
@@ -84,6 +96,13 @@ const AdminDashboard = () => {
     server: 'checking'
   });
 
+  const [maintenance, setMaintenance] = useState<MaintenanceState>({
+    enabled: false,
+    message: 'Website iri gutunganywa iragaruka mu kanya'
+  });
+  const [savingMaintenance, setSavingMaintenance] = useState(false);
+  const [selectedViewDate, setSelectedViewDate] = useState('');
+
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
@@ -92,6 +111,13 @@ const AdminDashboard = () => {
   useEffect(() => {
     fetchDashboardData();
   }, []);
+
+  useEffect(() => {
+    if (stats.dailyViews.length > 0 && !selectedViewDate) {
+      const sorted = [...stats.dailyViews].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      setSelectedViewDate(new Date(sorted[sorted.length - 1].date).toISOString().slice(0, 10));
+    }
+  }, [stats.dailyViews, selectedViewDate]);
 
   const fetchDashboardData = async () => {
     try {
@@ -114,6 +140,8 @@ const AdminDashboard = () => {
         totalCategories: dashboardResponse?.totalCategories || 0,
         totalComments: dashboardResponse?.totalComments || 0,
         totalViews: dashboardResponse?.totalViews || 0,
+        todayViews: dashboardResponse?.todayViews || 0,
+        dailyViews: dashboardResponse?.dailyViews || [],
         totalLikes: dashboardResponse?.totalLikes || 0
       });
 
@@ -165,6 +193,16 @@ const AdminDashboard = () => {
         setSystemStatus({ database: 'error', server: 'error' });
       }
 
+      try {
+        const maintenanceStatus = await apiClient.getMaintenanceStatus();
+        setMaintenance({
+          enabled: !!maintenanceStatus.enabled,
+          message: maintenanceStatus.message || 'Website iri gutunganywa iragaruka mu kanya'
+        });
+      } catch (error) {
+        console.error('Error fetching maintenance status:', error);
+      }
+
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
       // Set fallback data on error
@@ -174,6 +212,8 @@ const AdminDashboard = () => {
         totalCategories: 0,
         totalComments: 0,
         totalViews: 0,
+        todayViews: 0,
+        dailyViews: [],
         totalLikes: 0
       });
       setRecentPosts([]);
@@ -238,6 +278,38 @@ const AdminDashboard = () => {
     }
   };
 
+  const normalizedDailyViews = [...stats.dailyViews]
+    .map((day) => ({
+      dateKey: new Date(day.date).toISOString().slice(0, 10),
+      views: day.views
+    }))
+    .sort((a, b) => new Date(a.dateKey).getTime() - new Date(b.dateKey).getTime());
+
+  const activeDateKey = selectedViewDate || normalizedDailyViews[normalizedDailyViews.length - 1]?.dateKey || '';
+  const activeIndex = normalizedDailyViews.findIndex((day) => day.dateKey === activeDateKey);
+  const activeViews = activeIndex >= 0 ? normalizedDailyViews[activeIndex].views : 0;
+  const previousViews = activeIndex > 0 ? normalizedDailyViews[activeIndex - 1].views : 0;
+  const dailyDelta = activeViews - previousViews;
+
+  const saveMaintenance = async () => {
+    try {
+      setSavingMaintenance(true);
+      const updated = await apiClient.updateMaintenanceStatus({
+        enabled: maintenance.enabled,
+        message: maintenance.message
+      });
+      setMaintenance({
+        enabled: !!updated.enabled,
+        message: updated.message || maintenance.message
+      });
+      alert(`Maintenance mode ${updated.enabled ? 'ON' : 'OFF'} successfully`);
+    } catch (error: any) {
+      alert(error?.message || 'Failed to update maintenance mode');
+    } finally {
+      setSavingMaintenance(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#0b0e11] flex items-center justify-center">
@@ -293,7 +365,42 @@ const AdminDashboard = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="mb-8 bg-[#181a20] rounded-2xl border border-[#2b2f36] p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-white">Maintenance Mode</h3>
+          <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${maintenance.enabled ? 'bg-red-500/20 text-red-300 border-red-500/40' : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'}`}>
+            {maintenance.enabled ? 'ON' : 'OFF'}
+          </span>
+        </div>
+
+        <label className="flex items-center gap-3 mb-4 text-sm text-gray-300">
+          <input
+            type="checkbox"
+            checked={maintenance.enabled}
+            onChange={(e) => setMaintenance((prev) => ({ ...prev, enabled: e.target.checked }))}
+            className="h-4 w-4"
+          />
+          Turn Maintenance On/Off
+        </label>
+
+        <label className="block text-sm text-gray-300 mb-2">Message users see</label>
+        <input
+          type="text"
+          value={maintenance.message}
+          onChange={(e) => setMaintenance((prev) => ({ ...prev, message: e.target.value }))}
+          className="w-full bg-[#0f1115] border border-[#2b2f36] rounded-lg px-3 py-2 text-white mb-4"
+        />
+
+        <button
+          onClick={saveMaintenance}
+          disabled={savingMaintenance}
+          className="px-4 py-2 bg-[#fcd535] text-[#181a20] font-semibold rounded-lg hover:bg-[#f0b90b] disabled:opacity-60"
+        >
+          {savingMaintenance ? 'Saving...' : 'Save Maintenance Settings'}
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
         {/* Total Users */}
         <div 
           onClick={() => navigate('/admin/users')}
@@ -354,6 +461,26 @@ const AdminDashboard = () => {
             </div>
           </div>
 
+        {/* Today Views */}
+        <div 
+          onClick={() => navigate('/admin/analytics')}
+          className="group relative bg-[#181a20] rounded-2xl border border-[#2b2f36] overflow-hidden hover:border-teal-500/50 transition-all duration-300 cursor-pointer"
+        >
+          <div className="absolute inset-0 bg-gradient-to-br from-teal-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+          <div className="p-6 relative">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 bg-teal-500/10 rounded-xl group-hover:bg-teal-500/20 transition-colors">
+                <BarChart3 className="w-6 h-6 text-teal-400" />
+              </div>
+              <ChevronRight className="w-5 h-5 text-gray-600 group-hover:text-teal-400 transition-colors" />
+            </div>
+            <div>
+              <p className="text-3xl font-bold text-white mb-1">{formatNumber(stats.todayViews)}</p>
+              <p className="text-sm text-gray-500 group-hover:text-gray-400">Today's Views</p>
+            </div>
+          </div>
+        </div>
+
         {/* Engagement */}
         <div 
           onClick={() => navigate('/admin/analytics')}
@@ -373,6 +500,67 @@ const AdminDashboard = () => {
             </div>
             </div>
           </div>
+        </div>
+
+        <div className="mb-8 bg-[#181a20] rounded-2xl border border-[#2b2f36] p-6">
+          <h3 className="text-lg font-semibold text-white mb-4">Reading Trend (Last 7 Days)</h3>
+          {stats.dailyViews.length > 0 ? (
+            <div className="space-y-3">
+              {stats.dailyViews.map((day) => {
+                const maxViews = Math.max(...stats.dailyViews.map((d) => d.views), 1);
+                const barWidth = `${Math.max((day.views / maxViews) * 100, 6)}%`;
+
+                return (
+                  <div key={day.date} className="flex items-center gap-3">
+                    <span className="w-24 text-xs text-gray-400">
+                      {new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    </span>
+                    <div className="flex-1 h-2 rounded-full bg-[#2b2f36] overflow-hidden">
+                      <div className="h-2 rounded-full bg-gradient-to-r from-[#fcd535] to-emerald-400" style={{ width: barWidth }} />
+                    </div>
+                    <span className="w-14 text-right text-sm text-white font-medium">{formatNumber(day.views)}</span>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-500">No daily view data yet.</p>
+          )}
+        </div>
+
+        <div className="mb-8 bg-[#181a20] rounded-2xl border border-[#2b2f36] p-6">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-5">
+            <h3 className="text-lg font-semibold text-white">Daily Views Check</h3>
+            <input
+              type="date"
+              value={activeDateKey}
+              onChange={(e) => setSelectedViewDate(e.target.value)}
+              className="px-3 py-2 bg-[#0b0e11] border border-[#2b2f36] rounded-lg text-gray-300 focus:outline-none focus:border-[#fcd535]"
+            />
+          </div>
+
+          {normalizedDailyViews.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="p-4 rounded-xl bg-[#0b0e11] border border-[#2b2f36]">
+                <p className="text-xs text-gray-500 mb-1">Selected Date</p>
+                <p className="text-base text-white font-semibold">
+                  {activeDateKey ? new Date(activeDateKey).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : 'No date selected'}
+                </p>
+              </div>
+              <div className="p-4 rounded-xl bg-[#0b0e11] border border-[#2b2f36]">
+                <p className="text-xs text-gray-500 mb-1">Views On Selected Day</p>
+                <p className="text-2xl text-white font-bold">{formatNumber(activeViews)}</p>
+              </div>
+              <div className="p-4 rounded-xl bg-[#0b0e11] border border-[#2b2f36]">
+                <p className="text-xs text-gray-500 mb-1">Change vs Previous Day</p>
+                <p className={`text-2xl font-bold ${dailyDelta >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                  {dailyDelta >= 0 ? '+' : ''}{formatNumber(dailyDelta)}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-gray-500">No daily views data available to check yet.</p>
+          )}
         </div>
 
       {/* Main Grid */}

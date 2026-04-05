@@ -1,4 +1,4 @@
-import { Search, Menu, X, Calendar, Thermometer, Bell, User, ChevronDown, TrendingUp, Loader2, MoreHorizontal, LogOut, Settings } from 'lucide-react';
+import { Search, Menu, X, Calendar, Thermometer, Bell, User, ChevronDown, TrendingUp, Loader2, MoreHorizontal, LogOut, Settings, Sun, Moon } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { apiClient, Category } from '../../services/api';
@@ -11,6 +11,10 @@ const Header = () => {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isMoreOpen, setIsMoreOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [theme, setTheme] = useState<'dark' | 'day'>(() => {
+    if (typeof window === 'undefined') return 'dark';
+    return localStorage.getItem('umunsi_theme') === 'day' ? 'day' : 'dark';
+  });
   const [searchQuery, setSearchQuery] = useState('');
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -18,6 +22,11 @@ const Header = () => {
   useEffect(() => {
     fetchCategories();
   }, []);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('day-mode', theme === 'day');
+    localStorage.setItem('umunsi_theme', theme);
+  }, [theme]);
 
   const fetchCategories = async () => {
     try {
@@ -49,6 +58,10 @@ const Header = () => {
   // Show first 7 categories in navbar, rest in dropdown
   const visibleCategories = categories.slice(0, 7);
   const moreCategories = categories.slice(7);
+
+  const toggleTheme = () => {
+    setTheme((prev) => (prev === 'day' ? 'dark' : 'day'));
+  };
 
   return (
     <header className="bg-[#0b0e11] sticky top-0 z-50 border-b border-[#2b2f36]">
@@ -82,6 +95,17 @@ const Header = () => {
 
             {/* Right Side Actions */}
             <div className="flex items-center space-x-3">
+              <button
+                onClick={toggleTheme}
+                className="flex items-center space-x-1.5 text-gray-400 hover:text-[#fcd535] transition-colors"
+                title={theme === 'day' ? 'Switch to Night mode' : 'Switch to Day mode'}
+                aria-label={theme === 'day' ? 'Switch to Night mode' : 'Switch to Day mode'}
+              >
+                {theme === 'day' ? <Moon size={14} /> : <Sun size={14} />}
+                <span className="hidden sm:inline">{theme === 'day' ? 'Night' : 'Day'}</span>
+              </button>
+              <div className="h-3 w-px bg-[#2b2f36]"></div>
+
               <Link 
                 to="/newsletter" 
                 className="flex items-center space-x-1.5 text-gray-400 hover:text-[#fcd535] transition-colors group"
