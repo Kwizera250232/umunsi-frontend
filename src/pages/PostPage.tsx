@@ -27,9 +27,48 @@ const getServerBaseUrl = () => {
   return apiUrl.replace('/api', '');
 };
 
+const normalizeArticleHtml = (content?: string) => {
+  return content?.replace(
+    /<img([^>]*)src="([^"]*)"([^>]*)>/gi,
+    (match, before, src, after) => {
+      const correctedSrc = src.startsWith('/uploads/')
+        ? `${getServerBaseUrl()}${src}`
+        : src.startsWith('http') ? src : `${getServerBaseUrl()}/uploads/${src}`;
+      return `<img${before}src="${correctedSrc}"${after} class="w-full h-auto rounded-lg my-4" onerror="this.style.display='none'">`;
+    }
+  ) || '';
+};
+
+const splitAfterThirdParagraph = (html: string) => {
+  const closeParagraphRegex = /<\/p>/gi;
+  let match: RegExpExecArray | null;
+  let paragraphCount = 0;
+  let splitIndex = -1;
+
+  while ((match = closeParagraphRegex.exec(html)) !== null) {
+    paragraphCount += 1;
+    if (paragraphCount === 3) {
+      splitIndex = match.index + match[0].length;
+      break;
+    }
+  }
+
+  if (splitIndex === -1) {
+    return { before: html, after: '', hasThirdParagraph: false };
+  }
+
+  return {
+    before: html.slice(0, splitIndex),
+    after: html.slice(splitIndex),
+    hasThirdParagraph: true
+  };
+};
+
 const PostPage = () => {
   const { slug, id } = useParams<{ slug?: string; id?: string }>();
   const { user, isAuthenticated } = useAuth();
+  const showAds = user?.role !== 'ADMIN';
+  const canSeeViews = user?.role === 'ADMIN';
   const [post, setPost] = useState<Post | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -54,6 +93,21 @@ const PostPage = () => {
       window.scrollTo(0, 0);
     }
   }, [postIdentifier]);
+
+  const normalizedContent = normalizeArticleHtml(post?.content);
+  const { before: contentBeforeAd, after: contentAfterAd, hasThirdParagraph } = splitAfterThirdParagraph(normalizedContent);
+
+  useEffect(() => {
+    if (!showAds || !hasThirdParagraph || !post?.id) {
+      return;
+    }
+
+    try {
+      ((window as any).adsbygoogle = (window as any).adsbygoogle || []).push({});
+    } catch (error) {
+      console.error('AdSense push error:', error);
+    }
+  }, [showAds, hasThirdParagraph, post?.id]);
 
   const fetchPost = async () => {
     try {
@@ -259,10 +313,12 @@ const PostPage = () => {
                     </div>
                   </div>
                   <div className="flex items-center gap-4 text-sm text-gray-500">
-                    <span className="flex items-center gap-1">
-                      <Eye className="w-4 h-4" />
-                      {post.viewCount}
-                    </span>
+                    {canSeeViews && (
+                      <span className="flex items-center gap-1">
+                        <Eye className="w-4 h-4" />
+                        {post.viewCount}
+                      </span>
+                    )}
                     <span className="flex items-center gap-1">
                       <Heart className="w-4 h-4" />
                       {likeCount}
@@ -336,18 +392,39 @@ const PostPage = () => {
                 <div 
                   className="prose prose-invert prose-lg max-w-none text-gray-300"
                   style={{ wordBreak: 'break-word' }}
-                  dangerouslySetInnerHTML={{ 
-                    __html: post.content?.replace(
-                      /<img([^>]*)src="([^"]*)"([^>]*)>/gi, 
-                      (match, before, src, after) => {
-                        const correctedSrc = src.startsWith('/uploads/') 
-                          ? `${getServerBaseUrl()}${src}`
-                          : src.startsWith('http') ? src : `${getServerBaseUrl()}/uploads/${src}`;
-                        return `<img${before}src="${correctedSrc}"${after} class="w-full h-auto rounded-lg my-4" onerror="this.style.display='none'">`;
-                      }
-                    ) || ''
-                  }} 
+                  dangerouslySetInnerHTML={{ __html: contentBeforeAd }}
                 />
+
+                {showAds && hasThirdParagraph && (
+                  <>
+                    {/* csftx */}
+                    <div className="my-6 p-2 border border-[#2b2f36] rounded-lg bg-[#0b0e11]">
+                      <ins
+                        className="adsbygoogle"
+                        style={{ display: 'block' }}
+                        data-ad-client="ca-pub-3584259871242471"
+                        data-ad-slot="2693936589"
+                        data-ad-format="auto"
+                        data-full-width-responsive="true"
+                      />
+                    </div>
+                    {contentAfterAd && (
+                      <div
+                        className="prose prose-invert prose-lg max-w-none text-gray-300"
+                        style={{ wordBreak: 'break-word' }}
+                        dangerouslySetInnerHTML={{ __html: contentAfterAd }}
+                      />
+                    )}
+                  </>
+                )}
+
+                {(!showAds || !hasThirdParagraph) && contentAfterAd && (
+                  <div
+                    className="prose prose-invert prose-lg max-w-none text-gray-300"
+                    style={{ wordBreak: 'break-word' }}
+                    dangerouslySetInnerHTML={{ __html: contentAfterAd }}
+                  />
+                )}
 
                 {/* Tags */}
                 {post.tags && post.tags.length > 0 && (
@@ -377,10 +454,12 @@ const PostPage = () => {
                   <Heart className={`w-5 h-5 ${liked ? 'fill-current' : ''}`} />
                   {liked ? 'Liked' : 'Like'} ({likeCount})
                 </button>
-                <div className="flex items-center gap-2 text-gray-500 text-sm">
-                  <Eye className="w-4 h-4" />
-                  {post.viewCount} views
-                </div>
+                {canSeeViews && (
+                  <div className="flex items-center gap-2 text-gray-500 text-sm">
+                    <Eye className="w-4 h-4" />
+                    {post.viewCount} views
+                  </div>
+                )}
               </div>
             </article>
 
@@ -501,13 +580,14 @@ const PostPage = () => {
               </div>
             </div>
 
-            {/* Ad Space */}
-            <div className="bg-[#181a20] rounded-lg p-4 text-center">
-              <p className="text-gray-500 text-xs mb-2">ADVERTISEMENT</p>
-              <div className="bg-[#0b0e11] rounded-lg h-60 flex items-center justify-center border border-dashed border-[#2b2f36]">
-                <span className="text-gray-600">Ad Space</span>
+            {showAds && (
+              <div className="bg-[#181a20] rounded-lg p-4 text-center">
+                <p className="text-gray-500 text-xs mb-2">ADVERTISEMENT</p>
+                <div className="bg-[#0b0e11] rounded-lg h-60 flex items-center justify-center border border-dashed border-[#2b2f36]">
+                  <span className="text-gray-600">Ad Space</span>
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Back Links */}
             <div className="space-y-2">
