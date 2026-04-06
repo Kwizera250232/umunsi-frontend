@@ -105,7 +105,7 @@ const injectAdAfterSecondParagraph = (html: string) => {
 const PostPage = () => {
   const { slug, id } = useParams<{ slug?: string; id?: string }>();
   const { user, isAuthenticated } = useAuth();
-  const showAds = user?.role !== 'ADMIN';
+  const showAds = true;
   const canSeeViews = user?.role === 'ADMIN';
   const [post, setPost] = useState<Post | null>(null);
   const [loading, setLoading] = useState(true);
@@ -153,16 +153,45 @@ const PostPage = () => {
       return;
     }
 
-    const adElement = document.querySelector('.article-inline-ad ins.adsbygoogle');
-    if (!adElement || !window.adsbygoogle) {
-      return;
-    }
+    let cancelled = false;
+    let attempts = 0;
+    const maxAttempts = 20;
 
-    try {
-      window.adsbygoogle.push({});
-    } catch (error) {
-      console.error('AdSense inline ad render failed:', error);
-    }
+    const tryRenderInlineAd = () => {
+      if (cancelled) return;
+
+      const adElement = document.querySelector('.article-inline-ad ins.adsbygoogle') as HTMLElement | null;
+      if (!adElement) {
+        if (attempts++ < maxAttempts) setTimeout(tryRenderInlineAd, 250);
+        return;
+      }
+
+      if (adElement.dataset.adInitialized === '1' || adElement.getAttribute('data-ad-status')) {
+        return;
+      }
+
+      if (!window.adsbygoogle) {
+        if (attempts++ < maxAttempts) setTimeout(tryRenderInlineAd, 250);
+        return;
+      }
+
+      try {
+        window.adsbygoogle.push({});
+        adElement.dataset.adInitialized = '1';
+      } catch (error) {
+        if (attempts++ < maxAttempts) {
+          setTimeout(tryRenderInlineAd, 500);
+          return;
+        }
+        console.error('AdSense inline ad render failed:', error);
+      }
+    };
+
+    tryRenderInlineAd();
+
+    return () => {
+      cancelled = true;
+    };
   }, [contentWithInlineAd, showAds, post?.id]);
 
   const fetchPost = async () => {
