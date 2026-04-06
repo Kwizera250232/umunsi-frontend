@@ -59,6 +59,8 @@ const ADSENSE_ARTICLE_BLOCK = `
   </div>
 `;
 
+const ADSENSE_BEFORE_CONTENT_SLOT = '5789865998';
+
 const SUPPORT_WHATSAPP = '250791859465';
 const SUPPORT_CALL = '0791859465';
 
@@ -160,13 +162,20 @@ const PostPage = () => {
     const tryRenderInlineAd = () => {
       if (cancelled) return;
 
-      const adElement = document.querySelector('.article-inline-ad ins.adsbygoogle') as HTMLElement | null;
-      if (!adElement) {
+      const adElements = Array.from(
+        document.querySelectorAll('.article-before-content-ad ins.adsbygoogle, .article-inline-ad ins.adsbygoogle')
+      ) as HTMLElement[];
+
+      if (adElements.length === 0) {
         if (attempts++ < maxAttempts) setTimeout(tryRenderInlineAd, 250);
         return;
       }
 
-      if (adElement.dataset.adInitialized === '1' || adElement.getAttribute('data-ad-status')) {
+      const pendingAds = adElements.filter(
+        (element) => element.dataset.adInitialized !== '1' && !element.getAttribute('data-ad-status')
+      );
+
+      if (pendingAds.length === 0) {
         return;
       }
 
@@ -176,8 +185,10 @@ const PostPage = () => {
       }
 
       try {
-        window.adsbygoogle.push({});
-        adElement.dataset.adInitialized = '1';
+        pendingAds.forEach((element) => {
+          window.adsbygoogle!.push({});
+          element.dataset.adInitialized = '1';
+        });
       } catch (error) {
         if (attempts++ < maxAttempts) {
           setTimeout(tryRenderInlineAd, 500);
@@ -479,6 +490,19 @@ const PostPage = () => {
 
               {/* Article Content */}
               <div className="p-4">
+                {showAds && !isPremiumLocked && (
+                  <div className="article-before-content-ad not-prose mb-6">
+                    <ins
+                      className="adsbygoogle"
+                      style={{ display: 'block' }}
+                      data-ad-client="ca-pub-3584259871242471"
+                      data-ad-slot={ADSENSE_BEFORE_CONTENT_SLOT}
+                      data-ad-format="auto"
+                      data-full-width-responsive="true"
+                    ></ins>
+                  </div>
+                )}
+
                 {post.excerpt && !isPremiumLocked && (
                   <p className="text-gray-300 text-lg leading-relaxed mb-6 font-medium border-l-4 border-[#fcd535] pl-4">
                     {post.excerpt}
