@@ -138,21 +138,21 @@ const Header = () => {
                       </div>
                       <div className="py-1">
                         <Link 
-                          to="/profile" 
+                          to={user.role === 'USER' ? '/subscriber/account' : '/profile'} 
                           onClick={() => setIsUserMenuOpen(false)}
                           className="flex items-center space-x-2 px-3 py-2 text-gray-300 hover:bg-[#1e2329] hover:text-[#fcd535] transition-colors"
                         >
                           <User size={14} />
-                          <span>Profile</span>
+                          <span>{user.role === 'USER' ? "Konti y'Abafatabuguzi" : 'Profile'}</span>
                         </Link>
-                        {(user.role === 'ADMIN' || user.role === 'EDITOR') && (
+                        {(user.role === 'ADMIN' || user.role === 'EDITOR' || user.role === 'AUTHOR') && (
                           <Link 
                             to="/admin" 
                             onClick={() => setIsUserMenuOpen(false)}
                             className="flex items-center space-x-2 px-3 py-2 text-gray-300 hover:bg-[#1e2329] hover:text-[#fcd535] transition-colors"
                           >
                             <Settings size={14} />
-                            <span>Admin Dashboard</span>
+                            <span>{user.role === 'AUTHOR' ? 'Author Dashboard' : 'Admin Dashboard'}</span>
                           </Link>
                         )}
                         <button 
@@ -168,11 +168,11 @@ const Header = () => {
                 </div>
               ) : (
                 <Link 
-                  to="/login" 
+                  to="/subscriber-login" 
                   className="flex items-center space-x-1.5 px-3 py-1.5 bg-gradient-to-r from-[#fcd535] to-[#f0b90b] text-[#0b0e11] font-semibold rounded-lg hover:from-[#f0b90b] hover:to-[#fcd535] transition-all transform hover:scale-105"
                 >
                   <User size={14} />
-                  <span>Kwinjira</span>
+                  <span>Kwinjira (Abafatabuguzi)</span>
                 </Link>
               )}
             </div>
@@ -187,7 +187,7 @@ const Header = () => {
           <Link to="/" className="flex items-center space-x-3 group">
             <div className="relative">
               <div className="absolute -inset-2 bg-gradient-to-r from-[#fcd535]/20 to-[#f0b90b]/20 rounded-xl blur-lg opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-              <img src="/images/logo.png" alt="Umunsi Logo" className="h-10 md:h-12 relative" />
+              <img src="/images/logo.png" alt="Umunsi.com Logo" className="h-10 md:h-12 relative" />
             </div>
           </Link>
 

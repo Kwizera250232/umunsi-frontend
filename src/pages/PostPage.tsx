@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { 
   Eye, 
@@ -22,6 +22,12 @@ import {
 import { apiClient, Post } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
+declare global {
+  interface Window {
+    adsbygoogle?: Array<Record<string, unknown>>;
+  }
+}
+
 const getServerBaseUrl = () => {
   const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
   return apiUrl.replace('/api', '');
@@ -37,6 +43,57 @@ const normalizeArticleHtml = (content?: string) => {
       return `<img${before}src="${correctedSrc}"${after} class="w-full h-auto rounded-lg my-4" onerror="this.style.display='none'">`;
     }
   ) || '';
+};
+
+const ADSENSE_ARTICLE_BLOCK = `
+  <div class="article-inline-ad not-prose my-8">
+    <ins class="adsbygoogle"
+      style="display:block"
+      data-ad-client="ca-pub-3584259871242471"
+      data-ad-slot="2693936589"
+      data-ad-format="auto"
+      data-full-width-responsive="true"></ins>
+  </div>
+`;
+
+const injectAdAfterSecondParagraph = (html: string) => {
+  if (!html) return '';
+
+  if (typeof window === 'undefined') {
+    return html;
+  }
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(`<div id="article-root">${html}</div>`, 'text/html');
+  const root = doc.getElementById('article-root');
+
+  if (!root) {
+    return html;
+  }
+
+  const existingAd = root.querySelector('ins.adsbygoogle[data-ad-slot="2693936589"]');
+  if (existingAd) {
+    return root.innerHTML;
+  }
+
+  const contentBlocks = Array.from(
+    root.querySelectorAll('p, div, blockquote, li')
+  ).filter((element) => {
+    // Skip containers and empty wrappers so ad placement follows actual written text blocks.
+    if (element.querySelector('img, video, iframe, table, ul, ol')) {
+      return false;
+    }
+    return (element.textContent || '').trim().length > 25;
+  });
+
+  if (contentBlocks.length < 2) {
+    return root.innerHTML;
+  }
+
+  const secondBlock = contentBlocks[1];
+  secondBlock.insertAdjacentHTML('afterend', ADSENSE_ARTICLE_BLOCK);
+
+  return root.innerHTML;
 };
 
 const PostPage = () => {
@@ -70,6 +127,27 @@ const PostPage = () => {
   }, [postIdentifier]);
 
   const normalizedContent = normalizeArticleHtml(post?.content);
+  const contentWithInlineAd = useMemo(
+    () => injectAdAfterSecondParagraph(normalizedContent),
+    [normalizedContent]
+  );
+
+  useEffect(() => {
+    if (!showAds || !contentWithInlineAd || typeof window === 'undefined') {
+      return;
+    }
+
+    const adElement = document.querySelector('.article-inline-ad ins.adsbygoogle');
+    if (!adElement || !window.adsbygoogle) {
+      return;
+    }
+
+    try {
+      window.adsbygoogle.push({});
+    } catch (error) {
+      console.error('AdSense inline ad render failed:', error);
+    }
+  }, [contentWithInlineAd, showAds, post?.id]);
 
   const fetchPost = async () => {
     try {
@@ -354,7 +432,7 @@ const PostPage = () => {
                 <div 
                   className="prose prose-invert prose-lg max-w-none text-gray-300"
                   style={{ wordBreak: 'break-word' }}
-                  dangerouslySetInnerHTML={{ __html: normalizedContent }}
+                  dangerouslySetInnerHTML={{ __html: contentWithInlineAd }}
                 />
 
                 {/* Tags */}

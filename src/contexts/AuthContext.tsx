@@ -9,6 +9,9 @@ interface User {
   firstName: string;
   lastName: string;
   role: 'ADMIN' | 'EDITOR' | 'AUTHOR' | 'USER';
+  isPremium?: boolean;
+  premiumSince?: string;
+  premiumUntil?: string;
   avatar?: string;
   isActive: boolean;
   lastLogin?: string;
