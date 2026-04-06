@@ -44,8 +44,8 @@ const AdminNavbar: React.FC<AdminNavbarProps> = ({ user: propUser }) => {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [theme, setTheme] = useState<'dark' | 'day'>(() => {
-    if (typeof window === 'undefined') return 'dark';
-    return localStorage.getItem('umunsi_theme') === 'day' ? 'day' : 'dark';
+    if (typeof window === 'undefined') return 'day';
+    return localStorage.getItem('umunsi_theme') === 'dark' ? 'dark' : 'day';
   });
   const location = useLocation();
   const navigate = useNavigate();

@@ -88,8 +88,8 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ isCollapsed, onToggleCollap
   });
   const [countsLoading, setCountsLoading] = useState(true);
   const [theme, setTheme] = useState<'dark' | 'day'>(() => {
-    if (typeof window === 'undefined') return 'dark';
-    return localStorage.getItem('umunsi_theme') === 'day' ? 'day' : 'dark';
+    if (typeof window === 'undefined') return 'day';
+    return localStorage.getItem('umunsi_theme') === 'dark' ? 'dark' : 'day';
   });
 
   // Fetch database counts

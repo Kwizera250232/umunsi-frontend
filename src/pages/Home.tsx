@@ -56,7 +56,7 @@ const Home = () => {
       
       if (postsResponse?.data) {
         setPosts(postsResponse.data);
-        const featured = postsResponse.data.find(p => p.isFeatured || p.isPinned) || postsResponse.data[0];
+        const featured = postsResponse.data.find(p => p.isFeatured) || null;
         setFeaturedPost(featured);
       }
 
@@ -175,8 +175,9 @@ const Home = () => {
     );
   }
 
-  const mainHighlight = featuredPost || posts[0] || null;
-  const topSectionPool = posts.filter((p) => p.id !== mainHighlight?.id);
+  const featuredTopStories = posts.filter((p) => p.isFeatured);
+  const mainHighlight = featuredPost || featuredTopStories[0] || null;
+  const topSectionPool = featuredTopStories.filter((p) => p.id !== mainHighlight?.id);
   const leftPrimary = topSectionPool[0] || null;
   const leftSecondary = topSectionPool[1] || null;
   const middleTop = topSectionPool[2] || null;
