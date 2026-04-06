@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Clock, Eye, Heart, ChevronRight, ArrowLeft, Loader2, TrendingUp, Calendar, User } from 'lucide-react';
 import { apiClient, Post, Category } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 
 const getServerBaseUrl = () => {
   if (import.meta.env.DEV) {
@@ -11,6 +12,10 @@ const getServerBaseUrl = () => {
 };
 
 const CategoryPage = () => {
+  const { user } = useAuth();
+  const showAds = user?.role !== 'ADMIN';
+  const canSeeViews = user?.role === 'ADMIN';
+
   const { slug } = useParams<{ slug: string }>();
   const [loading, setLoading] = useState(true);
   const [posts, setPosts] = useState<Post[]>([]);
@@ -166,10 +171,12 @@ const CategoryPage = () => {
                             <Clock className="w-4 h-4" />
                             {formatDate(featuredPost.publishedAt || featuredPost.createdAt)}
                           </span>
-                          <span className="flex items-center gap-1">
-                            <Eye className="w-4 h-4" />
-                            {featuredPost.viewCount}
-                          </span>
+                          {canSeeViews && (
+                            <span className="flex items-center gap-1">
+                              <Eye className="w-4 h-4" />
+                              {featuredPost.viewCount}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -238,10 +245,12 @@ const CategoryPage = () => {
                                 <Clock className="w-3 h-3" />
                                 {formatDate(post.publishedAt || post.createdAt)}
                               </span>
-                              <span className="flex items-center gap-1">
-                                <Eye className="w-3 h-3" />
-                                {post.viewCount}
-                              </span>
+                              {canSeeViews && (
+                                <span className="flex items-center gap-1">
+                                  <Eye className="w-3 h-3" />
+                                  {post.viewCount}
+                                </span>
+                              )}
                               <span className="flex items-center gap-1">
                                 <Heart className="w-3 h-3" />
                                 {post.likeCount || 0}
@@ -260,18 +269,19 @@ const CategoryPage = () => {
                   </div>
                 )}
 
-                {/* Ad Space */}
-                <div className="bg-[#181a20] rounded-lg overflow-hidden">
-                  <div className="p-2 border-b border-[#2b2f36]">
-                    <p className="text-gray-500 text-[10px] text-center uppercase tracking-wider">Kwamamaza</p>
-                  </div>
-                  <div className="p-4">
-                    <div className="bg-[#0b0e11] rounded-lg border-2 border-dashed border-[#2b2f36] flex flex-col items-center justify-center h-[100px] hover:border-[#fcd535]/50 transition-colors">
-                      <p className="text-gray-400 text-sm font-medium">Banner Ad</p>
-                      <p className="text-[#fcd535] text-xs font-bold">728 x 90 px</p>
+                {showAds && (
+                  <div className="bg-[#181a20] rounded-lg overflow-hidden">
+                    <div className="p-2 border-b border-[#2b2f36]">
+                      <p className="text-gray-500 text-[10px] text-center uppercase tracking-wider">Kwamamaza</p>
+                    </div>
+                    <div className="p-4">
+                      <div className="bg-[#0b0e11] rounded-lg border-2 border-dashed border-[#2b2f36] flex flex-col items-center justify-center h-[100px] hover:border-[#fcd535]/50 transition-colors">
+                        <p className="text-gray-400 text-sm font-medium">Banner Ad</p>
+                        <p className="text-[#fcd535] text-xs font-bold">728 x 90 px</p>
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
 
                 {/* Second Batch - More Articles After Ad */}
                 {secondBatchPosts.length > 0 && (
@@ -305,10 +315,12 @@ const CategoryPage = () => {
                                 <Clock className="w-3 h-3" />
                                 {formatDate(post.publishedAt || post.createdAt)}
                               </span>
-                              <span className="flex items-center gap-1">
-                                <Eye className="w-3 h-3" />
-                                {post.viewCount}
-                              </span>
+                              {canSeeViews && (
+                                <span className="flex items-center gap-1">
+                                  <Eye className="w-3 h-3" />
+                                  {post.viewCount}
+                                </span>
+                              )}
                               <span className="flex items-center gap-1">
                                 <Heart className="w-3 h-3" />
                                 {post.likeCount || 0}
@@ -345,10 +357,12 @@ const CategoryPage = () => {
                           <h3 className="text-gray-300 text-sm group-hover:text-[#fcd535] transition-colors line-clamp-2">
                             {post.title}
                           </h3>
-                          <p className="text-gray-500 text-xs mt-1">
-                            <Eye className="w-3 h-3 inline mr-1" />
-                            {post.viewCount}
-                          </p>
+                          {canSeeViews && (
+                            <p className="text-gray-500 text-xs mt-1">
+                              <Eye className="w-3 h-3 inline mr-1" />
+                              {post.viewCount}
+                            </p>
+                          )}
                         </div>
                       </Link>
                     ))}
@@ -377,18 +391,19 @@ const CategoryPage = () => {
                   </div>
                 </div>
 
-                {/* Sidebar Ad */}
-                <div className="bg-[#181a20] rounded-lg overflow-hidden">
-                  <div className="p-2 border-b border-[#2b2f36]">
-                    <p className="text-gray-500 text-[10px] text-center uppercase tracking-wider">Kwamamaza</p>
-                  </div>
-                  <div className="p-3">
-                    <div className="bg-[#0b0e11] rounded-lg border-2 border-dashed border-[#2b2f36] flex flex-col items-center justify-center aspect-square hover:border-[#fcd535]/50 transition-colors">
-                      <p className="text-gray-400 text-xs font-medium">Square Ad</p>
-                      <p className="text-[#fcd535] text-[10px] font-bold">300 x 300 px</p>
+                {showAds && (
+                  <div className="bg-[#181a20] rounded-lg overflow-hidden">
+                    <div className="p-2 border-b border-[#2b2f36]">
+                      <p className="text-gray-500 text-[10px] text-center uppercase tracking-wider">Kwamamaza</p>
+                    </div>
+                    <div className="p-3">
+                      <div className="bg-[#0b0e11] rounded-lg border-2 border-dashed border-[#2b2f36] flex flex-col items-center justify-center aspect-square hover:border-[#fcd535]/50 transition-colors">
+                        <p className="text-gray-400 text-xs font-medium">Square Ad</p>
+                        <p className="text-[#fcd535] text-[10px] font-bold">300 x 300 px</p>
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
 
                 {/* Back to Home */}
                 <Link 

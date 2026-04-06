@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Mail, Send, CheckCircle, Bell, Newspaper, TrendingUp, Clock, Eye, ChevronRight } from 'lucide-react';
 import { apiClient, Post, Category } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 
 const getServerBaseUrl = () => {
   if (import.meta.env.DEV) {
@@ -11,6 +12,10 @@ const getServerBaseUrl = () => {
 };
 
 const Newsletter = () => {
+  const { user } = useAuth();
+  const showAds = user?.role !== 'ADMIN';
+  const canSeeViews = user?.role === 'ADMIN';
+
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [subscribed, setSubscribed] = useState(false);
@@ -83,18 +88,19 @@ const Newsletter = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-3 py-6">
-        {/* Top Ad Banner */}
-        <div className="mb-6 bg-[#181a20] rounded-lg overflow-hidden">
-          <div className="p-2 border-b border-[#2b2f36]">
-            <p className="text-gray-500 text-[10px] text-center uppercase tracking-wider">Kwamamaza</p>
-          </div>
-          <div className="p-4">
-            <div className="bg-[#0b0e11] rounded-lg border-2 border-dashed border-[#2b2f36] flex flex-col items-center justify-center h-[100px] hover:border-[#fcd535]/50 transition-colors">
-              <p className="text-gray-400 text-sm font-medium">Leaderboard Banner</p>
-              <p className="text-[#fcd535] text-xs font-bold">970 x 90 px</p>
+        {showAds && (
+          <div className="mb-6 bg-[#181a20] rounded-lg overflow-hidden">
+            <div className="p-2 border-b border-[#2b2f36]">
+              <p className="text-gray-500 text-[10px] text-center uppercase tracking-wider">Kwamamaza</p>
+            </div>
+            <div className="p-4">
+              <div className="bg-[#0b0e11] rounded-lg border-2 border-dashed border-[#2b2f36] flex flex-col items-center justify-center h-[100px] hover:border-[#fcd535]/50 transition-colors">
+                <p className="text-gray-400 text-sm font-medium">Leaderboard Banner</p>
+                <p className="text-[#fcd535] text-xs font-bold">970 x 90 px</p>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Main Content */}
@@ -207,18 +213,19 @@ const Newsletter = () => {
               </div>
             </div>
 
-            {/* Middle Ad */}
-            <div className="bg-[#181a20] rounded-lg overflow-hidden">
-              <div className="p-2 border-b border-[#2b2f36]">
-                <p className="text-gray-500 text-[10px] text-center uppercase tracking-wider">Kwamamaza</p>
-              </div>
-              <div className="p-4">
-                <div className="bg-[#0b0e11] rounded-lg border-2 border-dashed border-[#2b2f36] flex flex-col items-center justify-center h-[250px] hover:border-[#fcd535]/50 transition-colors">
-                  <p className="text-gray-400 text-sm font-medium">Large Rectangle</p>
-                  <p className="text-[#fcd535] text-xs font-bold">336 x 280 px</p>
+            {showAds && (
+              <div className="bg-[#181a20] rounded-lg overflow-hidden">
+                <div className="p-2 border-b border-[#2b2f36]">
+                  <p className="text-gray-500 text-[10px] text-center uppercase tracking-wider">Kwamamaza</p>
+                </div>
+                <div className="p-4">
+                  <div className="bg-[#0b0e11] rounded-lg border-2 border-dashed border-[#2b2f36] flex flex-col items-center justify-center h-[250px] hover:border-[#fcd535]/50 transition-colors">
+                    <p className="text-gray-400 text-sm font-medium">Large Rectangle</p>
+                    <p className="text-[#fcd535] text-xs font-bold">336 x 280 px</p>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* Recent Articles */}
             <div className="bg-[#181a20] rounded-lg overflow-hidden">
@@ -246,10 +253,12 @@ const Newsletter = () => {
                           <Clock className="w-3 h-3" />
                           {formatDate(post.publishedAt || post.createdAt)}
                         </span>
-                        <span className="flex items-center gap-1">
-                          <Eye className="w-3 h-3" />
-                          {post.viewCount}
-                        </span>
+                        {canSeeViews && (
+                          <span className="flex items-center gap-1">
+                            <Eye className="w-3 h-3" />
+                            {post.viewCount}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </Link>
@@ -260,18 +269,19 @@ const Newsletter = () => {
 
           {/* Sidebar */}
           <div className="lg:col-span-4 space-y-6">
-            {/* Sidebar Ad 1 */}
-            <div className="bg-[#181a20] rounded-lg overflow-hidden">
-              <div className="p-2 border-b border-[#2b2f36]">
-                <p className="text-gray-500 text-[10px] text-center uppercase tracking-wider">Kwamamaza</p>
-              </div>
-              <div className="p-3">
-                <div className="bg-[#0b0e11] rounded-lg border-2 border-dashed border-[#2b2f36] flex flex-col items-center justify-center h-[250px] hover:border-[#fcd535]/50 transition-colors">
-                  <p className="text-gray-400 text-xs font-medium">Medium Rectangle</p>
-                  <p className="text-[#fcd535] text-[10px] font-bold">300 x 250 px</p>
+            {showAds && (
+              <div className="bg-[#181a20] rounded-lg overflow-hidden">
+                <div className="p-2 border-b border-[#2b2f36]">
+                  <p className="text-gray-500 text-[10px] text-center uppercase tracking-wider">Kwamamaza</p>
+                </div>
+                <div className="p-3">
+                  <div className="bg-[#0b0e11] rounded-lg border-2 border-dashed border-[#2b2f36] flex flex-col items-center justify-center h-[250px] hover:border-[#fcd535]/50 transition-colors">
+                    <p className="text-gray-400 text-xs font-medium">Medium Rectangle</p>
+                    <p className="text-[#fcd535] text-[10px] font-bold">300 x 250 px</p>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* Trending */}
             <div className="bg-[#181a20] rounded-lg overflow-hidden">
@@ -320,46 +330,49 @@ const Newsletter = () => {
               </div>
             </div>
 
-            {/* Sidebar Ad 2 */}
-            <div className="bg-[#181a20] rounded-lg overflow-hidden">
-              <div className="p-2 border-b border-[#2b2f36]">
-                <p className="text-gray-500 text-[10px] text-center uppercase tracking-wider">Kwamamaza</p>
-              </div>
-              <div className="p-3">
-                <div className="bg-[#0b0e11] rounded-lg border-2 border-dashed border-[#2b2f36] flex flex-col items-center justify-center aspect-square hover:border-[#fcd535]/50 transition-colors">
-                  <p className="text-gray-400 text-xs font-medium">Square Ad</p>
-                  <p className="text-[#fcd535] text-[10px] font-bold">300 x 300 px</p>
+            {showAds && (
+              <div className="bg-[#181a20] rounded-lg overflow-hidden">
+                <div className="p-2 border-b border-[#2b2f36]">
+                  <p className="text-gray-500 text-[10px] text-center uppercase tracking-wider">Kwamamaza</p>
+                </div>
+                <div className="p-3">
+                  <div className="bg-[#0b0e11] rounded-lg border-2 border-dashed border-[#2b2f36] flex flex-col items-center justify-center aspect-square hover:border-[#fcd535]/50 transition-colors">
+                    <p className="text-gray-400 text-xs font-medium">Square Ad</p>
+                    <p className="text-[#fcd535] text-[10px] font-bold">300 x 300 px</p>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
-            {/* Sidebar Ad 3 - Skyscraper */}
-            <div className="bg-[#181a20] rounded-lg overflow-hidden">
-              <div className="p-2 border-b border-[#2b2f36]">
-                <p className="text-gray-500 text-[10px] text-center uppercase tracking-wider">Kwamamaza</p>
-              </div>
-              <div className="p-3">
-                <div className="bg-[#0b0e11] rounded-lg border-2 border-dashed border-[#2b2f36] flex flex-col items-center justify-center h-[400px] hover:border-[#fcd535]/50 transition-colors">
-                  <p className="text-gray-400 text-xs font-medium">Skyscraper</p>
-                  <p className="text-[#fcd535] text-[10px] font-bold">160 x 600 px</p>
+            {showAds && (
+              <div className="bg-[#181a20] rounded-lg overflow-hidden">
+                <div className="p-2 border-b border-[#2b2f36]">
+                  <p className="text-gray-500 text-[10px] text-center uppercase tracking-wider">Kwamamaza</p>
+                </div>
+                <div className="p-3">
+                  <div className="bg-[#0b0e11] rounded-lg border-2 border-dashed border-[#2b2f36] flex flex-col items-center justify-center h-[400px] hover:border-[#fcd535]/50 transition-colors">
+                    <p className="text-gray-400 text-xs font-medium">Skyscraper</p>
+                    <p className="text-[#fcd535] text-[10px] font-bold">160 x 600 px</p>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
 
-        {/* Bottom Ad */}
-        <div className="mt-6 bg-[#181a20] rounded-lg overflow-hidden">
-          <div className="p-2 border-b border-[#2b2f36]">
-            <p className="text-gray-500 text-[10px] text-center uppercase tracking-wider">Kwamamaza</p>
-          </div>
-          <div className="p-4">
-            <div className="bg-[#0b0e11] rounded-lg border-2 border-dashed border-[#2b2f36] flex flex-col items-center justify-center h-[120px] hover:border-[#fcd535]/50 transition-colors">
-              <p className="text-gray-400 text-sm font-medium">Leaderboard Banner</p>
-              <p className="text-[#fcd535] text-xs font-bold">970 x 120 px</p>
+        {showAds && (
+          <div className="mt-6 bg-[#181a20] rounded-lg overflow-hidden">
+            <div className="p-2 border-b border-[#2b2f36]">
+              <p className="text-gray-500 text-[10px] text-center uppercase tracking-wider">Kwamamaza</p>
+            </div>
+            <div className="p-4">
+              <div className="bg-[#0b0e11] rounded-lg border-2 border-dashed border-[#2b2f36] flex flex-col items-center justify-center h-[120px] hover:border-[#fcd535]/50 transition-colors">
+                <p className="text-gray-400 text-sm font-medium">Leaderboard Banner</p>
+                <p className="text-[#fcd535] text-xs font-bold">970 x 120 px</p>
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

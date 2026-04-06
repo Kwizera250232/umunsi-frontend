@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { apiClient } from '../../services/api';
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -17,6 +18,11 @@ import {
 interface AnalyticsData {
   period: string;
   totalViews: number;
+  todayViews: number;
+  dailyViews: Array<{
+    date: string;
+    views: number;
+  }>;
   uniqueVisitors: number;
   newUsers: number;
   returningUsers: number;
@@ -53,21 +59,23 @@ const Analytics = () => {
 
   const fetchAnalytics = async () => {
     try {
+      const dashboard = await apiClient.getDashboardStats().catch(() => null);
+
       const mockData: AnalyticsData = {
         period: '30d',
-        totalViews: 45678,
-        uniqueVisitors: 12345,
-        newUsers: 2345,
-        returningUsers: 10000,
+        totalViews: dashboard?.totalViews || 45678,
+        todayViews: dashboard?.todayViews || 0,
+        dailyViews: dashboard?.dailyViews || [],
+        uniqueVisitors: Math.round((dashboard?.totalViews || 45678) * 0.32),
+        newUsers: dashboard?.userGrowthPercentage ? Math.round((dashboard.totalUsers * dashboard.userGrowthPercentage) / 100) : 2345,
+        returningUsers: Math.max((dashboard?.totalUsers || 0) - (dashboard?.userGrowthPercentage ? Math.round((dashboard.totalUsers * dashboard.userGrowthPercentage) / 100) : 0), 0),
         averageSessionDuration: 245,
         bounceRate: 35.2,
-        topArticles: [
-          { id: '1', title: 'Umunsi wa Kinyarwanda 2024', views: 1250 },
-          { id: '2', title: 'Imyemeramikire yo mu Rwanda', views: 856 },
-          { id: '3', title: 'Umuziki wa Kinyarwanda 2024', views: 654 },
-          { id: '4', title: 'Technology Trends in Rwanda', views: 543 },
-          { id: '5', title: 'Sports News Update', views: 432 }
-        ],
+        topArticles: (dashboard?.recentArticles || []).slice(0, 5).map((article) => ({
+          id: article.id,
+          title: article.title,
+          views: article.viewCount || 0,
+        })),
         topCategories: [
           { name: 'Siporo', views: 4500, color: '#fcd535' },
           { name: 'Iyobokamana', views: 3800, color: '#3b82f6' },
@@ -180,6 +188,20 @@ const Analytics = () => {
 
         <div className="bg-[#181a20] rounded-xl border border-[#2b2f36] p-5">
           <div className="flex items-center justify-between mb-4">
+            <div className="p-3 bg-cyan-500/10 rounded-xl">
+              <Calendar className="w-6 h-6 text-cyan-400" />
+            </div>
+            <div className="flex items-center space-x-1 text-cyan-400 text-sm font-medium">
+              <ArrowUpRight className="w-4 h-4" />
+              <span>Today</span>
+            </div>
+          </div>
+          <p className="text-2xl font-bold text-white mb-1">{formatNumber(analyticsData?.todayViews || 0)}</p>
+          <p className="text-sm text-gray-500">Daily Views</p>
+        </div>
+
+        <div className="bg-[#181a20] rounded-xl border border-[#2b2f36] p-5">
+          <div className="flex items-center justify-between mb-4">
             <div className="p-3 bg-purple-500/10 rounded-xl">
               <Activity className="w-6 h-6 text-purple-400" />
             </div>
@@ -205,6 +227,32 @@ const Analytics = () => {
           <p className="text-2xl font-bold text-white mb-1">{(analyticsData?.bounceRate || 0).toFixed(1)}%</p>
           <p className="text-sm text-gray-500">Bounce Rate</p>
         </div>
+      </div>
+
+      <div className="mb-6 bg-[#181a20] rounded-xl border border-[#2b2f36] p-6">
+        <h3 className="text-lg font-semibold text-white mb-4">Reading Trend (Last 7 Days)</h3>
+        {(analyticsData?.dailyViews?.length || 0) > 0 ? (
+          <div className="space-y-3">
+            {analyticsData?.dailyViews.map((day) => {
+              const maxViews = Math.max(...(analyticsData?.dailyViews || []).map((d) => d.views), 1);
+              const width = `${Math.max((day.views / maxViews) * 100, 6)}%`;
+
+              return (
+                <div key={day.date} className="flex items-center gap-3">
+                  <span className="w-24 text-xs text-gray-400">
+                    {new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  </span>
+                  <div className="flex-1 h-2 rounded-full bg-[#2b2f36] overflow-hidden">
+                    <div className="h-2 rounded-full bg-gradient-to-r from-[#fcd535] to-cyan-400" style={{ width }} />
+                  </div>
+                  <span className="w-16 text-right text-sm text-white">{formatNumber(day.views)}</span>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="text-sm text-gray-500">No daily view data yet.</p>
+        )}
       </div>
 
       {/* Charts Section */}
