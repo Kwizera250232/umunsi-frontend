@@ -35,9 +35,14 @@ const AdminLogin = () => {
       const userData = storedUser ? JSON.parse(storedUser) : null;
       const allowedRoles = ['ADMIN', 'EDITOR', 'AUTHOR'];
 
-      if (!userData || !allowedRoles.includes(userData.role)) {
+      if (!userData) {
         logout();
-        setError('Uru rupapuro ni urw\'abayobozi n\'abanditsi gusa. Koresha Subscriber Login.');
+        setError('Ntibyashobotse kubona amakuru ya konti. Ongera ugerageze.');
+        return;
+      }
+
+      if (!allowedRoles.includes(userData.role)) {
+        window.location.href = '/subscriber/account';
         return;
       }
 

@@ -35,6 +35,8 @@ interface User {
   role: 'ADMIN' | 'EDITOR' | 'AUTHOR' | 'USER';
   isActive: boolean;
   isVerified: boolean;
+  isPremium?: boolean;
+  premiumUntil?: string | null;
   lastLogin: string;
   createdAt: string;
   avatar?: string;
@@ -138,6 +140,100 @@ const Users = () => {
     } catch (error) {
       console.error('Error toggling verification:', error);
       alert('Failed to update verification status');
+    }
+  };
+
+  const handleSetPremium = async (user: User, grant: boolean) => {
+    try {
+      let premiumUntil: string | null = null;
+
+      if (grant) {
+        const input = window.prompt('Premium duration in days (leave empty for no expiry):', '30');
+        if (input && input.trim()) {
+          const days = Number(input);
+          if (Number.isNaN(days) || days <= 0) {
+            alert('Please enter a valid number of days.');
+            return;
+          }
+          const expiresAt = new Date();
+          expiresAt.setDate(expiresAt.getDate() + days);
+          premiumUntil = expiresAt.toISOString();
+        }
+      }
+
+      await apiClient.updateUser(user.id, {
+        isPremium: grant,
+        premiumUntil: grant ? premiumUntil : null
+      });
+
+      setUsers(prev => prev.map(u =>
+        u.id === user.id
+          ? { ...u, isPremium: grant, premiumUntil: grant ? premiumUntil : null }
+          : u
+      ));
+    } catch (error) {
+      console.error('Error updating premium status:', error);
+      alert('Failed to update premium status');
+    }
+  };
+
+  const handleGrantSpecificPremiumStory = async (user: User) => {
+    try {
+      const postKey = window.prompt('Enter Premium Story ID or slug to grant:');
+      if (!postKey || !postKey.trim()) return;
+
+      const post = await apiClient.getPost(postKey.trim());
+      if (!post?.id) {
+        alert('Post not found');
+        return;
+      }
+
+      if (!post.isPremium) {
+        alert('Selected post is not marked as Premium. Please mark it Premium first.');
+        return;
+      }
+
+      let expiresAt: string | null = null;
+      const daysInput = window.prompt('Optional access duration in days (leave empty for no expiry):', '');
+      if (daysInput && daysInput.trim()) {
+        const days = Number(daysInput.trim());
+        if (Number.isNaN(days) || days <= 0) {
+          alert('Please enter a valid number of days.');
+          return;
+        }
+        const until = new Date();
+        until.setDate(until.getDate() + days);
+        expiresAt = until.toISOString();
+      }
+
+      await apiClient.grantUserPremiumPostAccess(user.id, {
+        postId: post.id,
+        expiresAt
+      });
+
+      alert(`Granted "${post.title}" to ${user.firstName} ${user.lastName}.`);
+    } catch (error) {
+      console.error('Error granting specific premium story access:', error);
+      alert('Failed to grant story access');
+    }
+  };
+
+  const handleRevokeSpecificPremiumStory = async (user: User) => {
+    try {
+      const postKey = window.prompt('Enter Premium Story ID or slug to revoke:');
+      if (!postKey || !postKey.trim()) return;
+
+      const post = await apiClient.getPost(postKey.trim());
+      if (!post?.id) {
+        alert('Post not found');
+        return;
+      }
+
+      await apiClient.revokeUserPremiumPostAccess(user.id, post.id);
+      alert(`Revoked "${post.title}" from ${user.firstName} ${user.lastName}.`);
+    } catch (error) {
+      console.error('Error revoking specific premium story access:', error);
+      alert('Failed to revoke story access');
     }
   };
 
@@ -256,6 +352,11 @@ const Users = () => {
       month: 'short',
       day: 'numeric'
     });
+  };
+
+  const formatPremiumUntil = (dateString?: string | null) => {
+    if (!dateString) return 'No expiry';
+    return formatDate(dateString);
   };
 
   const getRoleBadge = (role: string) => {
@@ -526,6 +627,12 @@ const Users = () => {
                             {getStatusIcon(user.isActive, user.isVerified)}
                             <span>{getStatusText(user.isActive, user.isVerified)}</span>
                           </span>
+                        {user.isPremium && (
+                          <span className="px-2 py-0.5 text-xs font-medium rounded-md border bg-[#fcd535]/20 text-[#fcd535] border-[#fcd535]/30 flex items-center space-x-1">
+                            <Crown className="w-3.5 h-3.5" />
+                            <span>Premium</span>
+                          </span>
+                        )}
                         </div>
                         
                       <div className="flex items-center space-x-4 text-sm text-gray-500">
@@ -548,6 +655,7 @@ const Users = () => {
                       <div className="flex items-center space-x-4 text-xs text-gray-600">
                           <span>Articles: {user.articleCount}</span>
                           <span>Comments: {user.commentCount}</span>
+                          {user.isPremium && <span>Premium until: {formatPremiumUntil(user.premiumUntil)}</span>}
                       </div>
                       </div>
                     </div>
@@ -561,6 +669,27 @@ const Users = () => {
                       className="p-2 text-gray-500 hover:text-blue-400 hover:bg-[#2b2f36] rounded-lg transition-colors"
                     >
                         <Edit className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleSetPremium(user, !Boolean(user.isPremium))}
+                        className={`p-2 hover:bg-[#2b2f36] rounded-lg transition-colors ${user.isPremium ? 'text-[#fcd535]' : 'text-gray-500 hover:text-[#fcd535]'}`}
+                        title={user.isPremium ? 'Revoke Premium' : 'Grant Premium'}
+                      >
+                        <Crown className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleGrantSpecificPremiumStory(user)}
+                        className="p-2 text-gray-500 hover:text-emerald-400 hover:bg-[#2b2f36] rounded-lg transition-colors"
+                        title="Grant specific premium story"
+                      >
+                        <BookOpen className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleRevokeSpecificPremiumStory(user)}
+                        className="p-2 text-gray-500 hover:text-red-400 hover:bg-[#2b2f36] rounded-lg transition-colors"
+                        title="Revoke specific premium story"
+                      >
+                        <XCircle className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => handleToggleUserStatus(user.id, user.isActive)}
@@ -625,6 +754,15 @@ const Users = () => {
                       </span>
                     </div>
 
+                  {user.isPremium && (
+                    <div className="flex items-center justify-center">
+                      <span className="px-2 py-0.5 text-xs font-medium rounded-md border bg-[#fcd535]/20 text-[#fcd535] border-[#fcd535]/30 flex items-center space-x-1">
+                        <Crown className="w-3.5 h-3.5" />
+                        <span>Premium until {formatPremiumUntil(user.premiumUntil)}</span>
+                      </span>
+                    </div>
+                  )}
+
                   <div className="flex items-center justify-between text-xs text-gray-500">
                     <span className="bg-[#2b2f36] px-2 py-1 rounded">Articles: {user.articleCount}</span>
                     <span className="bg-[#2b2f36] px-2 py-1 rounded">Comments: {user.commentCount}</span>
@@ -637,6 +775,27 @@ const Users = () => {
                   <div className="flex items-center space-x-1">
                     <button className="p-1.5 text-gray-500 hover:text-[#fcd535] hover:bg-[#2b2f36] rounded-lg"><Eye className="w-4 h-4" /></button>
                     <button onClick={() => openEditModal(user)} className="p-1.5 text-gray-500 hover:text-blue-400 hover:bg-[#2b2f36] rounded-lg"><Edit className="w-4 h-4" /></button>
+                    <button
+                      onClick={() => handleSetPremium(user, !Boolean(user.isPremium))}
+                      className={`p-1.5 hover:bg-[#2b2f36] rounded-lg ${user.isPremium ? 'text-[#fcd535]' : 'text-gray-500 hover:text-[#fcd535]'}`}
+                      title={user.isPremium ? 'Revoke Premium' : 'Grant Premium'}
+                    >
+                      <Crown className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleGrantSpecificPremiumStory(user)}
+                      className="p-1.5 text-gray-500 hover:text-emerald-400 hover:bg-[#2b2f36] rounded-lg"
+                      title="Grant specific premium story"
+                    >
+                      <BookOpen className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleRevokeSpecificPremiumStory(user)}
+                      className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-[#2b2f36] rounded-lg"
+                      title="Revoke specific premium story"
+                    >
+                      <XCircle className="w-4 h-4" />
+                    </button>
                     <button onClick={() => handleDeleteUser(user.id)} className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-[#2b2f36] rounded-lg"><Trash2 className="w-4 h-4" /></button>
                       </div>
                   <button className="p-1.5 text-gray-500 hover:text-white hover:bg-[#2b2f36] rounded-lg">

@@ -266,8 +266,9 @@ export const withAuth = <P extends object>(
     }
 
     if (!effectivelyAuthenticated) {
-      // Redirect to login instead of showing access denied
-      window.location.href = '/login';
+      // Send admin routes to admin login, keep subscriber pages on subscriber login.
+      const isAdminPath = window.location.pathname.startsWith('/admin');
+      window.location.href = isAdminPath ? '/admin-login' : '/subscriber-login';
       return null;
     }
 

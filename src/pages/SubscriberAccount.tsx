@@ -1,41 +1,25 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
-import { HeartHandshake, Mail, Crown, Smartphone, Wallet, Building2 } from 'lucide-react';
+import { Crown, HeartHandshake, Lock, Mail, PhoneCall, MessageCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { apiClient, SupportPayment } from '../services/api';
+import { apiClient, PremiumDashboardPost } from '../services/api';
 
-const paymentMethods = [
-  {
-    name: 'MTN Mobile Money',
-    detail: '*182*8*1# cyangwa MoMo App',
-    icon: Smartphone
-  },
-  {
-    name: 'Airtel Money',
-    detail: '*500# cyangwa Airtel Money App',
-    icon: Smartphone
-  },
-  {
-    name: 'Bank / Card',
-    detail: 'Bank of Kigali, Equity, I&M, Visa/Mastercard',
-    icon: Building2
-  },
-  {
-    name: 'Izindi Wallet',
-    detail: 'Mobicash n\'izindi serivisi zikora mu Rwanda',
-    icon: Wallet
-  }
-];
+const SUPPORT_WHATSAPP = import.meta.env.VITE_SUPPORT_WHATSAPP || '250791859465';
+const SUPPORT_CALL = import.meta.env.VITE_SUPPORT_CALL || '0791859465';
+
+const buildWhatsAppLink = (name: string, email: string) => {
+  const message = `Muraho Umunsi, nitwa ${name}, email yanjye ni ${email}. Nashatse Premium access, namaze kwishyura. Mungenzurire konti yanjye.`;
+  return `https://wa.me/${SUPPORT_WHATSAPP}?text=${encodeURIComponent(message)}`;
+};
 
 const SubscriberAccount = () => {
   const { user } = useAuth();
-  const [isInitializingPayment, setIsInitializingPayment] = useState(false);
-  const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
-  const [supportMessage, setSupportMessage] = useState<string | null>(null);
-  const [supportError, setSupportError] = useState<string | null>(null);
+  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [loadingStories, setLoadingStories] = useState(true);
+  const [profileError, setProfileError] = useState<string | null>(null);
   const [isPremium, setIsPremium] = useState<boolean>(Boolean(user?.isPremium));
   const [premiumUntil, setPremiumUntil] = useState<string | null>(user?.premiumUntil || null);
-  const [payments, setPayments] = useState<SupportPayment[]>([]);
+  const [premiumStories, setPremiumStories] = useState<PremiumDashboardPost[]>([]);
 
   if (!user) return null;
 
@@ -59,77 +43,45 @@ const SubscriberAccount = () => {
 
     const loadProfile = async () => {
       try {
+        setLoadingProfile(true);
+        setProfileError(null);
         const profile = await apiClient.getPaymentsProfile();
         if (!active) return;
         setIsPremium(Boolean(profile?.data?.user?.isPremium));
         setPremiumUntil(profile?.data?.user?.premiumUntil || null);
-        setPayments(profile?.data?.payments || []);
       } catch (error) {
-        // Keep page usable even if payment profile request fails.
+        if (!active) return;
+        setProfileError('Ntibyashobotse kubona premium status yawe. Ongera ugerageze.');
+      } finally {
+        if (active) {
+          setLoadingProfile(false);
+        }
       }
     };
 
-    const verifyCallbackPayment = async () => {
-      const params = new URLSearchParams(window.location.search);
-      const paymentMode = params.get('payment');
-      const txRef = params.get('tx_ref');
-
-      if (paymentMode !== 'callback' || !txRef) {
-        return;
-      }
-
-      setIsVerifyingPayment(true);
-      setSupportError(null);
-      setSupportMessage('Turimo kwemeza ubwishyu bwawe...');
-
+    const loadPremiumStories = async () => {
       try {
-        const verification = await apiClient.verifyFlutterwaveSupportPayment(txRef);
-        const status = verification?.data?.payment?.status;
-
-        if (status === 'SUCCESS') {
-          setSupportMessage('Murakoze! Premium yawe yafunguwe neza.');
-          if (verification?.data?.premium?.premiumUntil) {
-            setPremiumUntil(verification.data.premium.premiumUntil);
-          }
-          setIsPremium(true);
-        } else {
-          setSupportError('Ubusabe bwo kwishyura ntiburarangira cyangwa bwaranze. Ongera ugerageze.');
-        }
-      } catch (error: any) {
-        setSupportError(error?.message || 'Kwemeza ubwishyu ntibikunze. Ongera ugerageze.');
+        setLoadingStories(true);
+        const response = await apiClient.getPremiumDashboardPosts();
+        if (!active) return;
+        setPremiumStories(response?.data || []);
       } finally {
-        setIsVerifyingPayment(false);
-        const cleanUrl = `${window.location.pathname}`;
-        window.history.replaceState({}, document.title, cleanUrl);
+        if (active) {
+          setLoadingStories(false);
+        }
       }
     };
 
     loadProfile();
-    verifyCallbackPayment();
+    loadPremiumStories();
 
     return () => {
       active = false;
     };
   }, []);
 
-  const handleStartSupportPayment = async () => {
-    setSupportError(null);
-    setSupportMessage(null);
-    setIsInitializingPayment(true);
-
-    try {
-      const response = await apiClient.initializeFlutterwaveSupportPayment(500);
-      const checkoutUrl = response?.data?.checkoutUrl;
-      if (!checkoutUrl) {
-        throw new Error('Checkout URL ntiyabonetse');
-      }
-      window.location.href = checkoutUrl;
-    } catch (error: any) {
-      setSupportError(error?.message || 'Ntibyashobotse gutangiza kwishyura. Ongera ugerageze.');
-    } finally {
-      setIsInitializingPayment(false);
-    }
-  };
+  const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username;
+  const whatsappLink = buildWhatsAppLink(fullName, user.email);
 
   return (
     <div className="min-h-screen bg-[#0b0e11] py-8">
@@ -149,18 +101,18 @@ const SubscriberAccount = () => {
         <div className="bg-[#181a20] border border-[#2b2f36] rounded-2xl p-6">
           <div className="flex items-center gap-2 mb-2">
             <HeartHandshake className="w-5 h-5 text-[#fcd535]" />
-            <h2 className="text-xl font-bold text-white">Dushyigikire</h2>
+            <h2 className="text-xl font-bold text-white">Premium Access (Manual)</h2>
           </div>
           <p className="text-gray-300 mb-4">
-            Shyigikira Umunsi.com na 500 RWF kugira ngo ubone Premium, usome inkuru nyinshi zishimishije kandi zifite ireme.
+            Kugira ngo ufungurirwe Premium stories, twandikire kuri WhatsApp cyangwa uduhamagare nyuma yo kwishyura. Admin ni we ufungura access yawe mu buryo bwa manual.
           </p>
 
           <div className="bg-[#0f1115] border border-[#2b2f36] rounded-xl p-4 mb-4">
             <div className="flex items-center gap-2 text-[#fcd535] font-bold text-lg">
               <Crown className="w-5 h-5" />
-              Premium Support: 500 RWF
+              Premium Membership
             </div>
-            <p className="text-gray-400 text-sm mt-1">Kwishyura bizafungura Premium yawe mu buryo bwikora.</p>
+            <p className="text-gray-400 text-sm mt-1">Direct payment izagaruka nyuma. Ubu dukoresha manual verification.</p>
 
             <div className="mt-3 space-y-2">
               <p className="text-sm text-gray-300">
@@ -169,61 +121,78 @@ const SubscriberAccount = () => {
               {premiumUntilLabel && (
                 <p className="text-xs text-gray-400">Premium irangira: {premiumUntilLabel}</p>
               )}
+              {loadingProfile && <p className="text-xs text-gray-500">Turimo kugenzura premium status...</p>}
+              {profileError && <p className="text-xs text-rose-400">{profileError}</p>}
             </div>
-
-            <button
-              type="button"
-              onClick={handleStartSupportPayment}
-              disabled={isInitializingPayment || isVerifyingPayment}
-              className="mt-4 px-4 py-2 rounded-lg bg-[#fcd535] text-[#0b0e11] font-semibold hover:bg-[#f0b90b] disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              {isInitializingPayment ? 'Turimo gufungura checkout...' : 'Shyigikira Umunsi ukoresheje Flutterwave'}
-            </button>
-
-            {supportMessage && <p className="text-xs text-emerald-400 mt-2">{supportMessage}</p>}
-            {supportError && <p className="text-xs text-rose-400 mt-2">{supportError}</p>}
           </div>
 
-          <h3 className="text-white font-semibold mb-3">Uburyo bwo Kwishyura bukora mu Rwanda</h3>
+          <h3 className="text-white font-semibold mb-3">Saba Premium</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {paymentMethods.map((method) => {
-              const Icon = method.icon;
-              return (
-                <div key={method.name} className="bg-[#0f1115] border border-[#2b2f36] rounded-xl p-4">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Icon className="w-4 h-4 text-[#fcd535]" />
-                    <p className="text-white font-medium">{method.name}</p>
-                  </div>
-                  <p className="text-gray-400 text-sm">{method.detail}</p>
-                </div>
-              );
-            })}
+            <a
+              href={whatsappLink}
+              target="_blank"
+              rel="noreferrer"
+              className="bg-[#0f1115] border border-[#2b2f36] rounded-xl p-4 hover:border-[#25d366]/60 transition-colors"
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <MessageCircle className="w-4 h-4 text-[#25d366]" />
+                <p className="text-white font-medium">WhatsApp</p>
+              </div>
+              <p className="text-gray-400 text-sm">Andikira support kuri 0791859465</p>
+            </a>
+            <a
+              href={`tel:${SUPPORT_CALL.replace(/\s+/g, '')}`}
+              className="bg-[#0f1115] border border-[#2b2f36] rounded-xl p-4 hover:border-[#fcd535]/50 transition-colors"
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <PhoneCall className="w-4 h-4 text-[#fcd535]" />
+                <p className="text-white font-medium">Hamagara Support</p>
+              </div>
+              <p className="text-gray-400 text-sm">{SUPPORT_CALL}</p>
+            </a>
           </div>
 
-          <p className="text-xs text-gray-500 mt-4">
-            Icyitonderwa: Flutterwave yemera uburyo butandukanye burimo card na mobile wallet bitewe n'iboneka kuri konte yawe.
-          </p>
+          <div className="mt-4 rounded-xl border border-[#2b2f36] bg-[#0f1115] p-4">
+            <h4 className="text-white font-semibold mb-2">Uko bigenzura</h4>
+            <p className="text-gray-400 text-sm">1. Kora ubwishyu uko mubyumvikanye na support.</p>
+            <p className="text-gray-400 text-sm">2. Ohereza proof kuri WhatsApp cyangwa telefone.</p>
+            <p className="text-gray-400 text-sm">3. Admin agufungurira Premium access nyuma yo kubyemeza.</p>
+          </div>
 
-          {payments.length > 0 && (
-            <div className="mt-4 rounded-xl border border-[#2b2f36] bg-[#0f1115] p-4">
-              <h4 className="text-white font-semibold mb-2">Payment zanyuma</h4>
-              <div className="space-y-2">
-                {payments.slice(0, 4).map((payment) => (
-                  <div key={payment.id} className="flex items-center justify-between text-xs text-gray-300 border-b border-[#1f242c] pb-2">
-                    <span>{payment.amount} {payment.currency}</span>
-                    <span>{payment.status}</span>
-                  </div>
+          <div className="mt-6 rounded-xl border border-[#2b2f36] bg-[#0f1115] p-4">
+            <h4 className="text-white font-semibold mb-3">Premium Stories Dashboard</h4>
+            {loadingStories ? (
+              <p className="text-sm text-gray-400">Turimo kuzana premium stories...</p>
+            ) : premiumStories.length === 0 ? (
+              <p className="text-sm text-gray-400">Nta premium stories zirashyirwaho.</p>
+            ) : (
+              <div className="grid grid-cols-1 gap-3">
+                {premiumStories.slice(0, 8).map((story) => (
+                  story.hasAccess ? (
+                    <Link key={story.id} to={`/post/${story.slug}`} className="border border-[#2b2f36] rounded-lg p-3 hover:border-[#fcd535]/40 transition-colors">
+                      <p className="text-white font-medium">{story.title}</p>
+                      <p className="text-xs text-gray-500 mt-1">Kanda usome inkuru</p>
+                    </Link>
+                  ) : (
+                    <div key={story.id} className="border border-[#2b2f36] rounded-lg p-3 bg-[#12161c]">
+                      <div className="flex items-center gap-2 text-gray-300">
+                        <Lock className="w-4 h-4 text-[#fcd535]" />
+                        <p className="font-medium">Premium Story (Locked)</p>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">Uru rubuga ruzafunguka nyuma yo kwemererwa na admin.</p>
+                    </div>
+                  )
                 ))}
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
           <div className="mt-5 flex gap-3 flex-wrap">
             <Link to="/" className="px-4 py-2 rounded-lg bg-[#2b2f36] text-white hover:bg-[#363a45]">
               Ahabanza
             </Link>
             <Link to="/newsletter" className="px-4 py-2 rounded-lg bg-[#fcd535] text-[#0b0e11] font-semibold hover:bg-[#f0b90b]">
-              Reba Inyandiko
+              Inkuru zose
             </Link>
           </div>
         </div>

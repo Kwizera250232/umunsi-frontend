@@ -69,7 +69,7 @@ function App() {
           <Route path="/login" element={<Navigate to="/subscriber-login" replace />} />
           <Route path="/subscriber-login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-          <Route path="/admin-login" element={<Navigate to="/subscriber-login" replace />} />
+          <Route path="/admin-login" element={<AdminLogin />} />
           <Route path={secretAdminLoginPath} element={<AdminLogin />} />
           {/* Test login page for debugging */}
           <Route path="/test-login" element={<TestLogin />} />

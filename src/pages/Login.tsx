@@ -13,7 +13,7 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   
-  const { login, logout } = useAuth();
+  const { login } = useAuth();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
@@ -32,16 +32,14 @@ const Login = () => {
       const success = await login(formData.email, formData.password);
       
       if (success) {
-        // Get user data from localStorage to check role
+        // Route authenticated users by role so one login form works for all accounts.
         const storedUser = localStorage.getItem('umunsi_user');
         
         if (storedUser) {
           const userData = JSON.parse(storedUser);
-          
-          // Subscriber login page: only USER role should continue here.
+
           if (userData.role === 'ADMIN' || userData.role === 'EDITOR' || userData.role === 'AUTHOR') {
-            logout();
-            setError("Uru rupapuro ni urw'abafatabuguzi gusa.");
+            window.location.href = '/admin';
           } else {
             window.location.href = '/subscriber/account';
           }

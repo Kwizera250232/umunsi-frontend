@@ -43,9 +43,9 @@ const Footer = () => {
                 <Mail size={14} className="mr-2" />
                 info@umunsi.rw
               </a>
-              <a href="tel:+250788000000" className="flex items-center text-gray-400 hover:text-[#fcd535] transition-colors">
+              <a href="tel:0791859465" className="flex items-center text-gray-400 hover:text-[#fcd535] transition-colors">
                 <Phone size={14} className="mr-2" />
-                +250 788 000 000
+                0791859465
               </a>
               <div className="flex items-center text-gray-400">
                 <MapPin size={14} className="mr-2" />
