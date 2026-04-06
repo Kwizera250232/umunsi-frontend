@@ -19,7 +19,8 @@ import {
   Check,
   ArrowLeft,
   Lock,
-  Crown
+  Crown,
+  PhoneCall
 } from 'lucide-react';
 import { apiClient, Post } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -57,6 +58,9 @@ const ADSENSE_ARTICLE_BLOCK = `
       data-full-width-responsive="true"></ins>
   </div>
 `;
+
+const SUPPORT_WHATSAPP = import.meta.env.VITE_SUPPORT_WHATSAPP || '250791859465';
+const SUPPORT_CALL = import.meta.env.VITE_SUPPORT_CALL || '0791859465';
 
 const injectAdAfterSecondParagraph = (html: string) => {
   if (!html) return '';
@@ -112,8 +116,6 @@ const PostPage = () => {
   const [likeCount, setLikeCount] = useState(0);
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [startingSupportPayment, setStartingSupportPayment] = useState(false);
-  const [supportPaymentError, setSupportPaymentError] = useState<string | null>(null);
   
   // Comments state
   const [comments, setComments] = useState<any[]>([]);
@@ -209,27 +211,15 @@ const PostPage = () => {
     setLikeCount(prev => liked ? prev - 1 : prev + 1);
   };
 
-  const handleStartSupportPayment = async () => {
-    setSupportPaymentError(null);
-
+  const handleWhatsAppPremiumRequest = () => {
     if (!isAuthenticated) {
       window.location.href = '/subscriber-login';
       return;
     }
 
-    try {
-      setStartingSupportPayment(true);
-      const response = await apiClient.initializeFlutterwaveSupportPayment(500);
-      const checkoutUrl = response?.data?.checkoutUrl;
-      if (!checkoutUrl) {
-        throw new Error('Checkout URL not found');
-      }
-      window.location.href = checkoutUrl;
-    } catch (error: any) {
-      setSupportPaymentError(error?.message || 'Failed to initialize payment.');
-    } finally {
-      setStartingSupportPayment(false);
-    }
+    const fullName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.username || 'Subscriber';
+    const message = `Muraho Umunsi, nitwa ${fullName}. Nifuza gufungurirwa premium article: ${window.location.href}`;
+    window.open(`https://wa.me/${SUPPORT_WHATSAPP}?text=${encodeURIComponent(message)}`, '_blank');
   };
 
   const handleShare = (platform: string) => {
@@ -473,20 +463,26 @@ const PostPage = () => {
                     </div>
                     <h3 className="text-xl font-bold text-white mb-2">This is a Premium Article</h3>
                     <p className="text-gray-300 mb-5">
-                      Support Umunsi to unlock this article.
+                      Kugira ngo usome iyi nkuru, twandikire kuri WhatsApp cyangwa uduhamagare. Admin azagufungurira premium access amaze kwemeza ubwishyu.
                     </p>
-                    <button
-                      type="button"
-                      onClick={handleStartSupportPayment}
-                      disabled={startingSupportPayment}
-                      className="inline-flex items-center px-5 py-3 rounded-xl bg-[#fcd535] text-[#0b0e11] font-semibold hover:bg-[#f0b90b] disabled:opacity-60 disabled:cursor-not-allowed"
-                    >
-                      <Lock className="w-4 h-4 mr-2" />
-                      {startingSupportPayment ? 'Opening checkout...' : 'Shyigikira Umunsi ukoresheje Flutterwave'}
-                    </button>
-                    {supportPaymentError && (
-                      <p className="text-red-400 text-sm mt-3">{supportPaymentError}</p>
-                    )}
+                    <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                      <button
+                        type="button"
+                        onClick={handleWhatsAppPremiumRequest}
+                        className="inline-flex items-center justify-center px-5 py-3 rounded-xl bg-[#25d366] text-white font-semibold hover:bg-[#1ebe57]"
+                      >
+                        <MessageCircle className="w-4 h-4 mr-2" />
+                        Saba Access kuri WhatsApp
+                      </button>
+                      <a
+                        href={`tel:${SUPPORT_CALL.replace(/\s+/g, '')}`}
+                        className="inline-flex items-center justify-center px-5 py-3 rounded-xl bg-[#fcd535] text-[#0b0e11] font-semibold hover:bg-[#f0b90b]"
+                      >
+                        <PhoneCall className="w-4 h-4 mr-2" />
+                        Hamagara {SUPPORT_CALL}
+                      </a>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-3">Direct checkout izasubiraho nyuma ya Flutterwave configuration.</p>
                   </div>
                 ) : (
                   <div 

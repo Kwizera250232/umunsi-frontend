@@ -115,6 +115,8 @@ export interface User {
   role: 'ADMIN' | 'EDITOR' | 'AUTHOR' | 'USER';
   isActive: boolean;
   isVerified: boolean;
+  isPremium?: boolean;
+  premiumUntil?: string | null;
   avatar?: string;
   bio?: string;
   phone?: string;
@@ -185,6 +187,46 @@ export interface Post {
     name: string;
     slug: string;
     color?: string;
+  };
+}
+
+export interface PremiumDashboardPost {
+  id: string;
+  title: string;
+  slug: string;
+  featuredImage?: string;
+  publishedAt?: string;
+  createdAt: string;
+  hasAccess: boolean;
+  author?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    username: string;
+    avatar?: string;
+  };
+  category?: {
+    id: string;
+    name: string;
+    slug: string;
+    color?: string;
+  };
+}
+
+export interface UserPremiumPostAccess {
+  id: string;
+  userId: string;
+  postId: string;
+  grantedBy?: string;
+  expiresAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  post?: {
+    id: string;
+    title: string;
+    slug: string;
+    isPremium: boolean;
+    status: string;
   };
 }
 
@@ -716,6 +758,23 @@ class ApiClient {
     await this.request(`/admin/users/${id}`, { method: 'DELETE' });
   }
 
+  async grantUserPremiumPostAccess(userId: string, payload: { postId: string; expiresAt?: string | null }): Promise<{ success: boolean; message?: string; data: UserPremiumPostAccess }> {
+    return this.request<{ success: boolean; message?: string; data: UserPremiumPostAccess }>(`/admin/users/${userId}/premium-posts`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async getUserPremiumPostAccess(userId: string): Promise<{ success: boolean; data: UserPremiumPostAccess[] }> {
+    return this.request<{ success: boolean; data: UserPremiumPostAccess[] }>(`/admin/users/${userId}/premium-posts`);
+  }
+
+  async revokeUserPremiumPostAccess(userId: string, postId: string): Promise<{ success: boolean; message?: string }> {
+    return this.request<{ success: boolean; message?: string }>(`/admin/users/${userId}/premium-posts/${postId}`, {
+      method: 'DELETE',
+    });
+  }
+
   // Analytics Methods
   async getDashboardStats(): Promise<DashboardStats> {
     const response = await this.request<DashboardStats>('/admin/dashboard');
@@ -784,6 +843,10 @@ class ApiClient {
   async getPost(id: string): Promise<Post> {
     const response = await this.request<{ success: boolean; data: Post }>(`/posts/${id}`);
     return response.data;
+  }
+
+  async getPremiumDashboardPosts(): Promise<{ success: boolean; data: PremiumDashboardPost[] }> {
+    return this.request<{ success: boolean; data: PremiumDashboardPost[] }>('/posts/premium-dashboard');
   }
 
   async createPost(data: {
