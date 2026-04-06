@@ -207,6 +207,12 @@ const PostDetail: React.FC = () => {
                     Pinned
                   </span>
                 )}
+                {post.isPremium && (
+                  <span className="inline-flex items-center px-3 py-1 bg-[#fcd535]/10 text-[#fcd535] text-xs font-semibold rounded-lg border border-[#fcd535]/30">
+                    <Lock className="w-3 h-3 mr-1" />
+                    Premium
+                  </span>
+                )}
               </div>
 
               {/* Title */}
@@ -344,6 +350,14 @@ const PostDetail: React.FC = () => {
                     <MessageCircle className="w-5 h-5 text-emerald-500" />
                   ) : (
                     <MessageCircle className="w-5 h-5 text-gray-600" />
+                  )}
+                </div>
+                <div className="flex items-center justify-between p-3 bg-[#0b0e11] rounded-xl border border-[#2b2f36]">
+                  <span className="text-gray-400 text-sm">Premium Paywall</span>
+                  {post.isPremium ? (
+                    <Lock className="w-5 h-5 text-[#fcd535]" />
+                  ) : (
+                    <Globe className="w-5 h-5 text-gray-600" />
                   )}
                 </div>
               </div>

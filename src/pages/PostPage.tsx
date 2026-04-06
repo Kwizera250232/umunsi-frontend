@@ -17,7 +17,9 @@ import {
   Linkedin,
   Link2,
   Check,
-  ArrowLeft
+  ArrowLeft,
+  Lock,
+  Crown
 } from 'lucide-react';
 import { apiClient, Post } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -110,6 +112,8 @@ const PostPage = () => {
   const [likeCount, setLikeCount] = useState(0);
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [startingSupportPayment, setStartingSupportPayment] = useState(false);
+  const [supportPaymentError, setSupportPaymentError] = useState<string | null>(null);
   
   // Comments state
   const [comments, setComments] = useState<any[]>([]);
@@ -131,6 +135,16 @@ const PostPage = () => {
     () => injectAdAfterSecondParagraph(normalizedContent),
     [normalizedContent]
   );
+
+  const hasPremiumAccess = useMemo(() => {
+    if (!user) return false;
+    if (['ADMIN', 'EDITOR', 'AUTHOR'].includes(user.role)) return true;
+    if (!user.isPremium) return false;
+    if (!user.premiumUntil) return true;
+    return new Date(user.premiumUntil) > new Date();
+  }, [user]);
+
+  const isPremiumLocked = Boolean(post?.isPremium) && !hasPremiumAccess;
 
   useEffect(() => {
     if (!showAds || !contentWithInlineAd || typeof window === 'undefined') {
@@ -193,6 +207,29 @@ const PostPage = () => {
     }
     setLiked(!liked);
     setLikeCount(prev => liked ? prev - 1 : prev + 1);
+  };
+
+  const handleStartSupportPayment = async () => {
+    setSupportPaymentError(null);
+
+    if (!isAuthenticated) {
+      window.location.href = '/subscriber-login';
+      return;
+    }
+
+    try {
+      setStartingSupportPayment(true);
+      const response = await apiClient.initializeFlutterwaveSupportPayment(500);
+      const checkoutUrl = response?.data?.checkoutUrl;
+      if (!checkoutUrl) {
+        throw new Error('Checkout URL not found');
+      }
+      window.location.href = checkoutUrl;
+    } catch (error: any) {
+      setSupportPaymentError(error?.message || 'Failed to initialize payment.');
+    } finally {
+      setStartingSupportPayment(false);
+    }
   };
 
   const handleShare = (platform: string) => {
@@ -372,7 +409,7 @@ const PostPage = () => {
               </div>
 
               {/* Featured Image */}
-              {post.featuredImage && (
+              {post.featuredImage && !isPremiumLocked && (
                 <div className="px-4 py-4">
                   <img
                     src={getImageUrl(post.featuredImage)}
@@ -423,17 +460,41 @@ const PostPage = () => {
 
               {/* Article Content */}
               <div className="p-4">
-                {post.excerpt && (
+                {post.excerpt && !isPremiumLocked && (
                   <p className="text-gray-300 text-lg leading-relaxed mb-6 font-medium border-l-4 border-[#fcd535] pl-4">
                     {post.excerpt}
                   </p>
                 )}
 
-                <div 
-                  className="prose prose-invert prose-lg max-w-none text-gray-300"
-                  style={{ wordBreak: 'break-word' }}
-                  dangerouslySetInnerHTML={{ __html: contentWithInlineAd }}
-                />
+                {isPremiumLocked ? (
+                  <div className="rounded-xl border border-[#fcd535]/30 bg-[#14181e] p-6 text-center">
+                    <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-[#fcd535]/15 mb-4">
+                      <Crown className="w-7 h-7 text-[#fcd535]" />
+                    </div>
+                    <h3 className="text-xl font-bold text-white mb-2">This is a Premium Article</h3>
+                    <p className="text-gray-300 mb-5">
+                      Support Umunsi to unlock this article.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleStartSupportPayment}
+                      disabled={startingSupportPayment}
+                      className="inline-flex items-center px-5 py-3 rounded-xl bg-[#fcd535] text-[#0b0e11] font-semibold hover:bg-[#f0b90b] disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      <Lock className="w-4 h-4 mr-2" />
+                      {startingSupportPayment ? 'Opening checkout...' : 'Shyigikira Umunsi ukoresheje Flutterwave'}
+                    </button>
+                    {supportPaymentError && (
+                      <p className="text-red-400 text-sm mt-3">{supportPaymentError}</p>
+                    )}
+                  </div>
+                ) : (
+                  <div 
+                    className="prose prose-invert prose-lg max-w-none text-gray-300"
+                    style={{ wordBreak: 'break-word' }}
+                    dangerouslySetInnerHTML={{ __html: contentWithInlineAd }}
+                  />
+                )}
 
                 {/* Tags */}
                 {post.tags && post.tags.length > 0 && (
