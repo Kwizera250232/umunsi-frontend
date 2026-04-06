@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import Layout from './components/layout/Layout';
 import Home from './pages/Home';
@@ -10,6 +10,9 @@ import CategoryPage from './pages/CategoryPage';
 import PostPage from './pages/PostPage';
 import Newsletter from './pages/Newsletter';
 import Login from './pages/Login';
+import AdminLogin from './pages/AdminLogin';
+import SubscriberAccount from './pages/SubscriberAccount';
+import Register from './pages/Register';
 import TestLogin from './pages/TestLogin';
 import Profile from './pages/Profile';
 import AdminLayout from './components/layout/AdminLayout';
@@ -31,10 +34,10 @@ import EditPost from './pages/admin/EditPost';
 import PostDetail from './pages/admin/PostDetail';
 import Roles from './pages/admin/Roles';
 import AdsManagement from './pages/admin/AdsManagement';
-import { withAuth, withAdmin, withEditor } from './contexts/AuthContext';
+import { withAuth, withAdmin, withEditor, withAuthor } from './contexts/AuthContext';
 
 // Create wrapped components
-const ProtectedAdminDashboard = withEditor(AdminDashboard);
+const ProtectedAdminDashboard = withAuthor(AdminDashboard);
 const ProtectedArticles = withEditor(Articles);
 const ProtectedBreakingNews = withEditor(BreakingNews);
 const ProtectedFeaturedNews = withEditor(FeaturedNews);
@@ -46,21 +49,28 @@ const ProtectedLogs = withAdmin(Logs);
 const ProtectedSettings = withAdmin(Settings);
 const ProtectedMediaLibrary = withEditor(MediaLibrary);
 const ProtectedAddMedia = withEditor(AddMedia);
-const ProtectedPosts = withEditor(Posts);
-const ProtectedAddPost = withEditor(AddPost);
-const ProtectedEditPost = withEditor(EditPost);
-const ProtectedPostDetail = withEditor(PostDetail);
+const ProtectedPosts = withAuthor(Posts);
+const ProtectedAddPost = withAuthor(AddPost);
+const ProtectedEditPost = withAuthor(EditPost);
+const ProtectedPostDetail = withAuthor(PostDetail);
 const ProtectedRoles = withAdmin(Roles);
 const ProtectedAdsManagement = withEditor(AdsManagement);
 const ProtectedProfile = withAuth(Profile);
+const ProtectedSubscriberAccount = withAuth(SubscriberAccount);
 
 function App() {
+  const secretAdminLoginPath = '/portal-auth-umunsi-admin-2026';
+
   return (
     <AuthProvider>
       <Router>
         <Routes>
-          {/* Login route - standalone, no layout wrapper */}
-          <Route path="/login" element={<Login />} />
+          {/* Login routes - standalone, no layout wrapper */}
+          <Route path="/login" element={<Navigate to="/subscriber-login" replace />} />
+          <Route path="/subscriber-login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/admin-login" element={<Navigate to="/subscriber-login" replace />} />
+          <Route path={secretAdminLoginPath} element={<AdminLogin />} />
           {/* Test login page for debugging */}
           <Route path="/test-login" element={<TestLogin />} />
           
@@ -84,6 +94,7 @@ function App() {
                 <Route path="/article/:id" element={<PostPage />} />
                 <Route path="/newsletter" element={<Newsletter />} />
                 <Route path="/profile" element={<ProtectedProfile />} />
+                <Route path="/subscriber/account" element={<ProtectedSubscriberAccount />} />
               </Routes>
             </Layout>
           } />

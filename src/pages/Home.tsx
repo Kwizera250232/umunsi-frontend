@@ -121,7 +121,7 @@ const Home = () => {
 
   const renderBannerSlot = (
     slotKey: keyof AdsBannersState['slots'],
-    placeholderLabel: string,
+    placeholderLabel: string | null,
     className: string
   ) => {
     const slot = adsBanners?.slots?.[slotKey];
@@ -148,6 +148,10 @@ const Home = () => {
           )}
         </div>
       );
+    }
+
+    if (!placeholderLabel) {
+      return <div className={`${className} bg-[#0b0e11] rounded-lg`} />;
     }
 
     return (
@@ -623,16 +627,7 @@ const Home = () => {
               </div>
             </div>
 
-            {showAds && (
-              <div className="bg-[#181a20] rounded-lg overflow-hidden">
-                <div className="p-2 border-b border-[#2b2f36]">
-                  <p className="text-gray-500 text-[10px] text-center uppercase tracking-wider">Kwamamaza</p>
-                </div>
-                <div className="p-3">
-                  {renderBannerSlot('skyscraper300x600', '300 x 600 px', 'aspect-[300/600] rounded-lg overflow-hidden bg-[#0b0e11]')}
-                </div>
-              </div>
-            )}
+
           </div>
         </div>
 

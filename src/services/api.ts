@@ -43,6 +43,9 @@ export interface AuthResponse {
     firstName: string;
     lastName: string;
     role: string;
+    isPremium?: boolean;
+    premiumSince?: string;
+    premiumUntil?: string;
     isActive: boolean;
     lastLogin?: string;
   };
@@ -270,6 +273,65 @@ export interface MaintenanceStatus {
   updatedAt: string;
 }
 
+export interface SupportPayment {
+  id: string;
+  provider: string;
+  purpose: string;
+  amount: number;
+  currency: string;
+  status: string;
+  txRef: string;
+  paidAt?: string;
+  createdAt: string;
+}
+
+export interface PaymentsProfileResponse {
+  success: boolean;
+  data: {
+    user: {
+      id: string;
+      email: string;
+      isPremium: boolean;
+      premiumSince?: string;
+      premiumUntil?: string;
+    };
+    payments: SupportPayment[];
+  };
+}
+
+export interface FlutterwaveInitializeResponse {
+  success: boolean;
+  message: string;
+  data: {
+    paymentId: string;
+    txRef: string;
+    amount: number;
+    currency: string;
+    checkoutUrl: string;
+  };
+}
+
+export interface FlutterwaveVerifyResponse {
+  success: boolean;
+  message: string;
+  data: {
+    payment: {
+      id: string;
+      status: string;
+      txRef: string;
+      amount: number;
+      currency: string;
+      paidAt?: string;
+    };
+    premium: {
+      id: string;
+      isPremium: boolean;
+      premiumSince?: string;
+      premiumUntil?: string;
+    } | null;
+  };
+}
+
 export interface AdBannerSlot {
   enabled: boolean;
   imageUrl: string;
@@ -469,6 +531,22 @@ class ApiClient {
       this.token = response.token;
       localStorage.setItem('umunsi_token', response.token);
     }
+  }
+
+  async initializeFlutterwaveSupportPayment(amount?: number): Promise<FlutterwaveInitializeResponse> {
+    const body = amount ? { amount } : {};
+    return this.request<FlutterwaveInitializeResponse>('/payments/flutterwave/initialize', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  }
+
+  async verifyFlutterwaveSupportPayment(txRef: string): Promise<FlutterwaveVerifyResponse> {
+    return this.request<FlutterwaveVerifyResponse>(`/payments/flutterwave/verify/${encodeURIComponent(txRef)}`);
+  }
+
+  async getPaymentsProfile(): Promise<PaymentsProfileResponse> {
+    return this.request<PaymentsProfileResponse>('/payments/me');
   }
 
   // Token management methods

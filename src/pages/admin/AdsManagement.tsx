@@ -70,6 +70,8 @@ const AdsManagement = () => {
   const [loading, setLoading] = useState(true);
   const [adsSettings, setAdsSettings] = useState<AdsBannersState | null>(null);
   const [savingAds, setSavingAds] = useState(false);
+  const [htmlCodeBySlot, setHtmlCodeBySlot] = useState<Partial<Record<SlotKey, string>>>({});
+  const [uploadingBySlot, setUploadingBySlot] = useState<Partial<Record<SlotKey, boolean>>>({});
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -103,6 +105,57 @@ const AdsManagement = () => {
         }
       };
     });
+  };
+
+  const handleHtmlCodeChange = (slotKey: SlotKey, htmlCode: string) => {
+    setHtmlCodeBySlot((prev) => ({
+      ...prev,
+      [slotKey]: htmlCode
+    }));
+
+    if (!htmlCode.trim()) return;
+
+    try {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(htmlCode, 'text/html');
+      const image = doc.querySelector('img, source');
+      const link = doc.querySelector('a[href]');
+
+      const src = image?.getAttribute('src') || image?.getAttribute('data-src');
+      const href = link?.getAttribute('href');
+      const alt = image?.getAttribute('alt');
+
+      if (src) updateSlot(slotKey, 'imageUrl', src);
+      if (href) updateSlot(slotKey, 'targetUrl', href);
+      if (alt) updateSlot(slotKey, 'altText', alt);
+    } catch (error) {
+      console.error('Failed to parse ad HTML code:', error);
+    }
+  };
+
+  const handlePhotoUpload = async (slotKey: SlotKey, file?: File) => {
+    if (!file) return;
+
+    setUploadingBySlot((prev) => ({ ...prev, [slotKey]: true }));
+
+    try {
+      const formData = new FormData();
+      formData.append('files', file);
+
+      const uploaded = await apiClient.uploadMediaFiles(formData);
+      const uploadedUrl = uploaded?.[0]?.url;
+
+      if (uploadedUrl) {
+        updateSlot(slotKey, 'imageUrl', uploadedUrl);
+      } else {
+        alert('Photo uploaded but URL was not returned. Please paste photo URL manually.');
+      }
+    } catch (error: any) {
+      console.error('Photo upload failed:', error);
+      alert(`Failed to upload photo: ${error?.message || 'Unknown error'}`);
+    } finally {
+      setUploadingBySlot((prev) => ({ ...prev, [slotKey]: false }));
+    }
   };
 
   const saveAdsSettings = async () => {
@@ -149,6 +202,24 @@ const AdsManagement = () => {
         <p className="text-gray-400">Manage every banner position by exact size and placement.</p>
       </div>
 
+      <div className="mb-6 bg-[#181a20] rounded-2xl border border-[#2b2f36] p-5">
+        <h2 className="text-sm font-semibold text-white mb-3">Where to add each ad content type</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+          <div className="rounded-lg border border-[#2b2f36] bg-[#0f1115] p-3">
+            <p className="text-[#fcd535] font-semibold mb-1">1. HTML Code</p>
+            <p className="text-gray-400">Paste ad provider code in the "Ad HTML Code" box. Image URL and click URL are auto-detected when possible.</p>
+          </div>
+          <div className="rounded-lg border border-[#2b2f36] bg-[#0f1115] p-3">
+            <p className="text-[#fcd535] font-semibold mb-1">2. Photo</p>
+            <p className="text-gray-400">Use "Upload Photo" to upload banner image directly from your computer.</p>
+          </div>
+          <div className="rounded-lg border border-[#2b2f36] bg-[#0f1115] p-3">
+            <p className="text-[#fcd535] font-semibold mb-1">3. Photo URL</p>
+            <p className="text-gray-400">Paste direct image link in "Photo URL" if your image is already online.</p>
+          </div>
+        </div>
+      </div>
+
       <div className="bg-[#181a20] rounded-2xl border border-[#2b2f36] p-6">
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-lg font-semibold text-white flex items-center gap-2">
@@ -182,8 +253,33 @@ const AdsManagement = () => {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                  <div className="md:col-span-2">
+                    <label className="block text-xs text-gray-400 mb-1">Ad HTML Code</label>
+                    <textarea
+                      value={htmlCodeBySlot[entry.key] || ''}
+                      onChange={(e) => handleHtmlCodeChange(entry.key, e.target.value)}
+                      placeholder="Paste ad HTML code here (script, ins, iframe, img...)"
+                      rows={4}
+                      className="w-full bg-[#181a20] border border-[#2b2f36] rounded-lg px-3 py-2 text-white text-sm"
+                    />
+                    <p className="text-[11px] text-gray-500 mt-1">Tip: This helps auto-fill Photo URL and Click Target URL. Save to apply slot settings.</p>
+                  </div>
+
                   <div>
-                    <label className="block text-xs text-gray-400 mb-1">Banner Image URL</label>
+                    <label className="block text-xs text-gray-400 mb-1">Upload Photo</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handlePhotoUpload(entry.key, e.target.files?.[0])}
+                        className="block w-full text-xs text-gray-300 file:mr-3 file:px-3 file:py-2 file:rounded-lg file:border-0 file:bg-[#2b2f36] file:text-gray-200 hover:file:bg-[#363a45]"
+                      />
+                      {uploadingBySlot[entry.key] && <Loader2 className="w-4 h-4 text-[#fcd535] animate-spin" />}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">Photo URL</label>
                     <input
                       type="text"
                       value={slot.imageUrl}
