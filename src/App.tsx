@@ -110,6 +110,7 @@ function App() {
             <Route path="featured-news" element={<ProtectedFeaturedNews />} />
             <Route path="categories" element={<ProtectedCategories />} />
             <Route path="users" element={<ProtectedUsers />} />
+            <Route path="users/:id" element={<ProtectedUsers />} />
             <Route path="ads-management" element={<ProtectedAdsManagement />} />
             <Route path="roles" element={<ProtectedRoles />} />
             <Route path="analytics" element={<ProtectedAnalytics />} />
@@ -123,6 +124,7 @@ function App() {
             <Route path="posts/:id" element={<ProtectedPostDetail />} />
             {/* Test route to verify routing works */}
             <Route path="test" element={<div className="p-12 text-center text-green-600 font-bold">✅ Test Route Working!</div>} />
+            <Route path="*" element={<Navigate to="/admin" replace />} />
           </Route>
         </Routes>
       </Router>

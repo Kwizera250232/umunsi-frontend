@@ -59,8 +59,8 @@ const ADSENSE_ARTICLE_BLOCK = `
   </div>
 `;
 
-const SUPPORT_WHATSAPP = import.meta.env.VITE_SUPPORT_WHATSAPP || '250791859465';
-const SUPPORT_CALL = import.meta.env.VITE_SUPPORT_CALL || '0791859465';
+const SUPPORT_WHATSAPP = '250791859465';
+const SUPPORT_CALL = '0791859465';
 
 const injectAdAfterSecondParagraph = (html: string) => {
   if (!html) return '';
