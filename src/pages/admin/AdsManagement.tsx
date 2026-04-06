@@ -30,6 +30,14 @@ const defaultAdsSettings: AdsBannersState = {
       size: '300x250',
       label: 'Sidebar 300x250 Banner'
     },
+    adminSidebar240x320: {
+      enabled: false,
+      imageUrl: '',
+      targetUrl: '',
+      altText: 'Admin Sidebar Banner',
+      size: '320x240',
+      label: 'Admin Sidebar Banner'
+    },
     square300x300: {
       enabled: false,
       imageUrl: '',
@@ -97,28 +105,27 @@ const AdsManagement = () => {
     });
   };
 
-  const saveAdsSettings = () => {
+  const saveAdsSettings = async () => {
     if (!adsSettings) return;
     setSavingAds(true);
 
-    apiClient
-      .updateAdminAdsBanners({ slots: adsSettings.slots })
-      .then(() => {
-        alert('Ads management settings saved successfully');
-      })
-      .catch((error) => {
-        console.error('Failed to save ads settings:', error);
-        alert('Failed to save ads settings');
-      })
-      .finally(() => {
-        setSavingAds(false);
-      });
+    try {
+      const updated = await apiClient.updateAdminAdsBanners({ slots: adsSettings.slots });
+      setAdsSettings(updated);
+      alert('Ads management settings saved successfully');
+    } catch (error: any) {
+      console.error('Failed to save ads settings:', error);
+      alert(`Failed to save ads settings: ${error?.message || 'Unknown error'}`);
+    } finally {
+      setSavingAds(false);
+    }
   };
 
   const slotOrder: Array<{ key: SlotKey; place: string }> = [
     { key: 'leaderboardTop970x120', place: 'Top Leaderboard' },
     { key: 'business728x250', place: "Ahantu h'Ubucuruzi" },
     { key: 'sidebar300x250', place: 'Sidebar Banner' },
+    { key: 'adminSidebar240x320', place: 'Admin Left Sidebar (Lower Area)' },
     { key: 'square300x300', place: 'Sidebar Square' },
     { key: 'skyscraper300x600', place: 'Sidebar Skyscraper' },
     { key: 'leaderboardBottom970x120', place: 'Bottom Leaderboard' }

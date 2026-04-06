@@ -13,7 +13,8 @@ const getServerBaseUrl = () => {
 
 const Home = () => {
   const { user } = useAuth();
-  const showAds = user?.role !== 'ADMIN';
+  // Ads should remain visible even for admin accounts so placements can be verified after updates.
+  const showAds = true;
   const canSeeViews = user?.role === 'ADMIN';
 
   const [loading, setLoading] = useState(true);
@@ -90,6 +91,14 @@ const Home = () => {
     return `${getServerBaseUrl()}${url}`;
   };
 
+  const getBannerImageUrl = (url?: string) => {
+    if (!url) return '';
+    const upgradedUrl = url.includes('/thumbnails/') ? url.replace('/thumbnails/', '/images/') : url;
+    if (upgradedUrl.startsWith('http://') || upgradedUrl.startsWith('https://') || upgradedUrl.startsWith('//')) return upgradedUrl;
+    if (upgradedUrl.startsWith('/')) return `${getServerBaseUrl()}${upgradedUrl}`;
+    return `${getServerBaseUrl()}/${upgradedUrl}`;
+  };
+
   const getPostsByCategory = (categoryId: string) => {
     return posts.filter(p => p.category?.id === categoryId).slice(0, 4);
   };
@@ -120,9 +129,10 @@ const Home = () => {
     if (slot?.enabled && slot.imageUrl) {
       const bannerImage = (
         <img
-          src={slot.imageUrl}
+          src={getBannerImageUrl(slot.imageUrl)}
           alt={slot.altText || slot.label}
-          className="w-full h-full object-cover"
+          className="w-full h-full object-contain"
+          style={{ imageRendering: 'auto' }}
           loading="lazy"
         />
       );
@@ -166,7 +176,8 @@ const Home = () => {
   const leftPrimary = topSectionPool[0] || null;
   const leftSecondary = topSectionPool[1] || null;
   const middleTop = topSectionPool[2] || null;
-  const rightColumnPosts = topSectionPool.slice(3, 8);
+  const middleBottom = topSectionPool[3] || null;
+  const rightColumnPosts = topSectionPool.slice(4, 9);
   const otherPosts = posts.filter(p => p.id !== mainHighlight?.id);
   const trendingPosts = [...posts].sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0)).slice(0, 6);
   const latestPosts = activeTab === 'all' ? otherPosts.slice(0, 8) : filteredPosts.slice(0, 8);
@@ -262,6 +273,13 @@ const Home = () => {
                   </h4>
                 </Link>
               )}
+
+              {showAds && adsBanners?.slots?.adminSidebar240x320?.enabled && adsBanners.slots.adminSidebar240x320.imageUrl && (
+                <div className="bg-[#0b0e11] rounded p-2 flex justify-center">
+                  {renderBannerSlot('adminSidebar240x320', 'Home Left Banner', 'w-full max-w-[320px] aspect-[4/3] rounded-lg overflow-hidden bg-[#0b0e11]')}
+                </div>
+              )}
+
             </div>
 
             <div className="lg:col-span-6 space-y-3">
@@ -287,6 +305,19 @@ const Home = () => {
                       </h2>
                     </div>
                   </div>
+                </Link>
+              )}
+
+              {middleBottom && (
+                <Link to={`/post/${middleBottom.slug}`} className="flex gap-2 bg-[#0b0e11] p-2 rounded group">
+                  <img
+                    src={getImageUrl(middleBottom.featuredImage)}
+                    alt={middleBottom.title}
+                    className="w-24 h-16 object-cover flex-shrink-0"
+                  />
+                  <h4 className="text-gray-300 text-sm line-clamp-2 group-hover:text-[#fcd535] transition-colors">
+                    {middleBottom.title}
+                  </h4>
                 </Link>
               )}
             </div>
@@ -343,7 +374,7 @@ const Home = () => {
               <p className="text-gray-500 text-[10px] text-center uppercase tracking-wider">Kwamamaza</p>
             </div>
             <div className="p-4">
-              {renderBannerSlot('leaderboardTop970x120', '970 x 120 px', 'h-[120px] rounded-lg overflow-hidden')}
+              {renderBannerSlot('leaderboardTop970x120', '970 x 120 px', 'aspect-[970/120] rounded-lg overflow-hidden bg-[#0b0e11]')}
             </div>
           </div>
         )}
@@ -410,7 +441,7 @@ const Home = () => {
                   <p className="text-gray-500 text-xs text-center uppercase tracking-wider">Kwamamaza</p>
                 </div>
                 <div className="p-4">
-                  {renderBannerSlot('business728x250', "Ahantu h'Ubucuruzi - 728 x 250 px", 'h-[250px] rounded-lg overflow-hidden')}
+                  {renderBannerSlot('business728x250', "Ahantu h'Ubucuruzi - 728 x 250 px", 'aspect-[728/250] rounded-lg overflow-hidden bg-[#0b0e11]')}
                 </div>
               </div>
             )}
@@ -520,7 +551,7 @@ const Home = () => {
                   <p className="text-gray-500 text-[10px] text-center uppercase tracking-wider">Kwamamaza</p>
                 </div>
                 <div className="p-3">
-                  {renderBannerSlot('sidebar300x250', '300 x 250 px', 'h-[200px] rounded-lg overflow-hidden')}
+                  {renderBannerSlot('sidebar300x250', '300 x 250 px', 'aspect-[300/250] rounded-lg overflow-hidden bg-[#0b0e11]')}
                 </div>
               </div>
             )}
@@ -598,7 +629,7 @@ const Home = () => {
                   <p className="text-gray-500 text-[10px] text-center uppercase tracking-wider">Kwamamaza</p>
                 </div>
                 <div className="p-3">
-                  {renderBannerSlot('skyscraper300x600', '300 x 600 px', 'h-[400px] rounded-lg overflow-hidden')}
+                  {renderBannerSlot('skyscraper300x600', '300 x 600 px', 'aspect-[300/600] rounded-lg overflow-hidden bg-[#0b0e11]')}
                 </div>
               </div>
             )}
@@ -672,7 +703,7 @@ const Home = () => {
               <p className="text-gray-500 text-[10px] text-center uppercase tracking-wider">Kwamamaza</p>
             </div>
             <div className="p-4">
-              {renderBannerSlot('leaderboardBottom970x120', '970 x 120 px', 'h-[120px] rounded-lg overflow-hidden')}
+              {renderBannerSlot('leaderboardBottom970x120', '970 x 120 px', 'aspect-[970/120] rounded-lg overflow-hidden bg-[#0b0e11]')}
             </div>
           </div>
         )}

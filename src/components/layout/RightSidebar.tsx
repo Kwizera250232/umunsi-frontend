@@ -1,7 +1,11 @@
 import { useState } from 'react';
 import { Flame, Image, Cloud, Sun, Moon, ChevronRight, TrendingUp, ExternalLink } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
 
 const RightSidebar = () => {
+  const { user } = useAuth();
+  const showAds = user?.role !== 'ADMIN';
+
   // Trending news for the sidebar
   const trendingNews = [
     {
@@ -105,29 +109,30 @@ const RightSidebar = () => {
         </div>
       </div>
 
-      {/* Advertisements Section */}
-      <div className="bg-[#181a20] rounded-2xl p-5 border border-[#2b2f36]">
-        <h2 className="text-xl font-bold text-white mb-4 pb-3 border-b border-[#2b2f36] flex items-center">
-          <Image className="w-5 h-5 mr-2 text-blue-400" />
-          Itangazo
-        </h2>
-        <div className="space-y-4">
-          {advertisements.map((ad) => (
-            <div key={ad.id} className="bg-gradient-to-br from-[#1e2329] to-[#181a20] rounded-xl p-4 border border-[#2b2f36] hover:border-[#fcd535]/30 transition-all group cursor-pointer">
-              <div className="relative overflow-hidden rounded-lg mb-3">
-                <img src={ad.image} alt={ad.title} className="w-full h-32 object-cover group-hover:scale-105 transition-transform duration-500" />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#0b0e11]/60 to-transparent"></div>
+      {showAds && (
+        <div className="bg-[#181a20] rounded-2xl p-5 border border-[#2b2f36]">
+          <h2 className="text-xl font-bold text-white mb-4 pb-3 border-b border-[#2b2f36] flex items-center">
+            <Image className="w-5 h-5 mr-2 text-blue-400" />
+            Itangazo
+          </h2>
+          <div className="space-y-4">
+            {advertisements.map((ad) => (
+              <div key={ad.id} className="bg-gradient-to-br from-[#1e2329] to-[#181a20] rounded-xl p-4 border border-[#2b2f36] hover:border-[#fcd535]/30 transition-all group cursor-pointer">
+                <div className="relative overflow-hidden rounded-lg mb-3">
+                  <img src={ad.image} alt={ad.title} className="w-full h-32 object-cover group-hover:scale-105 transition-transform duration-500" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#0b0e11]/60 to-transparent"></div>
+                </div>
+                <h3 className="font-bold text-white mb-1 group-hover:text-[#fcd535] transition-colors">{ad.title}</h3>
+                <p className="text-gray-400 text-sm mb-3">{ad.description}</p>
+                <button className="w-full bg-gradient-to-r from-[#fcd535] to-[#f0b90b] text-[#0b0e11] py-2.5 px-4 rounded-xl text-sm font-semibold hover:from-[#f0b90b] hover:to-[#fcd535] transition-all transform hover:scale-[1.02] flex items-center justify-center gap-2">
+                  {ad.cta}
+                  <ExternalLink className="w-4 h-4" />
+                </button>
               </div>
-              <h3 className="font-bold text-white mb-1 group-hover:text-[#fcd535] transition-colors">{ad.title}</h3>
-              <p className="text-gray-400 text-sm mb-3">{ad.description}</p>
-              <button className="w-full bg-gradient-to-r from-[#fcd535] to-[#f0b90b] text-[#0b0e11] py-2.5 px-4 rounded-xl text-sm font-semibold hover:from-[#f0b90b] hover:to-[#fcd535] transition-all transform hover:scale-[1.02] flex items-center justify-center gap-2">
-                {ad.cta}
-                <ExternalLink className="w-4 h-4" />
-              </button>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Weather Widget */}
       <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl p-5 relative overflow-hidden">

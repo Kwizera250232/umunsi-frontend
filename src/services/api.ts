@@ -286,6 +286,7 @@ export interface AdsBannersState {
     leaderboardTop970x120: AdBannerSlot;
     business728x250: AdBannerSlot;
     sidebar300x250: AdBannerSlot;
+    adminSidebar240x320: AdBannerSlot;
     square300x300: AdBannerSlot;
     skyscraper300x600: AdBannerSlot;
     leaderboardBottom970x120: AdBannerSlot;

@@ -16,7 +16,7 @@ import {
   Redo
 } from 'lucide-react';
 import MediaLibraryModal from './MediaLibraryModal';
-import { MediaFile } from '../services/api';
+import { apiClient, MediaFile } from '../services/api';
 
 interface RichTextEditorProps {
   value: string;
@@ -32,8 +32,10 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
   className = ""
 }) => {
   const editorRef = useRef<HTMLDivElement>(null);
-  const [showMediaLibrary, setShowMediaLibrary] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [isFocused, setIsFocused] = useState(false);
+  const [showMediaLibrary, setShowMediaLibrary] = useState(false);
+  const [showImageSourceMenu, setShowImageSourceMenu] = useState(false);
 
   useEffect(() => {
     if (editorRef.current && editorRef.current.innerHTML !== value) {
@@ -60,6 +62,18 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     handleContentChange();
   };
 
+  const getServerBaseUrl = () => {
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+    return apiUrl.replace('/api', '');
+  };
+
+  const normalizeImageUrl = (url: string) => {
+    if (!url) return '';
+    if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('//')) return url;
+    if (url.startsWith('/')) return `${getServerBaseUrl()}${url}`;
+    return `${getServerBaseUrl()}/${url}`;
+  };
+
   const handleContentChange = () => {
     if (editorRef.current) {
       const content = editorRef.current.innerHTML;
@@ -69,6 +83,73 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     } else {
       console.error('❌ Editor ref is null in handleContentChange');
     }
+  };
+
+  const escapeHtml = (text: string) => {
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/\"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  };
+
+  const sanitizePastedHtml = (html: string) => {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+
+    doc.querySelectorAll('script, style, meta, link').forEach((node) => node.remove());
+
+    const blockedAttributes = [
+      'style',
+      'bgcolor',
+      'color',
+      'face',
+      'size',
+      'width',
+      'height',
+      'align',
+      'valign'
+    ];
+
+    doc.body.querySelectorAll('*').forEach((element) => {
+      blockedAttributes.forEach((attr) => {
+        if (element.hasAttribute(attr)) {
+          element.removeAttribute(attr);
+        }
+      });
+
+      if (element.hasAttribute('class')) {
+        element.removeAttribute('class');
+      }
+
+      if (element.tagName === 'SPAN' && element.attributes.length === 0) {
+        const parent = element.parentNode;
+        while (element.firstChild) {
+          parent?.insertBefore(element.firstChild, element);
+        }
+        parent?.removeChild(element);
+      }
+    });
+
+    return doc.body.innerHTML;
+  };
+
+  const handlePaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
+    e.preventDefault();
+
+    const html = e.clipboardData.getData('text/html');
+    const text = e.clipboardData.getData('text/plain');
+
+    if (html) {
+      const cleanedHtml = sanitizePastedHtml(html);
+      document.execCommand('insertHTML', false, cleanedHtml);
+    } else if (text) {
+      const safeText = escapeHtml(text).replace(/\n/g, '<br>');
+      document.execCommand('insertHTML', false, safeText);
+    }
+
+    handleContentChange();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -99,95 +180,72 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     }
   };
 
-  const insertImage = (media: MediaFile) => {
-    console.log('🖼️ InsertImage called with:', media);
-    
-    const getServerBaseUrl = () => {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-      return apiUrl.replace('/api', '');
-    };
-    
-    const imageUrl = `${getServerBaseUrl()}${media.url}`;
-    console.log('🔗 Image URL:', imageUrl);
-    
-    if (!editorRef.current) {
-      console.error('❌ Editor ref is null');
-      setShowMediaLibrary(false);
-      return;
-    }
-    
-    // Focus the editor first
-    editorRef.current.focus();
-    
-    // Create image element
-    const img = document.createElement('img');
-    img.src = imageUrl;
-    img.alt = media.originalName;
-    img.className = 'resizable-image';
-    img.style.cssText = 'max-width: 100%; height: auto; margin: 10px 0; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); cursor: pointer; display: block;';
-    img.setAttribute('data-original-width', '400');
-    img.setAttribute('data-original-height', '300');
-    
-    // Add error handling
-    img.onerror = () => {
-      console.error('❌ Failed to load image:', imageUrl);
-    };
-    img.onload = () => {
-      console.log('✅ Image loaded successfully:', imageUrl);
-    };
-    
-    // Try multiple insertion methods
+  const insertImageBlock = (imageUrl: string, defaultAlt: string = 'Inserted image') => {
+    const inlineTextInput = prompt('Enter text below image (optional)') || '';
+    const captionInput = prompt('Enter caption (optional)') || '';
+
+    const safeImageUrl = escapeHtml(imageUrl);
+    const safeInlineText = escapeHtml(inlineTextInput.trim());
+    const safeCaption = escapeHtml(captionInput.trim());
+    const safeAlt = escapeHtml(defaultAlt);
+
+    const imageBlockHtml = `
+      <div class="image-text-block" style="margin: 10px 0;">
+        <img src="${safeImageUrl}" alt="${safeCaption || safeAlt}" class="resizable-image" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); cursor: pointer; display: block;" data-original-width="400" data-original-height="300" />
+        ${safeInlineText ? `<p style="margin-top: 8px;">${safeInlineText}</p>` : ''}
+        ${safeCaption ? `<p style="margin-top: 4px; font-size: 13px; color: #9ca3af;"><em>${safeCaption}</em></p>` : ''}
+      </div>
+      <p><br></p>
+    `;
+
+    document.execCommand('insertHTML', false, imageBlockHtml);
+    editorRef.current?.focus();
+    handleContentChange();
+    setTimeout(() => {
+      addImageResizeHandles();
+    }, 100);
+  };
+
+  const chooseImageFromLibrary = () => {
+    setShowImageSourceMenu(false);
+    setShowMediaLibrary(true);
+  };
+
+  const chooseImageFromComputer = () => {
+    setShowImageSourceMenu(false);
+    fileInputRef.current?.click();
+  };
+
+  const handleMediaSelect = (media: MediaFile) => {
+    const imageUrl = normalizeImageUrl(media.url);
+    insertImageBlock(imageUrl, media.originalName || 'Inserted image');
+  };
+
+  const handleComputerFileSelected = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
     try {
-      // Method 1: Use execCommand (most reliable for contentEditable)
-      const success = document.execCommand('insertHTML', false, img.outerHTML);
-      console.log('📝 execCommand insertHTML result:', success);
-      
-      if (!success) {
-        // Method 2: Use selection and range
-        const selection = window.getSelection();
-        if (selection && selection.rangeCount > 0) {
-          console.log('🎯 Using selection-based insertion');
-          const range = selection.getRangeAt(0);
-          range.deleteContents();
-          range.insertNode(img);
-          range.setStartAfter(img);
-          range.setEndAfter(img);
-          selection.removeAllRanges();
-          selection.addRange(range);
-        } else {
-          // Method 3: Append to end
-          console.log('📌 Using append method');
-          editorRef.current.appendChild(img);
-        }
+      const formData = new FormData();
+      formData.append('files', file);
+      const uploaded = await apiClient.uploadMediaFiles(formData);
+      const uploadedFile = uploaded[0];
+
+      if (!uploadedFile) {
+        alert('Upload failed. Please try again.');
+        return;
       }
-      
-      // Trigger content change
-      console.log('🔄 Triggering content change...');
-      handleContentChange();
-      
-      // Add resize functionality after insertion
-      setTimeout(() => {
-        console.log('🔧 Adding image resize handles...');
-        addImageResizeHandles();
-      }, 100);
-      
-      console.log('✅ Image insertion completed');
-      
+
+      const imageUrl = normalizeImageUrl(uploadedFile.url);
+      insertImageBlock(imageUrl, uploadedFile.originalName || file.name);
     } catch (error) {
-      console.error('❌ Error during image insertion:', error);
-      
-      // Fallback: Simple append
-      try {
-        editorRef.current.insertAdjacentHTML('beforeend', img.outerHTML);
-        console.log('📌 Fallback insertion successful');
-        handleContentChange();
-      } catch (fallbackError) {
-        console.error('❌ Fallback insertion failed:', fallbackError);
+      console.error('Failed to upload selected image:', error);
+      alert('Failed to upload image. Please try again.');
+    } finally {
+      if (event.target) {
+        event.target.value = '';
       }
     }
-    
-    // Close the media library
-    setShowMediaLibrary(false);
   };
 
   const insertLink = () => {
@@ -467,7 +525,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
   return (
     <div className={`rich-text-editor border border-[#2b2f36] rounded-xl bg-[#0b0e11] ${className}`}>
       {/* Toolbar */}
-      <div className="flex items-center gap-1 p-2 border-b border-[#2b2f36] bg-[#1e2329] rounded-t-xl">
+      <div className="relative flex items-center gap-1 p-2 border-b border-[#2b2f36] bg-[#1e2329] rounded-t-xl">
         {/* Text Formatting */}
         <div className="flex items-center gap-1 border-r border-[#2b2f36] pr-2">
           <ToolbarButton
@@ -528,10 +586,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
             title="Insert Link"
           />
           <ToolbarButton
-            onClick={() => {
-              console.log('🖼️ Insert Image button clicked');
-              setShowMediaLibrary(true);
-            }}
+            onClick={() => setShowImageSourceMenu((prev) => !prev)}
             icon={<ImageIcon className="w-4 h-4" />}
             title="Insert Image"
           />
@@ -555,6 +610,25 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
             title="Redo (Ctrl+Shift+Z)"
           />
         </div>
+
+        {showImageSourceMenu && (
+          <div className="absolute top-12 left-[285px] z-20 bg-[#0b0e11] border border-[#2b2f36] rounded-lg shadow-xl p-2 min-w-[240px]">
+            <button
+              type="button"
+              onClick={chooseImageFromLibrary}
+              className="w-full text-left px-3 py-2 rounded text-sm text-gray-200 hover:bg-[#1e2329]"
+            >
+              Choose Uploaded Image
+            </button>
+            <button
+              type="button"
+              onClick={chooseImageFromComputer}
+              className="w-full text-left px-3 py-2 rounded text-sm text-gray-200 hover:bg-[#1e2329]"
+            >
+              Choose from Computer
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Editor */}
@@ -562,6 +636,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
         ref={editorRef}
         contentEditable
         onInput={handleContentChange}
+        onPaste={handlePaste}
         onKeyDown={handleKeyDown}
         onFocus={() => setIsFocused(true)}
         onBlur={() => setIsFocused(false)}
@@ -580,12 +655,19 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
         </div>
       )}
 
-      {/* Media Library Modal */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleComputerFileSelected}
+        className="hidden"
+      />
+
       <MediaLibraryModal
         isOpen={showMediaLibrary}
         onClose={() => setShowMediaLibrary(false)}
-        onSelect={insertImage}
-        title="Insert Image"
+        onSelect={handleMediaSelect}
+        title="Choose Uploaded Image"
         mode="select"
         type="image"
       />
