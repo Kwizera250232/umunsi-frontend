@@ -4,8 +4,8 @@ import { Crown, HeartHandshake, Lock, Mail, PhoneCall, MessageCircle } from 'luc
 import { useAuth } from '../contexts/AuthContext';
 import { apiClient, PremiumDashboardPost } from '../services/api';
 
-const SUPPORT_WHATSAPP = import.meta.env.VITE_SUPPORT_WHATSAPP || '250791859465';
-const SUPPORT_CALL = import.meta.env.VITE_SUPPORT_CALL || '0791859465';
+const SUPPORT_WHATSAPP = '250791859465';
+const SUPPORT_CALL = '0791859465';
 
 const buildWhatsAppLink = (name: string, email: string) => {
   const message = `Muraho Umunsi, nitwa ${name}, email yanjye ni ${email}. Nashatse Premium access, namaze kwishyura. Mungenzurire konti yanjye.`;
