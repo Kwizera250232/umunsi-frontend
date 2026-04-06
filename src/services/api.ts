@@ -159,6 +159,8 @@ export interface Post {
   excerpt?: string;
   featuredImage?: string;
   status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'DELETED';
+  isPremium?: boolean;
+  isLocked?: boolean;
   publishedAt?: string;
   viewCount: number;
   likeCount: number;
@@ -790,6 +792,7 @@ class ApiClient {
     excerpt?: string;
     featuredImage?: string;
     status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'DELETED';
+    isPremium?: boolean;
     categoryId?: string;
     isFeatured?: boolean;
     isPinned?: boolean;
@@ -811,6 +814,7 @@ class ApiClient {
     excerpt: string;
     featuredImage: string;
     status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'DELETED';
+    isPremium: boolean;
     categoryId: string;
     isFeatured: boolean;
     isPinned: boolean;

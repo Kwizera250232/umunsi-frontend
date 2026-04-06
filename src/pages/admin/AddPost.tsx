@@ -35,6 +35,7 @@ const AddPost: React.FC = () => {
     excerpt: '',
     featuredImage: '',
     status: 'DRAFT' as 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'DELETED',
+    isPremium: false,
     categoryId: '',
     isFeatured: false,
     isPinned: false,
@@ -149,6 +150,7 @@ const AddPost: React.FC = () => {
         excerpt: formData.excerpt || undefined,
         featuredImage: formData.featuredImage || undefined,
         status: formData.status,
+        isPremium: formData.isPremium,
         categoryId: formData.categoryId || undefined,
         isFeatured: formData.isFeatured,
         isPinned: formData.isPinned,
@@ -467,6 +469,18 @@ const AddPost: React.FC = () => {
 
               {/* Options */}
               <div className="space-y-3 pt-2">
+                <label className="flex items-center p-3 bg-[#0b0e11] rounded-xl border border-[#2b2f36] cursor-pointer hover:border-[#fcd535]/50 transition-colors">
+                  <input
+                    type="checkbox"
+                    name="isPremium"
+                    checked={formData.isPremium}
+                    onChange={handleInputChange}
+                    className="w-4 h-4 text-[#fcd535] bg-[#0b0e11] border-[#2b2f36] rounded focus:ring-[#fcd535]"
+                  />
+                  <Lock className="w-4 h-4 ml-3 text-[#fcd535]" />
+                  <span className="ml-2 text-sm text-white">Premium Article (paywall)</span>
+                </label>
+
                 <label className="flex items-center p-3 bg-[#0b0e11] rounded-xl border border-[#2b2f36] cursor-pointer hover:border-[#fcd535]/50 transition-colors">
                   <input
                     type="checkbox"

@@ -21,7 +21,8 @@ import {
   AlertCircle,
   Sparkles,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Lock
 } from 'lucide-react';
 import { apiClient, Post, Category } from '../../services/api';
 
@@ -327,6 +328,7 @@ const Posts: React.FC = () => {
                       </span>
                   </div>
                   <div className="flex items-center space-x-1">
+                    {post.isPremium && <Lock className="w-4 h-4 text-[#fcd535]" />}
                     {post.isFeatured && <Star className="w-4 h-4 text-[#fcd535]" />}
                     {post.isPinned && <Pin className="w-4 h-4 text-blue-400" />}
                   </div>
@@ -458,6 +460,7 @@ const Posts: React.FC = () => {
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-white truncate flex items-center">
                           {post.title}
+                          {post.isPremium && <Lock className="w-3 h-3 text-[#fcd535] ml-2" />}
                           {post.isFeatured && <Star className="w-3 h-3 text-[#fcd535] ml-2" />}
                         </p>
                         {post.excerpt && <p className="text-xs text-gray-500 truncate">{post.excerpt}</p>}
