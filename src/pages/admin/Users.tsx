@@ -330,6 +330,12 @@ const Users = () => {
     setSubmitting(true);
     setFormError('');
 
+    if (formData.role === 'AUTHOR' && !formData.profileUrl.trim()) {
+      setFormError('Author account requires URL ya account.');
+      setSubmitting(false);
+      return;
+    }
+
     try {
       const response = await apiClient.createUser({
         email: formData.email,
@@ -360,6 +366,12 @@ const Users = () => {
     
     setSubmitting(true);
     setFormError('');
+
+    if (formData.role === 'AUTHOR' && !formData.profileUrl.trim()) {
+      setFormError('Author account requires URL ya account.');
+      setSubmitting(false);
+      return;
+    }
 
     try {
       const response = await apiClient.updateUser(editingUser.id, {
