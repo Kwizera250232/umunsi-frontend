@@ -65,6 +65,14 @@ const ADSENSE_BEFORE_CONTENT_SLOT = '5789865998';
 
 const SUPPORT_WHATSAPP = '250791859465';
 const SUPPORT_CALL = '0791859465';
+const SPECIAL_ADMIN_NAME = 'kwizera jean de dieu';
+
+const normalizeIdentityName = (name: string) =>
+  name
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
 
 const injectAdAfterSecondParagraph = (html: string) => {
   if (!html) return '';
@@ -155,10 +163,10 @@ const PostPage = () => {
 
   const isPremiumLocked = Boolean(post?.isPremium) && !hasPremiumAccess;
   const returnToCurrentPost = encodeURIComponent(`${window.location.pathname}${window.location.search}`);
-  const authorRole = (post?.author?.role || 'AUTHOR').toUpperCase();
-  const isVerifiedAuthor = authorRole === 'AUTHOR' || authorRole === 'ADMIN';
-
   const authorDisplayName = `${post?.author?.firstName || ''} ${post?.author?.lastName || ''}`.trim() || post?.author?.username || 'Unknown';
+  const authorRole = (post?.author?.role || 'AUTHOR').toUpperCase();
+  const isSpecialAdmin = authorRole === 'ADMIN' && normalizeIdentityName(authorDisplayName) === SPECIAL_ADMIN_NAME;
+  const isVerifiedAuthor = (authorRole === 'AUTHOR' && Boolean(post?.author?.isVerified)) || isSpecialAdmin;
 
   const authorMemberSinceDate = useMemo(() => {
     if (post?.author?.createdAt) {

@@ -182,6 +182,7 @@ export interface Post {
     username: string;
     avatar?: string;
     role?: 'ADMIN' | 'EDITOR' | 'AUTHOR' | 'USER';
+    isVerified?: boolean;
     createdAt?: string;
   };
   category?: {
