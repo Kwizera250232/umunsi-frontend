@@ -2,10 +2,16 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { Crown, HeartHandshake, Lock, Mail, PhoneCall, MessageCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { apiClient, PremiumDashboardPost } from '../services/api';
+import { apiClient, PremiumDashboardPost, ClassifiedAd } from '../services/api';
 
 const SUPPORT_WHATSAPP = '250791859465';
 const SUPPORT_CALL = '0791859465';
+const CLASSIFIED_CATEGORY_LABELS = {
+  cyamunara: 'Cyamunara',
+  akazi: 'Akazi',
+  guhinduza: 'Guhinduza amakuru',
+  ibindi: 'Andi matangazo'
+} as const;
 
 const buildWhatsAppLink = (name: string, email: string) => {
   const message = `Muraho Umunsi, nitwa ${name}, email yanjye ni ${email}. Nashatse Premium access, namaze kwishyura. Mungenzurire konti yanjye.`;
@@ -20,6 +26,7 @@ const SubscriberAccount = () => {
   const [isPremium, setIsPremium] = useState<boolean>(Boolean(user?.isPremium));
   const [premiumUntil, setPremiumUntil] = useState<string | null>(user?.premiumUntil || null);
   const [premiumStories, setPremiumStories] = useState<PremiumDashboardPost[]>([]);
+  const [myClassifiedAds, setMyClassifiedAds] = useState<ClassifiedAd[]>([]);
 
   if (!user) return null;
 
@@ -72,8 +79,20 @@ const SubscriberAccount = () => {
       }
     };
 
+    const loadMyClassifiedAds = async () => {
+      try {
+        const data = await apiClient.getMyClassifiedAds();
+        if (!active) return;
+        setMyClassifiedAds(data);
+      } catch (error) {
+        if (!active) return;
+        setMyClassifiedAds([]);
+      }
+    };
+
     loadProfile();
     loadPremiumStories();
+    loadMyClassifiedAds();
 
     return () => {
       active = false;
@@ -182,6 +201,30 @@ const SubscriberAccount = () => {
                       <p className="text-xs text-gray-500 mt-1">Uru rubuga ruzafunguka nyuma yo kwemererwa na admin.</p>
                     </div>
                   )
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="subscriber-dark-card mt-6 rounded-xl border border-[#2b2f36] bg-[#0f1115] p-4">
+            <div className="flex items-center justify-between gap-2 mb-3">
+              <h4 className="text-white font-semibold">Amatangazo Yanjye</h4>
+              <Link to="/amatangazo" className="text-sm text-[#fcd535] hover:underline">Ohereza itangazo</Link>
+            </div>
+            {myClassifiedAds.length === 0 ? (
+              <p className="text-sm text-gray-400">Nta matangazo wohereje. Kanda kuri "Ohereza itangazo".</p>
+            ) : (
+              <div className="space-y-2">
+                {myClassifiedAds.slice(0, 8).map((ad) => (
+                  <div key={ad.id} className="border border-[#2b2f36] rounded-lg p-3 bg-[#12161c] flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm text-white font-medium">{ad.title}</p>
+                      <p className="text-xs text-gray-500 mt-1">{CLASSIFIED_CATEGORY_LABELS[ad.category]} • {new Date(ad.createdAt).toLocaleDateString('rw-RW')}</p>
+                    </div>
+                    <span className={`text-[11px] px-2 py-1 rounded ${ad.status === 'APPROVED' ? 'bg-emerald-500/20 text-emerald-400' : ad.status === 'REJECTED' ? 'bg-rose-500/20 text-rose-400' : 'bg-amber-500/20 text-amber-400'}`}>
+                      {ad.status}
+                    </span>
+                  </div>
                 ))}
               </div>
             )}

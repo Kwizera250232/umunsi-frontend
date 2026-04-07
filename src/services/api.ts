@@ -399,6 +399,36 @@ export interface AdsBannersState {
   };
 }
 
+export type ClassifiedCategory = 'cyamunara' | 'akazi' | 'guhinduza' | 'ibindi';
+export type ClassifiedStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+
+export interface ClassifiedAd {
+  id: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  category: ClassifiedCategory;
+  title: string;
+  description: string;
+  phone: string;
+  email: string;
+  attachmentName?: string;
+  attachmentUrl?: string;
+  durationDays: number;
+  priceRwf: number;
+  status: ClassifiedStatus;
+  reviewNote?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ClassifiedBroadcast {
+  id: string;
+  message: string;
+  createdAt: string;
+  createdBy: string;
+}
+
 // API Client Class
 class ApiClient {
   private baseURL: string;
@@ -802,6 +832,64 @@ class ApiClient {
   async getAdsBanners(): Promise<AdsBannersState> {
     const response = await this.request<AdsBannersState>('/ads-banners');
     return response;
+  }
+
+  async getClassifiedAds(params?: { category?: ClassifiedCategory; status?: ClassifiedStatus }): Promise<ClassifiedAd[]> {
+    const query = new URLSearchParams();
+    if (params?.category) query.append('category', params.category);
+    if (params?.status) query.append('status', params.status);
+    const suffix = query.toString() ? `?${query.toString()}` : '';
+    const response = await this.request<{ success: boolean; data: ClassifiedAd[] }>(`/classifieds${suffix}`);
+    return response.data || [];
+  }
+
+  async getMyClassifiedAds(): Promise<ClassifiedAd[]> {
+    const response = await this.request<{ success: boolean; data: ClassifiedAd[] }>('/classifieds/mine');
+    return response.data || [];
+  }
+
+  async getAllClassifiedAds(): Promise<ClassifiedAd[]> {
+    const response = await this.request<{ success: boolean; data: ClassifiedAd[] }>('/classifieds/all');
+    return response.data || [];
+  }
+
+  async submitClassifiedAd(payload: {
+    category: ClassifiedCategory;
+    title: string;
+    description: string;
+    phone: string;
+    email: string;
+    attachmentName?: string;
+    attachmentUrl?: string;
+    durationDays: number;
+    priceRwf: number;
+  }): Promise<ClassifiedAd> {
+    const response = await this.request<{ success: boolean; data: ClassifiedAd }>('/classifieds', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    return response.data;
+  }
+
+  async updateClassifiedStatus(id: string, status: 'APPROVED' | 'REJECTED', reviewNote?: string): Promise<ClassifiedAd> {
+    const response = await this.request<{ success: boolean; data: ClassifiedAd }>(`/classifieds/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status, reviewNote }),
+    });
+    return response.data;
+  }
+
+  async getClassifiedBroadcasts(): Promise<ClassifiedBroadcast[]> {
+    const response = await this.request<{ success: boolean; data: ClassifiedBroadcast[] }>('/classifieds/broadcasts/list');
+    return response.data || [];
+  }
+
+  async createClassifiedBroadcast(message: string): Promise<ClassifiedBroadcast> {
+    const response = await this.request<{ success: boolean; data: ClassifiedBroadcast }>('/classifieds/broadcasts', {
+      method: 'POST',
+      body: JSON.stringify({ message }),
+    });
+    return response.data;
   }
 
   async getAdminAdsBanners(): Promise<AdsBannersState> {

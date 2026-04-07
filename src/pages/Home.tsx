@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Clock, Eye, ChevronRight, Loader2, Heart, TrendingUp, Zap, AlertCircle, Mail, Calendar, MapPin, CloudSun, Send, ThumbsUp } from 'lucide-react';
-import { apiClient, Post, Category, AdsBannersState } from '../services/api';
+import { apiClient, Post, Category, AdsBannersState, ClassifiedAd } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
 const getServerBaseUrl = () => {
@@ -25,6 +25,7 @@ const Home = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [email, setEmail] = useState('');
   const [adsBanners, setAdsBanners] = useState<AdsBannersState | null>(null);
+  const [classifiedPreview, setClassifiedPreview] = useState<ClassifiedAd[]>([]);
 
   useEffect(() => {
     fetchHomeData();
@@ -43,6 +44,18 @@ const Home = () => {
     };
 
     loadAdsBanners();
+  }, []);
+
+  useEffect(() => {
+    const loadClassifiedPreview = async () => {
+      try {
+        const data = await apiClient.getClassifiedAds();
+        setClassifiedPreview(data.slice(0, 3));
+      } catch (error) {
+        console.error('Failed to load classifieds preview:', error);
+      }
+    };
+    loadClassifiedPreview();
   }, []);
 
   const fetchHomeData = async () => {
@@ -674,21 +687,23 @@ const Home = () => {
             </Link>
           </div>
 
-          {/* Recent Announcements Preview - Show latest posts */}
+          {/* Recent Announcements Preview */}
           <div className="border-t border-[#2b2f36] p-4">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {posts.slice(0, 3).map((post, index) => (
-                <Link 
-                  key={post.id} 
-                  to={`/post/${post.slug}`}
-                  className={`p-3 bg-[#0b0e11] rounded-lg border border-[#2b2f36] hover:border-[#fcd535]/30 transition-colors ${index === 2 ? 'hidden lg:block' : ''}`}
-                >
-                  <p className="text-white text-sm font-medium line-clamp-1">{post.title}</p>
-                  <p className="text-gray-500 text-xs mt-1">
-                    {post.category?.name || 'Amakuru'} • {formatDate(post.publishedAt || post.createdAt)}
-                  </p>
-                </Link>
-              ))}
+              {classifiedPreview.length === 0 ? (
+                <p className="text-sm text-gray-400">Nta matangazo yemejwe arimo.</p>
+              ) : (
+                classifiedPreview.map((ad, index) => (
+                  <Link
+                    key={ad.id}
+                    to={`/amatangazo/${ad.category}`}
+                    className={`p-3 bg-[#0b0e11] rounded-lg border border-[#2b2f36] hover:border-[#fcd535]/30 transition-colors ${index === 2 ? 'hidden lg:block' : ''}`}
+                  >
+                    <p className="text-white text-sm font-medium line-clamp-1">{ad.title}</p>
+                    <p className="text-gray-500 text-xs mt-1">{ad.phone} • {formatDate(ad.updatedAt)}</p>
+                  </Link>
+                ))
+              )}
             </div>
           </div>
         </div>
