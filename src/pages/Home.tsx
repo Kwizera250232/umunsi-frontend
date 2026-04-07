@@ -119,16 +119,18 @@ const Home = () => {
     return posts.filter(p => p.category?.id === categoryId).slice(0, 4);
   };
 
-  const newsCategoryTabs = (categories.length > 0
-    ? categories
-    : Array.from(
-        new Map(
-          posts
-            .filter((p) => p.category)
-            .map((p) => [p.category!.id, p.category])
-        ).values()
-      ))
-    .slice(0, 8);
+  const postDerivedCategories = Array.from(
+    new Map(
+      posts
+        .filter((p) => p.category)
+        .map((p) => [p.category!.id, p.category])
+    ).values()
+  );
+
+  const newsCategoryTabs = [
+    ...categories,
+    ...postDerivedCategories.filter((postCat) => !categories.some((cat) => cat.id === postCat.id))
+  ];
 
   const getSpecialCategory = (key: SpecialCategoryKey) => {
     const bySlug = categories.find((cat) => normalizeText(cat.slug || '') === key);
@@ -421,39 +423,11 @@ const Home = () => {
               <div className="p-4 border-b border-[#2b2f36] flex items-center justify-between">
                 <h2 className="text-lg font-bold text-white flex items-center gap-2">
                   <span className="w-1 h-6 bg-[#fcd535] rounded"></span>
-                  {activeTab === 'all' ? 'Amakuru Mashya' : categories.find(c => c.id === activeTab)?.name || 'Amakuru'}
+                  {activeTab === 'all' ? 'Amakuru Mashya' : newsCategoryTabs.find(c => c.id === activeTab)?.name || 'Amakuru'}
                 </h2>
                 <Link to="/news" className="text-[#fcd535] text-sm hover:underline flex items-center gap-1">
                   Reba Yose <ChevronRight className="w-4 h-4" />
                 </Link>
-              </div>
-
-              <div className="px-4 pt-3 border-b border-[#2b2f36] overflow-x-auto scrollbar-hide">
-                <div className="flex gap-2 pb-3">
-                  <button
-                    onClick={() => setActiveTab('all')}
-                    className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
-                      activeTab === 'all'
-                        ? 'bg-[#fcd535] text-[#0b0e11]'
-                        : 'bg-[#0b0e11] text-gray-400 hover:bg-[#1e2329] hover:text-white'
-                    }`}
-                  >
-                    Byose
-                  </button>
-                  {newsCategoryTabs.map((cat) => (
-                    <button
-                      key={cat.id}
-                      onClick={() => setActiveTab(cat.id)}
-                      className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
-                        activeTab === cat.id
-                          ? 'bg-[#fcd535] text-[#0b0e11]'
-                          : 'bg-[#0b0e11] text-gray-400 hover:bg-[#1e2329] hover:text-white'
-                      }`}
-                    >
-                      {cat.name}
-                    </button>
-                  ))}
-                </div>
               </div>
               
               <div className="divide-y divide-[#2b2f36]">
@@ -494,6 +468,35 @@ const Home = () => {
                       </div>
                     </div>
                   </Link>
+                ))}
+              </div>
+            </div>
+
+            {/* Restored Categories Row (below Amakuru Mashya) */}
+            <div className="bg-[#181a20] rounded-lg p-3 overflow-x-auto scrollbar-hide">
+              <div className="flex gap-2 min-w-max">
+                <button
+                  onClick={() => setActiveTab('all')}
+                  className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
+                    activeTab === 'all'
+                      ? 'bg-[#fcd535] text-[#0b0e11]'
+                      : 'bg-[#0b0e11] text-gray-400 hover:bg-[#1e2329] hover:text-white'
+                  }`}
+                >
+                  Byose
+                </button>
+                {newsCategoryTabs.map((cat) => (
+                  <button
+                    key={cat.id}
+                    onClick={() => setActiveTab(cat.id)}
+                    className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
+                      activeTab === cat.id
+                        ? 'bg-[#fcd535] text-[#0b0e11]'
+                        : 'bg-[#0b0e11] text-gray-400 hover:bg-[#1e2329] hover:text-white'
+                    }`}
+                  >
+                    {cat.name}
+                  </button>
                 ))}
               </div>
             </div>
