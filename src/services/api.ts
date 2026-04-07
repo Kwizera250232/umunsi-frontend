@@ -181,6 +181,8 @@ export interface Post {
     lastName: string;
     username: string;
     avatar?: string;
+    role?: 'ADMIN' | 'EDITOR' | 'AUTHOR' | 'USER';
+    createdAt?: string;
   };
   category?: {
     id: string;
