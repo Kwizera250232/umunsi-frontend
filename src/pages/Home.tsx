@@ -115,8 +115,10 @@ const Home = () => {
     return `${getServerBaseUrl()}/${upgradedUrl}`;
   };
 
+  const STORIES_PER_CATEGORY = 4;
+
   const getPostsByCategory = (categoryId: string) => {
-    return posts.filter(p => p.category?.id === categoryId).slice(0, 4);
+    return posts.filter(p => p.category?.id === categoryId).slice(0, STORIES_PER_CATEGORY);
   };
 
   const postDerivedCategories = Array.from(
@@ -165,6 +167,10 @@ const Home = () => {
   const filteredPosts = activeTab === 'all' 
     ? posts 
     : posts.filter(p => p.category?.id === activeTab);
+
+  const homeCategorySections = newsCategoryTabs
+    .filter((category) => posts.some((post) => post.category?.id === category.id))
+    .slice(0, 3);
 
   const formatFullDate = () => {
     const days = ['Ku cyumweru', 'Ku wa mbere', 'Ku wa kabiri', 'Ku wa gatatu', 'Ku wa kane', 'Ku wa gatanu', 'Ku wa gatandatu'];
@@ -429,6 +435,34 @@ const Home = () => {
                   Reba Yose <ChevronRight className="w-4 h-4" />
                 </Link>
               </div>
+
+              <div className="px-4 pt-3 border-b border-[#2b2f36] overflow-x-auto scrollbar-hide">
+                <div className="flex gap-2 pb-3 min-w-max">
+                  <button
+                    onClick={() => setActiveTab('all')}
+                    className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
+                      activeTab === 'all'
+                        ? 'bg-[#fcd535] text-[#0b0e11]'
+                        : 'bg-[#0b0e11] text-gray-400 hover:bg-[#1e2329] hover:text-white'
+                    }`}
+                  >
+                    Byose
+                  </button>
+                  {newsCategoryTabs.map((cat) => (
+                    <button
+                      key={cat.id}
+                      onClick={() => setActiveTab(cat.id)}
+                      className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
+                        activeTab === cat.id
+                          ? 'bg-[#fcd535] text-[#0b0e11]'
+                          : 'bg-[#0b0e11] text-gray-400 hover:bg-[#1e2329] hover:text-white'
+                      }`}
+                    >
+                      {cat.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
               
               <div className="divide-y divide-[#2b2f36]">
                 {latestPosts.length === 0 ? (
@@ -472,35 +506,6 @@ const Home = () => {
               </div>
             </div>
 
-            {/* Restored Categories Row (below Amakuru Mashya) */}
-            <div className="bg-[#181a20] rounded-lg p-3 overflow-x-auto scrollbar-hide">
-              <div className="flex gap-2 min-w-max">
-                <button
-                  onClick={() => setActiveTab('all')}
-                  className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
-                    activeTab === 'all'
-                      ? 'bg-[#fcd535] text-[#0b0e11]'
-                      : 'bg-[#0b0e11] text-gray-400 hover:bg-[#1e2329] hover:text-white'
-                  }`}
-                >
-                  Byose
-                </button>
-                {newsCategoryTabs.map((cat) => (
-                  <button
-                    key={cat.id}
-                    onClick={() => setActiveTab(cat.id)}
-                    className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
-                      activeTab === cat.id
-                        ? 'bg-[#fcd535] text-[#0b0e11]'
-                        : 'bg-[#0b0e11] text-gray-400 hover:bg-[#1e2329] hover:text-white'
-                    }`}
-                  >
-                    {cat.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-
             {showAds && (
               <div className="bg-[#181a20] rounded-lg overflow-hidden">
                 <div className="p-2 border-b border-[#2b2f36]">
@@ -513,7 +518,7 @@ const Home = () => {
             )}
 
             {/* Categories with Posts */}
-            {categories.slice(0, 2).map((category) => {
+            {homeCategorySections.map((category) => {
               const categoryPosts = getPostsByCategory(category.id);
               if (categoryPosts.length === 0) return null;
               
