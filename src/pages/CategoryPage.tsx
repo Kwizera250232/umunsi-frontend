@@ -4,6 +4,13 @@ import { Clock, Eye, Heart, ChevronRight, ArrowLeft, Loader2, TrendingUp, Calend
 import { apiClient, Post, Category } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
+const normalizeText = (value: string) =>
+  value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+
 const getServerBaseUrl = () => {
   if (import.meta.env.DEV) {
     return (import.meta.env.VITE_API_URL || 'http://localhost:5000/api').replace('/api', '');
@@ -34,7 +41,11 @@ const CategoryPage = () => {
       const categoriesResponse = await apiClient.getCategories({ includeInactive: false });
       if (categoriesResponse && Array.isArray(categoriesResponse)) {
         setAllCategories(categoriesResponse);
-        const currentCategory = categoriesResponse.find(cat => cat.slug === slug);
+        const normalizedSlug = normalizeText(slug || '');
+        const currentCategory = categoriesResponse.find((cat) => {
+          if (cat.slug === slug) return true;
+          return normalizeText(cat.slug || '') === normalizedSlug || normalizeText(cat.name) === normalizedSlug;
+        });
         setCategory(currentCategory || null);
 
         if (currentCategory) {
