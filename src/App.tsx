@@ -36,6 +36,7 @@ import PostDetail from './pages/admin/PostDetail';
 import Roles from './pages/admin/Roles';
 import AdsManagement from './pages/admin/AdsManagement';
 import { withAuth, withAdmin, withEditor, withAuthor } from './contexts/AuthContext';
+import AdSenseManager from './components/common/AdSenseManager';
 
 // Create wrapped components
 const ProtectedAdminDashboard = withAuthor(AdminDashboard);
@@ -65,6 +66,7 @@ function App() {
   return (
     <AuthProvider>
       <Router>
+        <AdSenseManager />
         <Routes>
           {/* Login routes - standalone, no layout wrapper */}
           <Route path="/login" element={<Navigate to="/subscriber-login" replace />} />

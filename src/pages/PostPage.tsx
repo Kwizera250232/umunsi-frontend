@@ -158,7 +158,7 @@ const PostPage = () => {
 
     let cancelled = false;
     let attempts = 0;
-    const maxAttempts = 20;
+    const maxAttempts = 28;
 
     const tryRenderInlineAd = () => {
       if (cancelled) return;
@@ -192,7 +192,7 @@ const PostPage = () => {
         });
       } catch (error) {
         if (attempts++ < maxAttempts) {
-          setTimeout(tryRenderInlineAd, 500);
+          setTimeout(tryRenderInlineAd, 650);
           return;
         }
         console.error('AdSense inline ad render failed:', error);
