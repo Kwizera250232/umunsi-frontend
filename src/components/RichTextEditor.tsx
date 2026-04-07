@@ -181,19 +181,12 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
   };
 
   const insertImageBlock = (imageUrl: string, defaultAlt: string = 'Inserted image') => {
-    const inlineTextInput = prompt('Enter text below image (optional)') || '';
-    const captionInput = prompt('Enter caption (optional)') || '';
-
     const safeImageUrl = escapeHtml(imageUrl);
-    const safeInlineText = escapeHtml(inlineTextInput.trim());
-    const safeCaption = escapeHtml(captionInput.trim());
     const safeAlt = escapeHtml(defaultAlt);
 
     const imageBlockHtml = `
       <div class="image-text-block" style="margin: 10px 0;">
-        <img src="${safeImageUrl}" alt="${safeCaption || safeAlt}" class="resizable-image" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); cursor: pointer; display: block;" data-original-width="400" data-original-height="300" />
-        ${safeInlineText ? `<p style="margin-top: 8px;">${safeInlineText}</p>` : ''}
-        ${safeCaption ? `<p style="margin-top: 4px; font-size: 13px; color: #9ca3af;"><em>${safeCaption}</em></p>` : ''}
+        <img src="${safeImageUrl}" alt="${safeAlt}" class="resizable-image" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); cursor: pointer; display: block;" data-original-width="400" data-original-height="300" />
       </div>
       <p><br></p>
     `;
@@ -618,14 +611,14 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
               onClick={chooseImageFromLibrary}
               className="w-full text-left px-3 py-2 rounded text-sm text-gray-200 hover:bg-[#1e2329]"
             >
-              Choose Uploaded Image
+              Library
             </button>
             <button
               type="button"
               onClick={chooseImageFromComputer}
               className="w-full text-left px-3 py-2 rounded text-sm text-gray-200 hover:bg-[#1e2329]"
             >
-              Choose from Computer
+              Desktop / Device
             </button>
           </div>
         )}

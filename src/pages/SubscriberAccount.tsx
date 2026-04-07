@@ -84,7 +84,7 @@ const SubscriberAccount = () => {
   const whatsappLink = buildWhatsAppLink(fullName, user.email);
 
   return (
-    <div className="min-h-screen bg-[#0b0e11] py-8">
+    <div className="subscriber-account-page min-h-screen bg-[#0b0e11] py-8">
       <div className="max-w-4xl mx-auto px-4 space-y-6">
         <div className="bg-[#181a20] border border-[#2b2f36] rounded-2xl p-6">
           <h1 className="text-2xl font-bold text-white mb-2">Konti y'Abafatabuguzi</h1>
@@ -92,7 +92,7 @@ const SubscriberAccount = () => {
             Murakaza neza, {user.firstName}. Ubu ufite konti y'abafatabuguzi, kandi uzajya woherezwa imeyili y'inkuru nshya zasohotse.
           </p>
 
-          <div className="mt-4 flex items-center gap-3 text-sm text-gray-300 bg-[#0f1115] border border-[#2b2f36] rounded-xl px-4 py-3">
+          <div className="subscriber-dark-card mt-4 flex items-center gap-3 text-sm text-gray-300 bg-[#0f1115] border border-[#2b2f36] rounded-xl px-4 py-3">
             <Mail className="w-4 h-4 text-[#fcd535]" />
             <span>Imeyili yawe: {user.email}</span>
           </div>
@@ -107,7 +107,7 @@ const SubscriberAccount = () => {
             Kugira ngo ufungurirwe Premium stories, twandikire kuri WhatsApp cyangwa uduhamagare nyuma yo kwishyura. Admin ni we ufungura access yawe mu buryo bwa manual.
           </p>
 
-          <div className="bg-[#0f1115] border border-[#2b2f36] rounded-xl p-4 mb-4">
+          <div className="subscriber-dark-card bg-[#0f1115] border border-[#2b2f36] rounded-xl p-4 mb-4">
             <div className="flex items-center gap-2 text-[#fcd535] font-bold text-lg">
               <Crown className="w-5 h-5" />
               Premium Membership
@@ -132,7 +132,7 @@ const SubscriberAccount = () => {
               href={whatsappLink}
               target="_blank"
               rel="noreferrer"
-              className="bg-[#0f1115] border border-[#2b2f36] rounded-xl p-4 hover:border-[#25d366]/60 transition-colors"
+              className="subscriber-dark-card bg-[#0f1115] border border-[#2b2f36] rounded-xl p-4 hover:border-[#25d366]/60 transition-colors"
             >
               <div className="flex items-center gap-2 mb-1">
                 <MessageCircle className="w-4 h-4 text-[#25d366]" />
@@ -142,7 +142,7 @@ const SubscriberAccount = () => {
             </a>
             <a
               href={`tel:${SUPPORT_CALL.replace(/\s+/g, '')}`}
-              className="bg-[#0f1115] border border-[#2b2f36] rounded-xl p-4 hover:border-[#fcd535]/50 transition-colors"
+              className="subscriber-dark-card bg-[#0f1115] border border-[#2b2f36] rounded-xl p-4 hover:border-[#fcd535]/50 transition-colors"
             >
               <div className="flex items-center gap-2 mb-1">
                 <PhoneCall className="w-4 h-4 text-[#fcd535]" />
@@ -152,14 +152,14 @@ const SubscriberAccount = () => {
             </a>
           </div>
 
-          <div className="mt-4 rounded-xl border border-[#2b2f36] bg-[#0f1115] p-4">
+          <div className="subscriber-dark-card mt-4 rounded-xl border border-[#2b2f36] bg-[#0f1115] p-4">
             <h4 className="text-white font-semibold mb-2">Uko bigenzura</h4>
             <p className="text-gray-400 text-sm">1. Kora ubwishyu uko mubyumvikanye na support.</p>
             <p className="text-gray-400 text-sm">2. Ohereza proof kuri WhatsApp cyangwa telefone.</p>
             <p className="text-gray-400 text-sm">3. Admin agufungurira Premium access nyuma yo kubyemeza.</p>
           </div>
 
-          <div className="mt-6 rounded-xl border border-[#2b2f36] bg-[#0f1115] p-4">
+          <div className="subscriber-dark-card mt-6 rounded-xl border border-[#2b2f36] bg-[#0f1115] p-4">
             <h4 className="text-white font-semibold mb-3">Premium Stories Dashboard</h4>
             {loadingStories ? (
               <p className="text-sm text-gray-400">Turimo kuzana premium stories...</p>
@@ -174,7 +174,7 @@ const SubscriberAccount = () => {
                       <p className="text-xs text-gray-500 mt-1">Kanda usome inkuru</p>
                     </Link>
                   ) : (
-                    <div key={story.id} className="border border-[#2b2f36] rounded-lg p-3 bg-[#12161c]">
+                    <div key={story.id} className="subscriber-dark-card border border-[#2b2f36] rounded-lg p-3 bg-[#12161c]">
                       <div className="flex items-center gap-2 text-gray-300">
                         <Lock className="w-4 h-4 text-[#fcd535]" />
                         <p className="font-medium">Premium Story (Locked)</p>

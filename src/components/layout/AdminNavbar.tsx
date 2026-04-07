@@ -61,7 +61,10 @@ const AdminNavbar: React.FC<AdminNavbarProps> = ({ user: propUser }) => {
   const navigation = [
     { name: 'Dashboard', href: '/admin', icon: BarChart3 },
     { name: 'Posts', href: '/admin/posts', icon: FileText },
+    { name: 'Add Story', href: '/admin/posts/add', icon: FileText },
     { name: 'Categories', href: '/admin/categories', icon: FolderOpen },
+    { name: 'Media Library', href: '/admin/media/library', icon: Image },
+    { name: 'Upload Media', href: '/admin/media/add', icon: Image },
     { name: 'Media', href: '/admin/media', icon: Image },
     { name: 'Users', href: '/admin/users', icon: Users },
     { name: 'Ads', href: '/admin/ads-management', icon: Megaphone },
@@ -269,7 +272,7 @@ const AdminNavbar: React.FC<AdminNavbarProps> = ({ user: propUser }) => {
 
         {/* Mobile navigation menu */}
         <div className={`
-          lg:hidden fixed inset-y-0 left-0 z-50 w-72 bg-[#0b0e11] border-r border-[#2b2f36] transform transition-transform duration-300 ease-in-out
+          lg:hidden fixed inset-y-0 left-0 z-50 w-72 bg-[#0b0e11] border-r border-[#2b2f36] transform transition-transform duration-300 ease-in-out flex flex-col
           ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
         `}>
           <div className="flex items-center justify-between p-4 border-b border-[#2b2f36]">
@@ -290,7 +293,7 @@ const AdminNavbar: React.FC<AdminNavbarProps> = ({ user: propUser }) => {
             </button>
           </div>
 
-          <nav className="p-4 space-y-1">
+          <nav className="flex-1 overflow-y-auto p-4 space-y-1 pb-24">
               {navigation.map((item) => {
                 const Icon = item.icon;
               const isActive = location.pathname === item.href || 
@@ -325,7 +328,7 @@ const AdminNavbar: React.FC<AdminNavbarProps> = ({ user: propUser }) => {
           </nav>
 
           {/* Mobile user section */}
-          <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-[#2b2f36] bg-[#0b0e11]">
+          <div className="mt-auto p-4 border-t border-[#2b2f36] bg-[#0b0e11]">
             <div className="flex items-center space-x-3 p-3 bg-[#1e2329] rounded-xl border border-[#2b2f36]">
               <div className="relative">
                 <div className="w-10 h-10 bg-gradient-to-br from-[#fcd535] to-[#f0b90b] rounded-xl flex items-center justify-center">

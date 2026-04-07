@@ -511,7 +511,7 @@ const PostPage = () => {
                 )}
 
                 {isPremiumLocked ? (
-                  <div className="rounded-xl border border-[#fcd535]/30 bg-[#14181e] p-6 text-center">
+                  <div className="daymode-contrast-card rounded-xl border border-[#fcd535]/30 bg-[#14181e] p-6 text-center">
                     <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-[#fcd535]/15 mb-4">
                       <Crown className="w-7 h-7 text-[#fcd535]" />
                     </div>
