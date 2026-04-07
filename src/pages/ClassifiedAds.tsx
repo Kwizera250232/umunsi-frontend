@@ -87,36 +87,48 @@ const ClassifiedAds = () => {
     e.preventDefault();
     if (!user) return;
 
-    await apiClient.submitClassifiedAd({
-      category: form.category as ClassifiedCategory,
-      title: form.title,
-      description: form.description,
-      phone: form.phone,
-      email: form.email,
-      attachmentName: form.attachmentName || undefined,
-      attachmentUrl: form.attachmentUrl || undefined,
-      durationDays: Number(form.durationDays),
-      priceRwf: selectedPricing.priceRwf
-    });
+    try {
+      await apiClient.submitClassifiedAd({
+        category: form.category as ClassifiedCategory,
+        title: form.title,
+        description: form.description,
+        phone: form.phone,
+        email: form.email,
+        attachmentName: form.attachmentName || undefined,
+        attachmentUrl: form.attachmentUrl || undefined,
+        durationDays: Number(form.durationDays),
+        priceRwf: selectedPricing.priceRwf
+      });
 
-    setForm((prev) => ({ ...prev, title: '', description: '', attachmentName: '', attachmentUrl: '' }));
-    await loadData();
-    alert('Itangazo ryawe ryoherejwe. Rizabanza kugenzurwa (Pending).');
+      setForm((prev) => ({ ...prev, title: '', description: '', attachmentName: '', attachmentUrl: '' }));
+      await loadData();
+      alert('Itangazo ryawe ryoherejwe. Rizabanza kugenzurwa (Pending).');
+    } catch (error) {
+      alert('Ntibyashobotse kohereza itangazo. Ongera ugerageze nyuma gato.');
+    }
   };
 
   const moderate = async (id: string, status: 'APPROVED' | 'REJECTED') => {
     const note = status === 'REJECTED' ? window.prompt('Impamvu yo kwanga (optional):', '') || '' : 'Byemejwe.';
-    await apiClient.updateClassifiedStatus(id, status, note);
-    await loadData();
+    try {
+      await apiClient.updateClassifiedStatus(id, status, note);
+      await loadData();
+    } catch (error) {
+      alert('Ntibyashobotse kuvugurura status. Ongera ugerageze.');
+    }
   };
 
   const sendBroadcast = async () => {
     if (!user) return;
-    const created = await apiClient.createClassifiedBroadcast(broadcastText);
-    if (created) {
-      setBroadcastText('');
-      await loadData();
-      alert('Ubutumwa bwoherejwe ku bakoresha bose.');
+    try {
+      const created = await apiClient.createClassifiedBroadcast(broadcastText);
+      if (created) {
+        setBroadcastText('');
+        await loadData();
+        alert('Ubutumwa bwoherejwe ku bakoresha bose.');
+      }
+    } catch (error) {
+      alert('Ntibyashobotse kohereza ubutumwa. Ongera ugerageze.');
     }
   };
 
