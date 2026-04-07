@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Mail, Phone, Facebook, Twitter, Instagram, Youtube, Heart, MapPin, Clock, Send, ChevronRight, Sparkles } from 'lucide-react';
+import { Phone, Facebook, Twitter, Instagram, Youtube, Heart, MapPin, Clock, Send, ChevronRight, Sparkles } from 'lucide-react';
 
 const Footer = () => {
   const currentYear = new Date().getFullYear();
@@ -34,15 +34,11 @@ const Footer = () => {
               </div>
             </Link>
             <p className="text-gray-400 text-sm mb-4 leading-relaxed">
-              Umunsi.com Entertainment, Health and Social Life through Education.
+              Tukugezaho amakuru yizewe kandi vuba. Kora konte udutere inkunga.
             </p>
             
             {/* Contact Info */}
             <div className="space-y-2 text-sm">
-              <a href="mailto:info@umunsi.rw" className="flex items-center text-gray-400 hover:text-[#fcd535] transition-colors">
-                <Mail size={14} className="mr-2" />
-                info@umunsi.rw
-              </a>
               <a href="tel:0791859465" className="flex items-center text-gray-400 hover:text-[#fcd535] transition-colors">
                 <Phone size={14} className="mr-2" />
                 0791859465
