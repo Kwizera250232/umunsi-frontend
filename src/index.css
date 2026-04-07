@@ -170,6 +170,74 @@ html.day-mode img {
   filter: none;
 }
 
+/* Accessibility contrast layer */
+:root {
+  --app-bg: #121212;
+  --app-surface: #1a1a1a;
+  --app-surface-soft: #242424;
+  --app-border: #3a3a3a;
+  --app-text: #ffffff;
+  --app-muted: #d1d5db;
+  --app-muted-soft: #b8c0cc;
+  --app-placeholder: #9ca3af;
+}
+
+html.day-mode {
+  --app-bg: #ffffff;
+  --app-surface: #f4f6f8;
+  --app-surface-soft: #e9edf2;
+  --app-border: #cbd5e1;
+  --app-text: #000000;
+  --app-muted: #334155;
+  --app-muted-soft: #475569;
+  --app-placeholder: #64748b;
+}
+
+body {
+  background-color: var(--app-bg) !important;
+  color: var(--app-text) !important;
+}
+
+input:not([type='checkbox']):not([type='radio']),
+textarea,
+select,
+.rich-text-editor [contenteditable] {
+  background-color: var(--app-surface) !important;
+  color: var(--app-text) !important;
+  border-color: var(--app-border) !important;
+}
+
+input::placeholder,
+textarea::placeholder,
+.rich-text-editor [contenteditable]:empty:before {
+  color: var(--app-placeholder) !important;
+  opacity: 1 !important;
+}
+
+html:not(.day-mode) .text-gray-500,
+html:not(.day-mode) .text-gray-400,
+html:not(.day-mode) .text-gray-300 {
+  color: var(--app-muted) !important;
+}
+
+html.day-mode .text-gray-500,
+html.day-mode .text-gray-400,
+html.day-mode .text-gray-300 {
+  color: var(--app-muted-soft) !important;
+}
+
+html.day-mode .article-content-readable,
+html.day-mode .article-content-readable *,
+html.day-mode .admin-article-content,
+html.day-mode .admin-article-content * {
+  color: #0f172a !important;
+}
+
+.article-content-readable p:first-of-type,
+.admin-article-content p:first-of-type {
+  font-weight: 700 !important;
+}
+
 /* Custom scrollbar hiding for mobile navigation */
 .scrollbar-hide {
   -ms-overflow-style: none;  /* Internet Explorer 10+ */
