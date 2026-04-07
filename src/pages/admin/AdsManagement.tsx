@@ -253,10 +253,11 @@ const AdsManagement = () => {
         subject: broadcastSubject,
         userIds: targetUserIds,
         sendEmail: true,
-        sendPhone: true
+        sendPhone: true,
+        sendSms: true
       });
 
-      const openWhatsApp = window.confirm(`Broadcast yoherejwe. Emails: ${result.emailsSent}/${result.totalTargets}. Ushaka gufungura links za WhatsApp?`);
+      const openWhatsApp = window.confirm(`Broadcast yoherejwe. Emails: ${result.emailsSent}/${result.totalTargets}, SMS: ${result.smsSent}/${result.totalTargets}. Ushaka gufungura links za WhatsApp?`);
       if (openWhatsApp) {
         result.phoneTargets.slice(0, 10).forEach((target) => window.open(target.whatsappUrl, '_blank'));
       }

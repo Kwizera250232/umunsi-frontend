@@ -434,6 +434,8 @@ export interface ClassifiedDispatchResult {
   totalTargets: number;
   emailsSent: number;
   emailError?: string | null;
+  smsSent: number;
+  smsError?: string | null;
   sentAt: string;
   phoneTargets: Array<{
     userId: string;
@@ -939,6 +941,7 @@ class ApiClient {
     userIds?: string[];
     sendEmail?: boolean;
     sendPhone?: boolean;
+    sendSms?: boolean;
     subject?: string;
   }): Promise<ClassifiedDispatchResult> {
     const response = await this.request<{ success: boolean; data: ClassifiedDispatchResult }>('/classifieds/broadcasts/dispatch', {
