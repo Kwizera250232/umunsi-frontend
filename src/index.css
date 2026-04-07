@@ -238,6 +238,30 @@ html.day-mode .admin-article-content * {
   font-weight: 700 !important;
 }
 
+/* Standard paragraph spacing for all rendered articles */
+.article-content-readable p,
+.admin-article-content p {
+  margin: 0 0 1.05em !important;
+  line-height: 1.85 !important;
+}
+
+.article-content-readable p + p,
+.admin-article-content p + p {
+  margin-top: 0.35em !important;
+}
+
+/* Keep intentionally empty paragraphs as visible spacing */
+.article-content-readable p:empty,
+.admin-article-content p:empty {
+  min-height: 1.2em;
+}
+
+.article-content-readable p > br:only-child,
+.admin-article-content p > br:only-child {
+  display: block;
+  margin: 0.9em 0;
+}
+
 /* Custom scrollbar hiding for mobile navigation */
 .scrollbar-hide {
   -ms-overflow-style: none;  /* Internet Explorer 10+ */
