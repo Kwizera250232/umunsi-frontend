@@ -131,6 +131,11 @@ const Home = () => {
     return matched ? `/category/${matched.slug}` : `/amatangazo/${key}`;
   };
 
+  const allSpecialPath =
+    categories.find((cat) => normalizeText(cat.slug || '') === 'amatangazo' || normalizeText(cat.name) === 'amatangazo')
+      ? `/category/${categories.find((cat) => normalizeText(cat.slug || '') === 'amatangazo' || normalizeText(cat.name) === 'amatangazo')?.slug}`
+      : getSpecialCategoryPath('cyamunara');
+
   const specialCategoryPosts = posts
     .filter((post) => {
       if (!post.category) return false;
@@ -680,7 +685,7 @@ const Home = () => {
               <span className="w-1 h-6 bg-[#fcd535] rounded"></span>
               Amatangazo
             </h2>
-            <Link to="/amatangazo" className="text-[#fcd535] text-sm hover:underline flex items-center gap-1">
+            <Link to={allSpecialPath} className="text-[#fcd535] text-sm hover:underline flex items-center gap-1">
               Reba Yose <ChevronRight className="w-4 h-4" />
             </Link>
           </div>
