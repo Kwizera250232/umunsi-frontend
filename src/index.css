@@ -8,62 +8,62 @@ html.day-mode {
 }
 
 html.day-mode body {
-  background: #edf2f7;
-  color: #111827;
+  background: #f8f8f5;
+  color: #101418;
 }
 
 html.day-mode .bg-\[\#0b0e11\] {
-  background-color: #edf2f7 !important;
+  background-color: #ffffff !important;
 }
 
 html.day-mode .bg-\[\#181a20\] {
-  background-color: #e9eff6 !important;
+  background-color: #ffffff !important;
 }
 
 html.day-mode .bg-\[\#1e2329\] {
-  background-color: #dde5ef !important;
+  background-color: #f3f4ef !important;
 }
 
 html.day-mode .bg-\[\#2b2f36\] {
-  background-color: #cfd9e6 !important;
+  background-color: #e3e4de !important;
 }
 
 html.day-mode .bg-\[\#0f1115\] {
-  background-color: #dbe4ef !important;
+  background-color: #f6f7f2 !important;
 }
 
 html.day-mode .bg-\[\#12161c\] {
-  background-color: #d4dee9 !important;
+  background-color: #f3f4ef !important;
 }
 
 html.day-mode .bg-\[\#14181e\] {
-  background-color: #d7e1ec !important;
+  background-color: #eff1ea !important;
 }
 
 /* Global fallback for Tailwind arbitrary color class names in markup */
 html.day-mode [class*="bg-[#0f1115]"] {
-  background-color: #dbe4ef !important;
+  background-color: #f6f7f2 !important;
 }
 
 html.day-mode [class*="bg-[#12161c]"] {
-  background-color: #d4dee9 !important;
+  background-color: #f3f4ef !important;
 }
 
 html.day-mode [class*="bg-[#14181e]"] {
-  background-color: #d7e1ec !important;
+  background-color: #eff1ea !important;
 }
 
 /* Subscriber page: force dark utility cards to become light in day mode */
 html.day-mode .subscriber-account-page [class*="bg-[#0f1115]"] {
-  background-color: #dbe4ef !important;
+  background-color: #f6f7f2 !important;
 }
 
 html.day-mode .subscriber-account-page [class*="bg-[#12161c]"] {
-  background-color: #d4dee9 !important;
+  background-color: #f3f4ef !important;
 }
 
 html.day-mode .subscriber-account-page [class*="bg-[#181a20]"] {
-  background-color: #e9eff6 !important;
+  background-color: #ffffff !important;
 }
 
 /* Keep WhatsApp CTA readable in day mode (green button + icon/text contrast) */
@@ -85,8 +85,8 @@ html.day-mode .subscriber-account-page a[href*="wa.me"] svg {
 
 /* Subscriber cards: guaranteed contrast in day mode */
 html.day-mode .subscriber-account-page .subscriber-dark-card {
-  background-color: #dbe4ef !important;
-  border-color: #b9c7d8 !important;
+  background-color: #f4f6ef !important;
+  border-color: #d6d8d0 !important;
 }
 
 html.day-mode .subscriber-account-page .subscriber-dark-card .text-white,
@@ -97,8 +97,8 @@ html.day-mode .subscriber-account-page .subscriber-dark-card .text-gray-500 {
 }
 
 html.day-mode .daymode-contrast-card {
-  background-color: #d7e1ec !important;
-  border-color: #b9c7d8 !important;
+  background-color: #f1f3eb !important;
+  border-color: #d6d8d0 !important;
 }
 
 html.day-mode .daymode-contrast-card .text-white,
@@ -109,11 +109,11 @@ html.day-mode .daymode-contrast-card .text-gray-500 {
 }
 
 html.day-mode .bg-white {
-  background-color: #eef3f8 !important;
+  background-color: #ffffff !important;
 }
 
 html.day-mode .border-\[\#2b2f36\] {
-  border-color: #d1d5db !important;
+  border-color: #dddfd7 !important;
 }
 
 html.day-mode .text-white {
@@ -121,7 +121,7 @@ html.day-mode .text-white {
 }
 
 html.day-mode .text-gray-300 {
-  color: #374151 !important;
+  color: #2f3a44 !important;
 }
 
 html.day-mode .text-gray-200 {
@@ -129,11 +129,11 @@ html.day-mode .text-gray-200 {
 }
 
 html.day-mode .text-gray-400 {
-  color: #4b5563 !important;
+  color: #43505c !important;
 }
 
 html.day-mode .text-gray-500 {
-  color: #6b7280 !important;
+  color: #5a6773 !important;
 }
 
 html.day-mode .text-gray-900,
@@ -146,7 +146,7 @@ html.day-mode .day-mode-muted {
 }
 
 html.day-mode .hover\:bg-\[\#1e2329\]:hover {
-  background-color: #e5e7eb !important;
+  background-color: #eceee7 !important;
 }
 
 html.day-mode .prose-invert {
@@ -183,14 +183,14 @@ html.day-mode img {
 }
 
 html.day-mode {
-  --app-bg: #ffffff;
-  --app-surface: #f4f6f8;
-  --app-surface-soft: #e9edf2;
-  --app-border: #cbd5e1;
-  --app-text: #000000;
-  --app-muted: #334155;
-  --app-muted-soft: #475569;
-  --app-placeholder: #64748b;
+  --app-bg: #f8f8f5;
+  --app-surface: #ffffff;
+  --app-surface-soft: #f3f4ef;
+  --app-border: #dddfd7;
+  --app-text: #101418;
+  --app-muted: #2f3a44;
+  --app-muted-soft: #43505c;
+  --app-placeholder: #60707e;
 }
 
 body {

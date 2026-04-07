@@ -1,8 +1,24 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Clock, Eye, ChevronRight, Loader2, Heart, TrendingUp, Zap, AlertCircle, Mail, Calendar, MapPin, CloudSun, Send, ThumbsUp } from 'lucide-react';
-import { apiClient, Post, Category, AdsBannersState, ClassifiedAd } from '../services/api';
+import { apiClient, Post, Category, AdsBannersState } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+
+type SpecialCategoryKey = 'cyamunara' | 'akazi' | 'guhinduza' | 'ibindi';
+
+const SPECIAL_CATEGORIES: Array<{ key: SpecialCategoryKey; label: string }> = [
+  { key: 'cyamunara', label: 'Cyamunara' },
+  { key: 'akazi', label: 'Akazi' },
+  { key: 'guhinduza', label: 'Guhinduza amakuru' },
+  { key: 'ibindi', label: 'Andi matangazo' }
+];
+
+const normalizeText = (value: string) =>
+  value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
 
 const getServerBaseUrl = () => {
   if (import.meta.env.DEV) {
@@ -25,7 +41,6 @@ const Home = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [email, setEmail] = useState('');
   const [adsBanners, setAdsBanners] = useState<AdsBannersState | null>(null);
-  const [classifiedPreview, setClassifiedPreview] = useState<ClassifiedAd[]>([]);
 
   useEffect(() => {
     fetchHomeData();
@@ -44,18 +59,6 @@ const Home = () => {
     };
 
     loadAdsBanners();
-  }, []);
-
-  useEffect(() => {
-    const loadClassifiedPreview = async () => {
-      try {
-        const data = await apiClient.getClassifiedAds();
-        setClassifiedPreview(data.slice(0, 3));
-      } catch (error) {
-        console.error('Failed to load classifieds preview:', error);
-      }
-    };
-    loadClassifiedPreview();
   }, []);
 
   const fetchHomeData = async () => {
@@ -115,6 +118,31 @@ const Home = () => {
   const getPostsByCategory = (categoryId: string) => {
     return posts.filter(p => p.category?.id === categoryId).slice(0, 4);
   };
+
+  const getSpecialCategory = (key: SpecialCategoryKey) => {
+    const bySlug = categories.find((cat) => normalizeText(cat.slug || '') === key);
+    if (bySlug) return bySlug;
+    const targetLabel = SPECIAL_CATEGORIES.find((item) => item.key === key)?.label || key;
+    return categories.find((cat) => normalizeText(cat.name) === normalizeText(targetLabel));
+  };
+
+  const getSpecialCategoryPath = (key: SpecialCategoryKey) => {
+    const matched = getSpecialCategory(key);
+    return matched ? `/category/${matched.slug}` : `/amatangazo/${key}`;
+  };
+
+  const specialCategoryPosts = posts
+    .filter((post) => {
+      if (!post.category) return false;
+      const normalizedCategoryName = normalizeText(post.category.name);
+      const normalizedCategorySlug = normalizeText(post.category.slug || '');
+      return SPECIAL_CATEGORIES.some(({ key, label }) => {
+        const matchedCategory = getSpecialCategory(key);
+        if (matchedCategory?.id && post.category?.id === matchedCategory.id) return true;
+        return normalizedCategorySlug === key || normalizedCategoryName === normalizeText(label);
+      });
+    })
+    .slice(0, 6);
 
   const filteredPosts = activeTab === 'all' 
     ? posts 
@@ -659,48 +687,48 @@ const Home = () => {
           
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-4">
             {/* Cyamunara - Auctions */}
-            <Link to="/amatangazo/cyamunara" className="group">
+            <Link to={getSpecialCategoryPath('cyamunara')} className="group">
               <div className="bg-[#0b0e11] rounded-lg px-4 py-3 border border-[#2b2f36] hover:border-orange-500/50 hover:bg-[#1e2329] transition-all text-center">
                 <h3 className="text-white font-semibold text-sm group-hover:text-orange-400 transition-colors">Cyamunara</h3>
               </div>
             </Link>
 
             {/* Akazi - Jobs */}
-            <Link to="/amatangazo/akazi" className="group">
+            <Link to={getSpecialCategoryPath('akazi')} className="group">
               <div className="bg-[#0b0e11] rounded-lg px-4 py-3 border border-[#2b2f36] hover:border-blue-500/50 hover:bg-[#1e2329] transition-all text-center">
                 <h3 className="text-white font-semibold text-sm group-hover:text-blue-400 transition-colors">Akazi</h3>
               </div>
             </Link>
 
             {/* Guhinduza amakuru - Change Info */}
-            <Link to="/amatangazo/guhinduza" className="group">
+            <Link to={getSpecialCategoryPath('guhinduza')} className="group">
               <div className="bg-[#0b0e11] rounded-lg px-4 py-3 border border-[#2b2f36] hover:border-emerald-500/50 hover:bg-[#1e2329] transition-all text-center">
                 <h3 className="text-white font-semibold text-sm group-hover:text-emerald-400 transition-colors">Guhinduza amakuru</h3>
               </div>
             </Link>
 
             {/* Andi matangazo - Others */}
-            <Link to="/amatangazo/ibindi" className="group">
+            <Link to={getSpecialCategoryPath('ibindi')} className="group">
               <div className="bg-[#0b0e11] rounded-lg px-4 py-3 border border-[#2b2f36] hover:border-purple-500/50 hover:bg-[#1e2329] transition-all text-center">
                 <h3 className="text-white font-semibold text-sm group-hover:text-purple-400 transition-colors">Andi matangazo</h3>
               </div>
             </Link>
           </div>
 
-          {/* Recent Announcements Preview */}
+          {/* Special category posts only */}
           <div className="border-t border-[#2b2f36] p-4">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {classifiedPreview.length === 0 ? (
-                <p className="text-sm text-gray-400">Nta matangazo yemejwe arimo.</p>
+              {specialCategoryPosts.length === 0 ? (
+                <p className="text-sm text-gray-400">Nta nkuru ziri muri izi categories ubu.</p>
               ) : (
-                classifiedPreview.map((ad, index) => (
+                specialCategoryPosts.map((post, index) => (
                   <Link
-                    key={ad.id}
-                    to={`/amatangazo/${ad.category}`}
+                    key={post.id}
+                    to={`/post/${post.slug}`}
                     className={`p-3 bg-[#0b0e11] rounded-lg border border-[#2b2f36] hover:border-[#fcd535]/30 transition-colors ${index === 2 ? 'hidden lg:block' : ''}`}
                   >
-                    <p className="text-white text-sm font-medium line-clamp-1">{ad.title}</p>
-                    <p className="text-gray-500 text-xs mt-1">{ad.phone} • {formatDate(ad.updatedAt)}</p>
+                    <p className="text-white text-sm font-medium line-clamp-1">{post.title}</p>
+                    <p className="text-gray-500 text-xs mt-1">{post.category?.name} • {formatDate(post.publishedAt || post.createdAt)}</p>
                   </Link>
                 ))
               )}
