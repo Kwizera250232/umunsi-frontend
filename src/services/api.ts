@@ -429,6 +429,20 @@ export interface ClassifiedBroadcast {
   createdBy: string;
 }
 
+export interface ClassifiedDispatchResult {
+  broadcastId: string;
+  totalTargets: number;
+  emailsSent: number;
+  emailError?: string | null;
+  sentAt: string;
+  phoneTargets: Array<{
+    userId: string;
+    name: string;
+    phone?: string;
+    whatsappUrl: string;
+  }>;
+}
+
 // API Client Class
 class ApiClient {
   private baseURL: string;
@@ -853,6 +867,11 @@ class ApiClient {
     return response.data || [];
   }
 
+  async getClassifiedAdsByUser(userId: string): Promise<ClassifiedAd[]> {
+    const response = await this.request<{ success: boolean; data: ClassifiedAd[] }>(`/classifieds/user/${userId}`);
+    return response.data || [];
+  }
+
   async submitClassifiedAd(payload: {
     category: ClassifiedCategory;
     title: string;
@@ -879,6 +898,29 @@ class ApiClient {
     return response.data;
   }
 
+  async updateClassifiedAd(
+    id: string,
+    payload: Partial<{
+      category: ClassifiedCategory;
+      title: string;
+      description: string;
+      phone: string;
+      email: string;
+      attachmentName: string;
+      attachmentUrl: string;
+      durationDays: number;
+      priceRwf: number;
+      status: ClassifiedStatus;
+      reviewNote: string;
+    }>
+  ): Promise<ClassifiedAd> {
+    const response = await this.request<{ success: boolean; data: ClassifiedAd }>(`/classifieds/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+    return response.data;
+  }
+
   async getClassifiedBroadcasts(): Promise<ClassifiedBroadcast[]> {
     const response = await this.request<{ success: boolean; data: ClassifiedBroadcast[] }>('/classifieds/broadcasts/list');
     return response.data || [];
@@ -888,6 +930,20 @@ class ApiClient {
     const response = await this.request<{ success: boolean; data: ClassifiedBroadcast }>('/classifieds/broadcasts', {
       method: 'POST',
       body: JSON.stringify({ message }),
+    });
+    return response.data;
+  }
+
+  async dispatchClassifiedBroadcast(payload: {
+    message: string;
+    userIds?: string[];
+    sendEmail?: boolean;
+    sendPhone?: boolean;
+    subject?: string;
+  }): Promise<ClassifiedDispatchResult> {
+    const response = await this.request<{ success: boolean; data: ClassifiedDispatchResult }>('/classifieds/broadcasts/dispatch', {
+      method: 'POST',
+      body: JSON.stringify(payload),
     });
     return response.data;
   }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Megaphone, Save, Loader2, ExternalLink } from 'lucide-react';
-import { apiClient, AdsBannersState } from '../../services/api';
+import { Megaphone, Save, Loader2, ExternalLink, CheckCircle2, XCircle, PhoneCall, Mail } from 'lucide-react';
+import { apiClient, AdsBannersState, ClassifiedAd, User } from '../../services/api';
 
 type SlotKey = keyof AdsBannersState['slots'];
 
@@ -72,13 +72,25 @@ const AdsManagement = () => {
   const [savingAds, setSavingAds] = useState(false);
   const [htmlCodeBySlot, setHtmlCodeBySlot] = useState<Partial<Record<SlotKey, string>>>({});
   const [uploadingBySlot, setUploadingBySlot] = useState<Partial<Record<SlotKey, boolean>>>({});
+  const [classifiedAds, setClassifiedAds] = useState<ClassifiedAd[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+  const [broadcastSubject, setBroadcastSubject] = useState('Ubutumwa buvuye kuri Umunsi');
+  const [broadcastMessage, setBroadcastMessage] = useState('');
+  const [dispatching, setDispatching] = useState(false);
 
   useEffect(() => {
     const fetchSettings = async () => {
       try {
         setLoading(true);
-        const response = await apiClient.getAdminAdsBanners();
+        const [response, ads, usersResponse] = await Promise.all([
+          apiClient.getAdminAdsBanners(),
+          apiClient.getAllClassifiedAds(),
+          apiClient.getUsers({ limit: 200 }) as any
+        ]);
         setAdsSettings(response);
+        setClassifiedAds(ads);
+        setUsers((usersResponse?.users || usersResponse?.data || []) as User[]);
       } catch (error) {
         console.error('Failed to load ads settings:', error);
         setAdsSettings(defaultAdsSettings);
@@ -183,6 +195,79 @@ const AdsManagement = () => {
     { key: 'skyscraper300x600', place: 'Sidebar Skyscraper' },
     { key: 'leaderboardBottom970x120', place: 'Bottom Leaderboard' }
   ];
+
+  const refreshClassifieds = async () => {
+    try {
+      const ads = await apiClient.getAllClassifiedAds();
+      setClassifiedAds(ads);
+    } catch (error) {
+      console.error('Failed to refresh classifieds:', error);
+    }
+  };
+
+  const moderate = async (adId: string, status: 'APPROVED' | 'REJECTED') => {
+    try {
+      const reviewNote = status === 'REJECTED'
+        ? window.prompt('Andika impamvu yo kwanga (optional):', '') || ''
+        : 'Byemejwe na Admin';
+      await apiClient.updateClassifiedStatus(adId, status, reviewNote);
+      await refreshClassifieds();
+      alert(status === 'APPROVED' ? 'Itangazo ryemejwe.' : 'Itangazo ryanze.');
+    } catch (error) {
+      alert('Ntibyashobotse kuvugurura status. Ongera ugerageze.');
+    }
+  };
+
+  const editClassified = async (ad: ClassifiedAd) => {
+    const title = window.prompt('Hindura title y\'itangazo:', ad.title);
+    if (!title) return;
+    const description = window.prompt('Hindura description:', ad.description);
+    if (!description) return;
+    const phone = window.prompt('Hindura telefone:', ad.phone) || ad.phone;
+    const email = window.prompt('Hindura email:', ad.email) || ad.email;
+
+    try {
+      await apiClient.updateClassifiedAd(ad.id, { title, description, phone, email });
+      await refreshClassifieds();
+      alert('Itangazo ryavuguruwe.');
+    } catch (error) {
+      alert('Ntibyashobotse guhindura itangazo.');
+    }
+  };
+
+  const toggleUserSelection = (userId: string) => {
+    setSelectedUserIds((prev) => prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]);
+  };
+
+  const sendBroadcast = async () => {
+    if (!broadcastMessage.trim()) {
+      alert('Andika ubutumwa mbere yo kohereza.');
+      return;
+    }
+
+    setDispatching(true);
+    try {
+      const targetUserIds = selectedUserIds.length > 0 ? selectedUserIds : users.map((u) => u.id);
+      const result = await apiClient.dispatchClassifiedBroadcast({
+        message: broadcastMessage,
+        subject: broadcastSubject,
+        userIds: targetUserIds,
+        sendEmail: true,
+        sendPhone: true
+      });
+
+      const openWhatsApp = window.confirm(`Broadcast yoherejwe. Emails: ${result.emailsSent}/${result.totalTargets}. Ushaka gufungura links za WhatsApp?`);
+      if (openWhatsApp) {
+        result.phoneTargets.slice(0, 10).forEach((target) => window.open(target.whatsappUrl, '_blank'));
+      }
+
+      setBroadcastMessage('');
+    } catch (error) {
+      alert('Ntibyashobotse kohereza broadcast. Reba SMTP cyangwa network.');
+    } finally {
+      setDispatching(false);
+    }
+  };
 
   if (loading || !adsSettings) {
     return (
@@ -334,6 +419,81 @@ const AdsManagement = () => {
           >
             <Save className="w-4 h-4" />
             {savingAds ? 'Saving...' : 'Save Ads Settings'}
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-8 bg-[#181a20] rounded-2xl border border-[#2b2f36] p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-white">Amatangazo Moderation (Admin Dashboard)</h3>
+          <span className="text-xs text-gray-400">Total: {classifiedAds.length}</span>
+        </div>
+
+        <div className="space-y-3 mb-8">
+          {classifiedAds.length === 0 ? (
+            <p className="text-sm text-gray-400">Nta matangazo arimo.</p>
+          ) : (
+            classifiedAds.map((ad) => (
+              <div key={ad.id} className="p-3 rounded-lg border border-[#2b2f36] bg-[#0f1115]">
+                <div className="flex items-start justify-between gap-3 flex-wrap">
+                  <div>
+                    <p className="text-white font-semibold">{ad.title}</p>
+                    <p className="text-xs text-gray-500 mt-1">{ad.userName} • {ad.phone} • {ad.email}</p>
+                    <p className="text-sm text-gray-300 mt-2">{ad.description}</p>
+                    {ad.attachmentUrl && (
+                      <a href={ad.attachmentUrl} target="_blank" rel="noreferrer" className="text-xs text-[#fcd535] hover:underline mt-1 inline-block">View Attachment</a>
+                    )}
+                  </div>
+                  <span className={`text-xs px-2 py-1 rounded ${ad.status === 'APPROVED' ? 'bg-emerald-500/20 text-emerald-400' : ad.status === 'REJECTED' ? 'bg-rose-500/20 text-rose-400' : 'bg-amber-500/20 text-amber-400'}`}>
+                    {ad.status}
+                  </span>
+                </div>
+
+                <div className="flex gap-2 flex-wrap mt-3">
+                  <button onClick={() => moderate(ad.id, 'APPROVED')} className="px-3 py-1 rounded bg-emerald-600 text-white text-xs flex items-center gap-1"><CheckCircle2 className="w-3 h-3" />Approve</button>
+                  <button onClick={() => moderate(ad.id, 'REJECTED')} className="px-3 py-1 rounded bg-rose-600 text-white text-xs flex items-center gap-1"><XCircle className="w-3 h-3" />Reject</button>
+                  <button onClick={() => editClassified(ad)} className="px-3 py-1 rounded bg-[#2b2f36] text-white text-xs">Edit</button>
+                  <a href={`tel:${ad.phone}`} className="px-3 py-1 rounded bg-[#1f2937] text-gray-100 text-xs inline-flex items-center gap-1"><PhoneCall className="w-3 h-3" />Call</a>
+                  <a href={`mailto:${ad.email}`} className="px-3 py-1 rounded bg-[#1f2937] text-gray-100 text-xs inline-flex items-center gap-1"><Mail className="w-3 h-3" />Email</a>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        <div className="border-t border-[#2b2f36] pt-5">
+          <h4 className="text-white font-semibold mb-3">Andikira Users Bose (Email + Telefone)</h4>
+          <p className="text-xs text-gray-500 mb-3">Hitamo users ushaka. Niba ntawuhisemo, boherezwa bose.</p>
+
+          <div className="max-h-40 overflow-auto border border-[#2b2f36] rounded-lg p-2 mb-3 bg-[#0f1115]">
+            {users.map((u) => (
+              <label key={u.id} className="flex items-center justify-between gap-2 text-sm text-gray-300 py-1 px-1 hover:bg-[#181a20] rounded">
+                <span>{u.firstName} {u.lastName} - {u.email} {u.phone ? ` / ${u.phone}` : ''}</span>
+                <input type="checkbox" checked={selectedUserIds.includes(u.id)} onChange={() => toggleUserSelection(u.id)} />
+              </label>
+            ))}
+          </div>
+
+          <input
+            type="text"
+            value={broadcastSubject}
+            onChange={(e) => setBroadcastSubject(e.target.value)}
+            placeholder="Subject ya email"
+            className="w-full bg-[#0b0e11] border border-[#2b2f36] rounded-lg px-3 py-2 text-white text-sm mb-2"
+          />
+          <textarea
+            value={broadcastMessage}
+            onChange={(e) => setBroadcastMessage(e.target.value)}
+            rows={4}
+            placeholder="Andika ubutumwa bwoherezwa ku email no kuri telefone (WhatsApp links)..."
+            className="w-full bg-[#0b0e11] border border-[#2b2f36] rounded-lg px-3 py-2 text-white text-sm"
+          />
+          <button
+            onClick={sendBroadcast}
+            disabled={dispatching}
+            className="mt-3 px-4 py-2 rounded-lg bg-[#fcd535] text-[#181a20] font-semibold disabled:opacity-60"
+          >
+            {dispatching ? 'Kohereza...' : 'Kohereza ku Email + Telefone'}
           </button>
         </div>
       </div>

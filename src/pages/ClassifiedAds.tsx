@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import MediaLibraryModal from '../components/MediaLibraryModal';
 import {
   ClassifiedCategory,
   ClassifiedAd,
   ClassifiedBroadcast,
+  MediaFile,
   apiClient
 } from '../services/api';
 
@@ -41,6 +43,8 @@ const ClassifiedAds = () => {
     attachmentName: ''
   });
   const [broadcastText, setBroadcastText] = useState('');
+  const [showMediaLibrary, setShowMediaLibrary] = useState(false);
+  const [uploadingAttachment, setUploadingAttachment] = useState(false);
   const [loading, setLoading] = useState(true);
   const [ads, setAds] = useState<ClassifiedAd[]>([]);
   const [myAds, setMyAds] = useState<ClassifiedAd[]>([]);
@@ -105,6 +109,55 @@ const ClassifiedAds = () => {
       alert('Itangazo ryawe ryoherejwe. Rizabanza kugenzurwa (Pending).');
     } catch (error) {
       alert('Ntibyashobotse kohereza itangazo. Ongera ugerageze nyuma gato.');
+    }
+  };
+
+  const onPickFromLibrary = (media: MediaFile) => {
+    setForm((prev) => ({
+      ...prev,
+      attachmentName: media.originalName || media.filename,
+      attachmentUrl: media.url
+    }));
+  };
+
+  const onUploadFromDevice = async (file?: File) => {
+    if (!file) return;
+    setUploadingAttachment(true);
+    try {
+      const formData = new FormData();
+      formData.append('files', file);
+      const uploaded = await apiClient.uploadMediaFiles(formData);
+      if (uploaded?.[0]?.url) {
+        setForm((prev) => ({
+          ...prev,
+          attachmentName: uploaded[0].originalName || uploaded[0].filename,
+          attachmentUrl: uploaded[0].url
+        }));
+      }
+    } catch (error) {
+      alert('Ntibyashobotse kohereza ifoto ivuye muri device.');
+    } finally {
+      setUploadingAttachment(false);
+    }
+  };
+
+  const editAd = async (ad: ClassifiedAd) => {
+    const title = window.prompt('Hindura umutwe w\'itangazo:', ad.title);
+    if (!title) return;
+    const description = window.prompt('Hindura ibisobanuro:', ad.description);
+    if (!description) return;
+    const phone = window.prompt('Hindura telefone:', ad.phone) || ad.phone;
+
+    try {
+      await apiClient.updateClassifiedAd(ad.id, {
+        title,
+        description,
+        phone
+      });
+      await loadData();
+      alert('Itangazo ryavuguruwe.');
+    } catch (error) {
+      alert('Ntibyashobotse guhindura itangazo.');
     }
   };
 
@@ -190,12 +243,22 @@ const ClassifiedAds = () => {
               <input className="bg-[#0b0e11] border border-[#2b2f36] rounded-lg px-3 py-2 text-white" placeholder="Email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
               <input className="bg-[#0b0e11] border border-[#2b2f36] rounded-lg px-3 py-2 text-white" placeholder="Izina rya file (Ifoto/PDF/Doc)" value={form.attachmentName} onChange={(e) => setForm({ ...form, attachmentName: e.target.value })} />
 
+              <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-2">
+                <label className="bg-[#0b0e11] border border-[#2b2f36] rounded-lg px-3 py-2 text-white text-sm flex items-center justify-between">
+                  <span>Shyiraho ifoto ivuye muri Device</span>
+                  <input type="file" accept="image/*" onChange={(e) => onUploadFromDevice(e.target.files?.[0])} className="text-xs" />
+                </label>
+                <button type="button" onClick={() => setShowMediaLibrary(true)} className="bg-[#0b0e11] border border-[#2b2f36] rounded-lg px-3 py-2 text-white text-sm text-left hover:border-[#fcd535]/60">
+                  Hitamo ifoto ivuye muri Library
+                </button>
+              </div>
+
               <input className="md:col-span-2 bg-[#0b0e11] border border-[#2b2f36] rounded-lg px-3 py-2 text-white" placeholder="Link ya file (optional)" value={form.attachmentUrl} onChange={(e) => setForm({ ...form, attachmentUrl: e.target.value })} />
               <textarea className="md:col-span-2 bg-[#0b0e11] border border-[#2b2f36] rounded-lg px-3 py-2 text-white" rows={4} placeholder="Umwanya wo kwandikamo itangazo" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} required />
 
               <div className="md:col-span-2 flex justify-between items-center">
                 <p className="text-sm text-gray-400">Igiciro cyatoranyijwe: <span className="text-[#fcd535] font-semibold">{selectedPricing.priceRwf.toLocaleString()} RWF</span></p>
-                <button type="submit" className="px-4 py-2 rounded-lg bg-[#fcd535] text-[#0b0e11] font-semibold">Ohereza Gusuzumwa</button>
+                <button type="submit" className="px-4 py-2 rounded-lg bg-[#fcd535] text-[#0b0e11] font-semibold">{uploadingAttachment ? 'Turimo kohereza ifoto...' : 'Ohereza Gusuzumwa'}</button>
               </div>
             </form>
           </div>
@@ -224,7 +287,10 @@ const ClassifiedAds = () => {
                     <p className="text-white">{ad.title}</p>
                     <p className="text-xs text-gray-500">{CLASSIFIED_CATEGORY_LABELS[ad.category]} • {new Date(ad.createdAt).toLocaleDateString('rw-RW')}</p>
                   </div>
-                  <span className={`text-xs px-2 py-1 rounded ${ad.status === 'APPROVED' ? 'bg-emerald-500/20 text-emerald-400' : ad.status === 'REJECTED' ? 'bg-rose-500/20 text-rose-400' : 'bg-amber-500/20 text-amber-400'}`}>{ad.status}</span>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs px-2 py-1 rounded ${ad.status === 'APPROVED' ? 'bg-emerald-500/20 text-emerald-400' : ad.status === 'REJECTED' ? 'bg-rose-500/20 text-rose-400' : 'bg-amber-500/20 text-amber-400'}`}>{ad.status}</span>
+                    <button type="button" onClick={() => editAd(ad)} className="text-xs px-2 py-1 rounded bg-[#2b2f36] text-white hover:bg-[#3a3f48]">Edit</button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -240,9 +306,13 @@ const ClassifiedAds = () => {
                   <p className="text-white font-semibold">{ad.title}</p>
                   <p className="text-xs text-gray-500 mb-2">{ad.userName} • {ad.phone} • {CLASSIFIED_CATEGORY_LABELS[ad.category]}</p>
                   <p className="text-sm text-gray-300 mb-2">{ad.description}</p>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
                     <button onClick={() => moderate(ad.id, 'APPROVED')} className="px-3 py-1 rounded bg-emerald-600 text-white text-xs">Approve</button>
                     <button onClick={() => moderate(ad.id, 'REJECTED')} className="px-3 py-1 rounded bg-rose-600 text-white text-xs">Reject</button>
+                    <button onClick={() => editAd(ad)} className="px-3 py-1 rounded bg-[#2b2f36] text-white text-xs">Edit</button>
+                    <a href={`tel:${ad.phone}`} className="px-3 py-1 rounded bg-[#1f2937] text-gray-100 text-xs">Hamagara</a>
+                    <a href={`mailto:${ad.email}`} className="px-3 py-1 rounded bg-[#1f2937] text-gray-100 text-xs">Email</a>
+                    <a href={`https://wa.me/${ad.phone.replace(/\s+/g, '').replace(/^0/, '250')}`} target="_blank" rel="noreferrer" className="px-3 py-1 rounded bg-[#25d366]/20 text-[#25d366] text-xs">WhatsApp</a>
                   </div>
                 </div>
               ))}
@@ -276,6 +346,15 @@ const ClassifiedAds = () => {
           </div>
         )}
       </div>
+
+      <MediaLibraryModal
+        isOpen={showMediaLibrary}
+        onClose={() => setShowMediaLibrary(false)}
+        onSelect={onPickFromLibrary}
+        title="Hitamo ifoto"
+        mode="select"
+        type="image"
+      />
     </div>
   );
 };
