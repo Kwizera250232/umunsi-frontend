@@ -9,6 +9,7 @@ import Entertainment from './pages/Entertainment';
 import CategoryPage from './pages/CategoryPage';
 import PostPage from './pages/PostPage';
 import Newsletter from './pages/Newsletter';
+import ClassifiedAds from './pages/ClassifiedAds';
 import Login from './pages/Login';
 import AdminLogin from './pages/AdminLogin';
 import SubscriberAccount from './pages/SubscriberAccount';
@@ -93,6 +94,8 @@ function App() {
                 <Route path="/post/:slug" element={<PostPage />} />
                 <Route path="/article/:id" element={<PostPage />} />
                 <Route path="/newsletter" element={<Newsletter />} />
+                <Route path="/amatangazo" element={<ClassifiedAds />} />
+                <Route path="/amatangazo/:category" element={<ClassifiedAds />} />
                 <Route path="/profile" element={<ProtectedProfile />} />
                 <Route path="/subscriber/account" element={<ProtectedSubscriberAccount />} />
               </Routes>
