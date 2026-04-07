@@ -43,6 +43,7 @@ interface User {
   avatar?: string;
   phone?: string;
   bio?: string;
+  profileUrl?: string;
   permissions: string[];
   articleCount: number;
   commentCount: number;
@@ -69,6 +70,7 @@ const Users = () => {
     username: '',
     firstName: '',
     lastName: '',
+    profileUrl: '',
     role: 'USER' as 'ADMIN' | 'EDITOR' | 'AUTHOR' | 'USER'
   });
   const [submitting, setSubmitting] = useState(false);
@@ -335,6 +337,7 @@ const Users = () => {
         username: formData.username || formData.email.split('@')[0],
         firstName: formData.firstName,
         lastName: formData.lastName,
+        profileUrl: formData.profileUrl ? formData.profileUrl.trim() : undefined,
         role: formData.role
       });
       
@@ -362,6 +365,7 @@ const Users = () => {
       const response = await apiClient.updateUser(editingUser.id, {
         firstName: formData.firstName,
         lastName: formData.lastName,
+        profileUrl: formData.profileUrl ? formData.profileUrl.trim() : null,
         role: formData.role,
         isActive: editingUser.isActive
       });
@@ -388,6 +392,7 @@ const Users = () => {
       username: user.username,
       firstName: user.firstName,
       lastName: user.lastName,
+      profileUrl: user.profileUrl || '',
       role: user.role
     });
     setShowEditModal(true);
@@ -400,6 +405,7 @@ const Users = () => {
       username: '',
       firstName: '',
       lastName: '',
+      profileUrl: '',
       role: 'USER'
     });
     setFormError('');
@@ -1007,6 +1013,17 @@ const Users = () => {
                   <option value="ADMIN">Admin</option>
                 </select>
               </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-1">URL ya Account (Author)</label>
+                <input
+                  type="url"
+                  value={formData.profileUrl}
+                  onChange={(e) => setFormData({ ...formData, profileUrl: e.target.value })}
+                  placeholder="https://www.umunsimedia.com/author-name"
+                  className="w-full px-3 py-2.5 bg-[#2b2f36] border border-[#2b2f36] rounded-xl text-white focus:outline-none focus:border-[#fcd535]/50"
+                />
+              </div>
               
               <div className="flex items-center justify-end space-x-3 pt-4">
                 <button
@@ -1097,6 +1114,17 @@ const Users = () => {
                   <option value="EDITOR">Editor</option>
                   <option value="ADMIN">Admin</option>
                 </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-1">URL ya Account (Author)</label>
+                <input
+                  type="url"
+                  value={formData.profileUrl}
+                  onChange={(e) => setFormData({ ...formData, profileUrl: e.target.value })}
+                  placeholder="https://www.umunsimedia.com/author-name"
+                  className="w-full px-3 py-2.5 bg-[#2b2f36] border border-[#2b2f36] rounded-xl text-white focus:outline-none focus:border-[#fcd535]/50"
+                />
               </div>
 
               <div className="flex items-center justify-between p-3 bg-[#2b2f36] rounded-xl">

@@ -31,6 +31,7 @@ export interface RegisterData {
   password: string;
   firstName: string;
   lastName: string;
+  profileUrl?: string;
 }
 
 export interface AuthResponse {
@@ -47,6 +48,7 @@ export interface AuthResponse {
     premiumSince?: string;
     premiumUntil?: string;
     isActive: boolean;
+    profileUrl?: string;
     lastLogin?: string;
   };
   token: string;
@@ -120,6 +122,7 @@ export interface User {
   avatar?: string;
   bio?: string;
   phone?: string;
+  profileUrl?: string;
   lastLogin?: string;
   createdAt: string;
   updatedAt: string;
@@ -181,6 +184,7 @@ export interface Post {
     lastName: string;
     username: string;
     avatar?: string;
+    profileUrl?: string;
     role?: 'ADMIN' | 'EDITOR' | 'AUTHOR' | 'USER';
     isVerified?: boolean;
     createdAt?: string;
@@ -570,6 +574,7 @@ class ApiClient {
     lastName?: string;
     bio?: string;
     avatar?: string;
+    profileUrl?: string;
   }): Promise<{ success: boolean; user: User; message?: string }> {
     const response = await this.request<{ success: boolean; user: User; message?: string }>('/auth/profile', {
       method: 'PUT',
@@ -786,9 +791,10 @@ class ApiClient {
     username?: string;
     firstName?: string;
     lastName?: string;
+    profileUrl?: string;
     role?: 'ADMIN' | 'EDITOR' | 'AUTHOR' | 'USER';
   }): Promise<{ success: boolean; user: User; message?: string }> {
-    const response = await this.request<{ success: boolean; user: User; message?: string }>('/auth/register', {
+    const response = await this.request<{ success: boolean; user: User; message?: string }>('/users', {
       method: 'POST',
       body: JSON.stringify(userData),
     });

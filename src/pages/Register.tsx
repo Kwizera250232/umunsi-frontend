@@ -8,6 +8,7 @@ const Register = () => {
     firstName: '',
     lastName: '',
     email: '',
+    profileUrl: '',
     password: '',
     confirmPassword: ''
   });
@@ -49,7 +50,8 @@ const Register = () => {
         email: formData.email,
         password: formData.password,
         firstName: formData.firstName,
-        lastName: formData.lastName
+        lastName: formData.lastName,
+        profileUrl: formData.profileUrl ? formData.profileUrl.trim() : undefined
       });
 
       if (response.success) {
@@ -127,6 +129,18 @@ const Register = () => {
                 className="w-full bg-[#1e2329] border border-[#2b2f36] rounded-lg pl-10 pr-3 py-3 text-white"
               />
             </div>
+          </div>
+
+          <div>
+            <label className="block text-sm text-gray-300 mb-1">URL ya Account yawe (Optional)</label>
+            <input
+              type="url"
+              name="profileUrl"
+              value={formData.profileUrl}
+              onChange={handleInputChange}
+              placeholder="https://www.umunsimedia.com/your-account"
+              className="w-full bg-[#1e2329] border border-[#2b2f36] rounded-lg px-3 py-3 text-white"
+            />
           </div>
 
           <div>
