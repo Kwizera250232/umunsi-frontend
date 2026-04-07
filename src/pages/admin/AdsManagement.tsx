@@ -78,6 +78,13 @@ const AdsManagement = () => {
   const [broadcastSubject, setBroadcastSubject] = useState('Ubutumwa buvuye kuri Umunsi');
   const [broadcastMessage, setBroadcastMessage] = useState('');
   const [dispatching, setDispatching] = useState(false);
+  const [broadcastFeedback, setBroadcastFeedback] = useState<{
+    kind: 'success' | 'error';
+    message: string;
+    emailError?: string | null;
+    smsError?: string | null;
+    phoneTargets?: Array<{ whatsappUrl: string }>;
+  } | null>(null);
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -241,11 +248,12 @@ const AdsManagement = () => {
 
   const sendBroadcast = async () => {
     if (!broadcastMessage.trim()) {
-      alert('Andika ubutumwa mbere yo kohereza.');
+      setBroadcastFeedback({ kind: 'error', message: 'Andika ubutumwa mbere yo kohereza.' });
       return;
     }
 
     setDispatching(true);
+    setBroadcastFeedback(null);
     try {
       const targetUserIds = selectedUserIds.length > 0 ? selectedUserIds : users.map((u) => u.id);
       const result = await apiClient.dispatchClassifiedBroadcast({
@@ -257,17 +265,25 @@ const AdsManagement = () => {
         sendSms: true
       });
 
-      const openWhatsApp = window.confirm(`Broadcast yoherejwe. Emails: ${result.emailsSent}/${result.totalTargets}, SMS: ${result.smsSent}/${result.totalTargets}. Ushaka gufungura links za WhatsApp?`);
-      if (openWhatsApp) {
-        result.phoneTargets.slice(0, 10).forEach((target) => window.open(target.whatsappUrl, '_blank'));
-      }
+      setBroadcastFeedback({
+        kind: 'success',
+        message: `Broadcast yoherejwe. Emails: ${result.emailsSent}/${result.totalTargets}, SMS: ${result.smsSent}/${result.totalTargets}.`,
+        emailError: result.emailError,
+        smsError: result.smsError,
+        phoneTargets: result.phoneTargets
+      });
 
       setBroadcastMessage('');
     } catch (error) {
-      alert('Ntibyashobotse kohereza broadcast. Reba SMTP cyangwa network.');
+      setBroadcastFeedback({ kind: 'error', message: 'Ntibyashobotse kohereza broadcast. Reba SMTP/SMS provider cyangwa network.' });
     } finally {
       setDispatching(false);
     }
+  };
+
+  const openWhatsAppLinks = () => {
+    if (!broadcastFeedback?.phoneTargets?.length) return;
+    broadcastFeedback.phoneTargets.slice(0, 10).forEach((target) => window.open(target.whatsappUrl, '_blank'));
   };
 
   if (loading || !adsSettings) {
@@ -496,6 +512,19 @@ const AdsManagement = () => {
           >
             {dispatching ? 'Kohereza...' : 'Kohereza ku Email + Telefone'}
           </button>
+
+          {broadcastFeedback && (
+            <div className={`mt-3 rounded-lg border px-3 py-2 text-sm ${broadcastFeedback.kind === 'success' ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300' : 'border-rose-500/40 bg-rose-500/10 text-rose-300'}`}>
+              <p>{broadcastFeedback.message}</p>
+              {broadcastFeedback.emailError && <p className="mt-1 text-xs text-amber-300">Email issue: {broadcastFeedback.emailError}</p>}
+              {broadcastFeedback.smsError && <p className="mt-1 text-xs text-amber-300">SMS issue: {broadcastFeedback.smsError}</p>}
+              {broadcastFeedback.kind === 'success' && (broadcastFeedback.phoneTargets?.length || 0) > 0 && (
+                <button type="button" onClick={openWhatsAppLinks} className="mt-2 text-xs px-2 py-1 rounded bg-[#25d366]/20 text-[#25d366] border border-[#25d366]/40">
+                  Fungura WhatsApp links (10)
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
