@@ -66,6 +66,7 @@ const ADSENSE_BEFORE_CONTENT_SLOT = '5789865998';
 const SUPPORT_WHATSAPP = '250791859465';
 const SUPPORT_CALL = '0791859465';
 const SPECIAL_ADMIN_NAME = 'kwizera jean de dieu';
+const SPECIAL_ADMIN_USERNAME = 'kwizerajeandedieu250';
 
 const normalizeIdentityName = (name: string) =>
   name
@@ -165,7 +166,10 @@ const PostPage = () => {
   const returnToCurrentPost = encodeURIComponent(`${window.location.pathname}${window.location.search}`);
   const authorDisplayName = `${post?.author?.firstName || ''} ${post?.author?.lastName || ''}`.trim() || post?.author?.username || 'Unknown';
   const authorRole = (post?.author?.role || 'AUTHOR').toUpperCase();
-  const isSpecialAdmin = authorRole === 'ADMIN' && normalizeIdentityName(authorDisplayName) === SPECIAL_ADMIN_NAME;
+  const normalizedAuthorUsername = normalizeIdentityName(post?.author?.username || '');
+  const isSpecialAdmin =
+    authorRole === 'ADMIN' &&
+    (normalizeIdentityName(authorDisplayName) === SPECIAL_ADMIN_NAME || normalizedAuthorUsername === SPECIAL_ADMIN_USERNAME);
   const isVerifiedAuthor = (authorRole === 'AUTHOR' && Boolean(post?.author?.isVerified)) || isSpecialAdmin;
 
   const authorMemberSinceDate = useMemo(() => {
