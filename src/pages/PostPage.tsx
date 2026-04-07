@@ -753,62 +753,6 @@ const PostPage = () => {
                           <User className="w-4 h-4 text-gray-400" />
                         </div>
                         <div>
-
-                        {isAuthorProfileOpen && post?.author && (
-                          <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-                            <div className="w-full max-w-2xl bg-[#181a20] border border-[#2b2f36] rounded-xl overflow-hidden">
-                              <div className="flex items-center justify-between px-5 py-4 border-b border-[#2b2f36]">
-                                <div className="flex items-center gap-2">
-                                  <h3 className="text-white font-semibold">Author Profile</h3>
-                                  {isVerifiedAuthor && <BadgeCheck className="w-4 h-4 text-[#1d9bf0]" />}
-                                </div>
-                                <button
-                                  type="button"
-                                  onClick={() => setIsAuthorProfileOpen(false)}
-                                  className="text-gray-400 hover:text-white"
-                                >
-                                  <X className="w-5 h-5" />
-                                </button>
-                              </div>
-
-                              <div className="p-5 space-y-4">
-                                <div className="bg-[#0b0e11] border border-[#2b2f36] rounded-lg p-4">
-                                  <p className="text-white font-semibold flex items-center gap-2">
-                                    <span>{authorDisplayName}</span>
-                                    {isVerifiedAuthor && <BadgeCheck className="w-4 h-4 text-[#1d9bf0]" />}
-                                  </p>
-                                  <p className="text-gray-400 text-sm mt-1">Role: {authorRole === 'ADMIN' ? 'Admin' : authorRole === 'AUTHOR' ? 'Author' : authorRole}</p>
-                                  <p className="text-gray-400 text-sm">Member Since: {authorMemberSinceDate ? new Date(authorMemberSinceDate).toLocaleDateString('rw-RW', { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A'}</p>
-                                  <p className="text-[#4ea1ff] text-sm mt-1">Inkuru zose yanditse: {authorPostCount}</p>
-                                </div>
-
-                                {authorRole === 'AUTHOR' && (
-                                  <div className="bg-[#0b0e11] border border-[#2b2f36] rounded-lg p-4">
-                                    <p className="text-white font-medium mb-3">Inkuru yanditse</p>
-                                    {loadingAuthorPosts ? (
-                                      <p className="text-gray-400 text-sm">Turimo kuzana inkuru...</p>
-                                    ) : authorPosts.length === 0 ? (
-                                      <p className="text-gray-400 text-sm">Nta nkuru zibonetse.</p>
-                                    ) : (
-                                      <div className="space-y-2 max-h-72 overflow-y-auto">
-                                        {authorPosts.map((authorPost) => (
-                                          <Link
-                                            key={authorPost.id}
-                                            to={`/post/${authorPost.slug}`}
-                                            onClick={() => setIsAuthorProfileOpen(false)}
-                                            className="block text-sm text-gray-300 hover:text-[#4ea1ff] transition-colors"
-                                          >
-                                            {authorPost.title}
-                                          </Link>
-                                        ))}
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        )}
                           <span className="text-white text-sm font-medium">{comment.author?.name}</span>
                           <span className="text-gray-500 text-xs ml-2">{formatDate(comment.createdAt)}</span>
                         </div>
@@ -885,6 +829,62 @@ const PostPage = () => {
           </div>
         </div>
       </div>
+
+      {isAuthorProfileOpen && post?.author && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-2xl bg-[#181a20] border border-[#2b2f36] rounded-xl overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[#2b2f36]">
+              <div className="flex items-center gap-2">
+                <h3 className="text-white font-semibold">Author Profile</h3>
+                {isVerifiedAuthor && <BadgeCheck className="w-4 h-4 text-[#1d9bf0]" />}
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAuthorProfileOpen(false)}
+                className="text-gray-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4">
+              <div className="bg-[#0b0e11] border border-[#2b2f36] rounded-lg p-4">
+                <p className="text-white font-semibold flex items-center gap-2">
+                  <span>{authorDisplayName}</span>
+                  {isVerifiedAuthor && <BadgeCheck className="w-4 h-4 text-[#1d9bf0]" />}
+                </p>
+                <p className="text-gray-400 text-sm mt-1">Role: {authorRole === 'ADMIN' ? 'Admin' : authorRole === 'AUTHOR' ? 'Author' : authorRole}</p>
+                <p className="text-gray-400 text-sm">Member Since: {authorMemberSinceDate ? new Date(authorMemberSinceDate).toLocaleDateString('rw-RW', { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A'}</p>
+                <p className="text-[#4ea1ff] text-sm mt-1">Inkuru zose yanditse: {authorPostCount}</p>
+              </div>
+
+              {authorRole === 'AUTHOR' && (
+                <div className="bg-[#0b0e11] border border-[#2b2f36] rounded-lg p-4">
+                  <p className="text-white font-medium mb-3">Inkuru yanditse</p>
+                  {loadingAuthorPosts ? (
+                    <p className="text-gray-400 text-sm">Turimo kuzana inkuru...</p>
+                  ) : authorPosts.length === 0 ? (
+                    <p className="text-gray-400 text-sm">Nta nkuru zibonetse.</p>
+                  ) : (
+                    <div className="space-y-2 max-h-72 overflow-y-auto">
+                      {authorPosts.map((authorPost) => (
+                        <Link
+                          key={authorPost.id}
+                          to={`/post/${authorPost.slug}`}
+                          onClick={() => setIsAuthorProfileOpen(false)}
+                          className="block text-sm text-gray-300 hover:text-[#4ea1ff] transition-colors"
+                        >
+                          {authorPost.title}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Click outside handlers */}
       {showShareMenu && <div className="fixed inset-0 z-40" onClick={() => setShowShareMenu(false)} />}
