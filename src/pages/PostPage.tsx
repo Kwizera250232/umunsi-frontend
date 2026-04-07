@@ -562,7 +562,7 @@ const PostPage = () => {
                   </div>
                 ) : (
                   <div 
-                    className="prose prose-invert prose-lg max-w-none text-gray-300"
+                    className="article-content-readable prose prose-invert prose-lg max-w-none text-gray-300"
                     style={{ wordBreak: 'break-word' }}
                     dangerouslySetInnerHTML={{ __html: contentWithInlineAd }}
                   />
