@@ -124,6 +124,10 @@ html.day-mode .text-gray-300 {
   color: #374151 !important;
 }
 
+html.day-mode .text-gray-200 {
+  color: #1f2937 !important;
+}
+
 html.day-mode .text-gray-400 {
   color: #4b5563 !important;
 }
@@ -150,6 +154,16 @@ html.day-mode .prose-invert {
   --tw-prose-headings: #111827;
   --tw-prose-links: #0f766e;
   --tw-prose-bold: #111827;
+}
+
+/* Admin article content may store inline light colors; force readable day-mode text */
+html.day-mode .admin-article-content,
+html.day-mode .admin-article-content * {
+  color: #0f172a !important;
+}
+
+html.day-mode .admin-article-content a {
+  color: #0f766e !important;
 }
 
 html.day-mode img {

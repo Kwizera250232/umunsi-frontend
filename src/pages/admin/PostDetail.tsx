@@ -265,7 +265,7 @@ const PostDetail: React.FC = () => {
               </h2>
             {post.content ? (
               <div 
-                  className="prose prose-invert max-w-none text-gray-300 leading-relaxed"
+                  className="admin-article-content prose prose-invert max-w-none text-gray-300 leading-relaxed"
                 style={{ 
                   wordBreak: 'break-word',
                     overflowWrap: 'break-word'
