@@ -119,6 +119,17 @@ const Home = () => {
     return posts.filter(p => p.category?.id === categoryId).slice(0, 4);
   };
 
+  const newsCategoryTabs = (categories.length > 0
+    ? categories
+    : Array.from(
+        new Map(
+          posts
+            .filter((p) => p.category)
+            .map((p) => [p.category!.id, p.category])
+        ).values()
+      ))
+    .slice(0, 8);
+
   const getSpecialCategory = (key: SpecialCategoryKey) => {
     const bySlug = categories.find((cat) => normalizeText(cat.slug || '') === key);
     if (bySlug) return bySlug;
@@ -390,35 +401,6 @@ const Home = () => {
           </div>
         </div>
 
-        {/* Category Tabs */}
-        <div className="mb-4 overflow-x-auto scrollbar-hide">
-          <div className="flex gap-2 pb-2">
-            <button
-              onClick={() => setActiveTab('all')}
-              className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
-                activeTab === 'all' 
-                  ? 'bg-[#fcd535] text-[#0b0e11]' 
-                  : 'bg-[#181a20] text-gray-400 hover:bg-[#1e2329] hover:text-white'
-              }`}
-            >
-              Byose
-            </button>
-            {categories.slice(0, 6).map((cat) => (
-              <button
-                key={cat.id}
-                onClick={() => setActiveTab(cat.id)}
-                className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
-                  activeTab === cat.id 
-                    ? 'bg-[#fcd535] text-[#0b0e11]' 
-                    : 'bg-[#181a20] text-gray-400 hover:bg-[#1e2329] hover:text-white'
-                }`}
-              >
-                {cat.name}
-              </button>
-            ))}
-          </div>
-        </div>
-
         {showAds && (
           <div className="mb-6 bg-[#181a20] rounded-lg overflow-hidden">
             <div className="p-2 border-b border-[#2b2f36]">
@@ -445,9 +427,39 @@ const Home = () => {
                   Reba Yose <ChevronRight className="w-4 h-4" />
                 </Link>
               </div>
+
+              <div className="px-4 pt-3 border-b border-[#2b2f36] overflow-x-auto scrollbar-hide">
+                <div className="flex gap-2 pb-3">
+                  <button
+                    onClick={() => setActiveTab('all')}
+                    className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
+                      activeTab === 'all'
+                        ? 'bg-[#fcd535] text-[#0b0e11]'
+                        : 'bg-[#0b0e11] text-gray-400 hover:bg-[#1e2329] hover:text-white'
+                    }`}
+                  >
+                    Byose
+                  </button>
+                  {newsCategoryTabs.map((cat) => (
+                    <button
+                      key={cat.id}
+                      onClick={() => setActiveTab(cat.id)}
+                      className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
+                        activeTab === cat.id
+                          ? 'bg-[#fcd535] text-[#0b0e11]'
+                          : 'bg-[#0b0e11] text-gray-400 hover:bg-[#1e2329] hover:text-white'
+                      }`}
+                    >
+                      {cat.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
               
               <div className="divide-y divide-[#2b2f36]">
-                {latestPosts.map((post) => (
+                {latestPosts.length === 0 ? (
+                  <div className="p-4 text-sm text-gray-400">Nta nkuru ziboneka muri iki cyiciro ubu.</div>
+                ) : latestPosts.map((post) => (
                   <Link key={post.id} to={`/post/${post.slug}`} className="flex gap-4 p-4 hover:bg-[#1e2329] transition-colors group">
                     <div className="relative flex-shrink-0">
                       <img 
