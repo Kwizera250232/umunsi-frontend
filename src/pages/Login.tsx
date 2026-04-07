@@ -14,6 +14,10 @@ const Login = () => {
   const [error, setError] = useState('');
   
   const { login } = useAuth();
+  const redirectParam = new URLSearchParams(window.location.search).get('redirect') || '';
+  const safeRedirect = redirectParam.startsWith('/') && !redirectParam.startsWith('//')
+    ? redirectParam
+    : '/subscriber/account';
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
@@ -41,10 +45,10 @@ const Login = () => {
           if (userData.role === 'ADMIN' || userData.role === 'EDITOR' || userData.role === 'AUTHOR') {
             window.location.href = '/admin';
           } else {
-            window.location.href = '/subscriber/account';
+            window.location.href = safeRedirect;
           }
         } else {
-          window.location.href = '/subscriber/account';
+          window.location.href = safeRedirect;
         }
       } else {
         setError('Invalid email or password');
