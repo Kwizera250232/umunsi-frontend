@@ -38,6 +38,13 @@ interface AdminNavbarProps {
   } | null;
 }
 
+interface MobileNavItem {
+  name: string;
+  href: string;
+  icon: React.ComponentType<{ className?: string; size?: number }>;
+  adminOnly?: boolean;
+}
+
 const AdminNavbar: React.FC<AdminNavbarProps> = ({ user: propUser }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -58,8 +65,14 @@ const AdminNavbar: React.FC<AdminNavbarProps> = ({ user: propUser }) => {
     localStorage.setItem('umunsi_theme', theme);
   }, [theme]);
 
-  const navigation = [
+  const isAdmin = user?.role?.toUpperCase() === 'ADMIN';
+
+  const navigation: MobileNavItem[] = [
     { name: 'Dashboard', href: '/admin', icon: BarChart3 },
+    { name: 'Articles', href: '/admin/articles', icon: FileText },
+    { name: 'News', href: '/admin/news', icon: FileText },
+    { name: 'Breaking News', href: '/admin/breaking-news', icon: Bell },
+    { name: 'Featured News', href: '/admin/featured-news', icon: Crown },
     { name: 'Posts', href: '/admin/posts', icon: FileText },
     { name: 'Add Story', href: '/admin/posts/add', icon: FileText },
     { name: 'Categories', href: '/admin/categories', icon: FolderOpen },
@@ -67,10 +80,14 @@ const AdminNavbar: React.FC<AdminNavbarProps> = ({ user: propUser }) => {
     { name: 'Upload Media', href: '/admin/media/add', icon: Image },
     { name: 'Media', href: '/admin/media', icon: Image },
     { name: 'Users', href: '/admin/users', icon: Users },
+    { name: 'Roles', href: '/admin/roles', icon: Shield, adminOnly: true },
     { name: 'Ads', href: '/admin/ads-management', icon: Megaphone },
     { name: 'Analytics', href: '/admin/analytics', icon: Activity },
+    { name: 'Logs', href: '/admin/logs', icon: Activity, adminOnly: true },
     { name: 'Settings', href: '/admin/settings', icon: Settings },
   ];
+
+  const visibleNavigation = navigation.filter((item) => !item.adminOnly || isAdmin);
 
   const handleLogout = async () => {
     try {
@@ -294,7 +311,7 @@ const AdminNavbar: React.FC<AdminNavbarProps> = ({ user: propUser }) => {
           </div>
 
           <nav className="flex-1 overflow-y-auto p-4 space-y-1 pb-24">
-              {navigation.map((item) => {
+              {visibleNavigation.map((item) => {
                 const Icon = item.icon;
               const isActive = location.pathname === item.href || 
                 (item.href !== '/admin' && location.pathname.startsWith(item.href));
