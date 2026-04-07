@@ -149,6 +149,7 @@ const PostPage = () => {
   }, [user]);
 
   const isPremiumLocked = Boolean(post?.isPremium) && !hasPremiumAccess;
+  const returnToCurrentPost = encodeURIComponent(`${window.location.pathname}${window.location.search}`);
 
   useEffect(() => {
     if (!showAds || !contentWithInlineAd || typeof window === 'undefined') {
@@ -253,12 +254,12 @@ const PostPage = () => {
 
   const handleWhatsAppPremiumRequest = () => {
     if (!isAuthenticated) {
-      window.location.href = '/subscriber-login';
+      window.location.href = `/register?redirect=${returnToCurrentPost}`;
       return;
     }
 
     const fullName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.username || 'Subscriber';
-    const message = `Muraho Umunsi, nitwa ${fullName}. Nifuza gufungurirwa premium article: ${window.location.href}`;
+    const message = `Muraho Umunsi, nitwa ${fullName}. Nishyuriye premium article kandi nohereje proof. Nifuza gufungurirwa iyi nkuru: ${window.location.href}`;
     window.open(`https://wa.me/${SUPPORT_WHATSAPP}?text=${encodeURIComponent(message)}`, '_blank');
   };
 
@@ -515,27 +516,49 @@ const PostPage = () => {
                       <Crown className="w-7 h-7 text-[#fcd535]" />
                     </div>
                     <h3 className="text-xl font-bold text-white mb-2">This is a Premium Article</h3>
-                    <p className="text-gray-300 mb-5">
-                      Kugira ngo usome iyi nkuru, twandikire kuri WhatsApp cyangwa uduhamagare. Admin azagufungurira premium access amaze kwemeza ubwishyu.
-                    </p>
-                    <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                      <button
-                        type="button"
-                        onClick={handleWhatsAppPremiumRequest}
-                        className="inline-flex items-center justify-center px-5 py-3 rounded-xl bg-[#25d366] text-white font-semibold hover:bg-[#1ebe57]"
-                      >
-                        <MessageCircle className="w-4 h-4 mr-2" />
-                        Saba Access kuri WhatsApp
-                      </button>
-                      <a
-                        href={`tel:${SUPPORT_CALL.replace(/\s+/g, '')}`}
-                        className="inline-flex items-center justify-center px-5 py-3 rounded-xl bg-[#fcd535] text-[#0b0e11] font-semibold hover:bg-[#f0b90b]"
-                      >
-                        <PhoneCall className="w-4 h-4 mr-2" />
-                        Hamagara {SUPPORT_CALL}
-                      </a>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-3">Direct checkout izasubiraho nyuma ya Flutterwave configuration.</p>
+                    {!isAuthenticated ? (
+                      <>
+                        <p className="text-gray-300 mb-5">Kora konte ubone gusoma inkuru yose</p>
+                        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                          <Link
+                            to={`/register?redirect=${returnToCurrentPost}`}
+                            className="inline-flex items-center justify-center px-5 py-3 rounded-xl bg-[#fcd535] text-[#0b0e11] font-semibold hover:bg-[#f0b90b]"
+                          >
+                            Fungura Konti
+                          </Link>
+                          <Link
+                            to={`/subscriber-login?redirect=${returnToCurrentPost}`}
+                            className="inline-flex items-center justify-center px-5 py-3 rounded-xl bg-[#2b2f36] text-white font-semibold hover:bg-[#363a45]"
+                          >
+                            Injira
+                          </Link>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-gray-300 mb-5">
+                          Banza wishyure, hanyuma wohereze proof kuri WhatsApp cyangwa uduhamagare. Nyuma yo kubyemeza, tuzaguha uburenganzira bwo gusoma iyi nkuru.
+                        </p>
+                        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                          <button
+                            type="button"
+                            onClick={handleWhatsAppPremiumRequest}
+                            className="inline-flex items-center justify-center px-5 py-3 rounded-xl bg-[#25d366] text-white font-semibold hover:bg-[#1ebe57]"
+                          >
+                            <MessageCircle className="w-4 h-4 mr-2" />
+                            WhatsApp
+                          </button>
+                          <a
+                            href={`tel:${SUPPORT_CALL.replace(/\s+/g, '')}`}
+                            className="inline-flex items-center justify-center px-5 py-3 rounded-xl bg-[#fcd535] text-[#0b0e11] font-semibold hover:bg-[#f0b90b]"
+                          >
+                            <PhoneCall className="w-4 h-4 mr-2" />
+                            Hamagara {SUPPORT_CALL}
+                          </a>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-3">Access ifungurwa nyuma yo kwemeza ubwishyu.</p>
+                      </>
+                    )}
                   </div>
                 ) : (
                   <div 

@@ -16,6 +16,11 @@ const Register = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const redirectParam = new URLSearchParams(window.location.search).get('redirect') || '';
+  const safeRedirect = redirectParam.startsWith('/') && !redirectParam.startsWith('//')
+    ? redirectParam
+    : '/subscriber/account';
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -57,7 +62,7 @@ const Register = () => {
         if (response.token) {
           localStorage.setItem('umunsi_token', response.token);
         }
-        window.location.href = '/subscriber/account';
+        window.location.href = safeRedirect;
         return;
       }
 
