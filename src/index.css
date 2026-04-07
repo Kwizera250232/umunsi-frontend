@@ -8,24 +8,108 @@ html.day-mode {
 }
 
 html.day-mode body {
-  background: #f5f7fb;
+  background: #edf2f7;
   color: #111827;
 }
 
 html.day-mode .bg-\[\#0b0e11\] {
-  background-color: #f5f7fb !important;
+  background-color: #edf2f7 !important;
 }
 
 html.day-mode .bg-\[\#181a20\] {
-  background-color: #ffffff !important;
+  background-color: #e9eff6 !important;
 }
 
 html.day-mode .bg-\[\#1e2329\] {
-  background-color: #f3f4f6 !important;
+  background-color: #dde5ef !important;
 }
 
 html.day-mode .bg-\[\#2b2f36\] {
-  background-color: #e5e7eb !important;
+  background-color: #cfd9e6 !important;
+}
+
+html.day-mode .bg-\[\#0f1115\] {
+  background-color: #dbe4ef !important;
+}
+
+html.day-mode .bg-\[\#12161c\] {
+  background-color: #d4dee9 !important;
+}
+
+html.day-mode .bg-\[\#14181e\] {
+  background-color: #d7e1ec !important;
+}
+
+/* Global fallback for Tailwind arbitrary color class names in markup */
+html.day-mode [class*="bg-[#0f1115]"] {
+  background-color: #dbe4ef !important;
+}
+
+html.day-mode [class*="bg-[#12161c]"] {
+  background-color: #d4dee9 !important;
+}
+
+html.day-mode [class*="bg-[#14181e]"] {
+  background-color: #d7e1ec !important;
+}
+
+/* Subscriber page: force dark utility cards to become light in day mode */
+html.day-mode .subscriber-account-page [class*="bg-[#0f1115]"] {
+  background-color: #dbe4ef !important;
+}
+
+html.day-mode .subscriber-account-page [class*="bg-[#12161c]"] {
+  background-color: #d4dee9 !important;
+}
+
+html.day-mode .subscriber-account-page [class*="bg-[#181a20]"] {
+  background-color: #e9eff6 !important;
+}
+
+/* Keep WhatsApp CTA readable in day mode (green button + icon/text contrast) */
+html.day-mode .bg-\[\#25d366\],
+html.day-mode .bg-\[\#25d366\] .text-white,
+html.day-mode .bg-\[\#25d366\] svg,
+html.day-mode .bg-\[\#25d366\] span {
+  color: #ffffff !important;
+}
+
+/* Subscriber contact card: force WhatsApp label/details to remain high contrast in day mode */
+html.day-mode .subscriber-account-page a[href*="wa.me"] p {
+  color: #0f172a !important;
+}
+
+html.day-mode .subscriber-account-page a[href*="wa.me"] svg {
+  color: #16a34a !important;
+}
+
+/* Subscriber cards: guaranteed contrast in day mode */
+html.day-mode .subscriber-account-page .subscriber-dark-card {
+  background-color: #dbe4ef !important;
+  border-color: #b9c7d8 !important;
+}
+
+html.day-mode .subscriber-account-page .subscriber-dark-card .text-white,
+html.day-mode .subscriber-account-page .subscriber-dark-card .text-gray-300,
+html.day-mode .subscriber-account-page .subscriber-dark-card .text-gray-400,
+html.day-mode .subscriber-account-page .subscriber-dark-card .text-gray-500 {
+  color: #0f172a !important;
+}
+
+html.day-mode .daymode-contrast-card {
+  background-color: #d7e1ec !important;
+  border-color: #b9c7d8 !important;
+}
+
+html.day-mode .daymode-contrast-card .text-white,
+html.day-mode .daymode-contrast-card .text-gray-300,
+html.day-mode .daymode-contrast-card .text-gray-400,
+html.day-mode .daymode-contrast-card .text-gray-500 {
+  color: #0f172a !important;
+}
+
+html.day-mode .bg-white {
+  background-color: #eef3f8 !important;
 }
 
 html.day-mode .border-\[\#2b2f36\] {
@@ -46,6 +130,15 @@ html.day-mode .text-gray-400 {
 
 html.day-mode .text-gray-500 {
   color: #6b7280 !important;
+}
+
+html.day-mode .text-gray-900,
+html.day-mode .text-black {
+  color: #0f172a !important;
+}
+
+html.day-mode .day-mode-muted {
+  display: none !important;
 }
 
 html.day-mode .hover\:bg-\[\#1e2329\]:hover {

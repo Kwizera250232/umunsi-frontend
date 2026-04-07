@@ -196,7 +196,7 @@ const MediaLibraryModal: React.FC<MediaLibraryModalProps> = ({
           <div>
             <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
             <p className="text-sm text-gray-600 mt-1">
-              {mode === 'select' ? 'Select an image to insert' : 'Manage your media files'}
+              {mode === 'select' ? 'Single-click an image to insert' : 'Manage your media files'}
             </p>
           </div>
           <button

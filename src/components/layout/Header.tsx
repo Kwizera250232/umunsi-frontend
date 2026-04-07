@@ -76,8 +76,8 @@ const Header = () => {
                   <Calendar size={14} className="text-[#fcd535]" />
                   <span>{new Date().toLocaleDateString('rw-RW', { weekday: 'short', month: 'short', day: 'numeric' })}</span>
                 </div>
-                <div className="h-3 w-px bg-[#2b2f36]"></div>
-                <div className="flex items-center space-x-1.5">
+                <div className="h-3 w-px bg-[#2b2f36] day-mode-muted"></div>
+                <div className="flex items-center space-x-1.5 day-mode-muted">
                   <Thermometer size={14} className="text-[#fcd535]" />
                   <span>22°C Kigali</span>
                 </div>
@@ -85,7 +85,7 @@ const Header = () => {
 
               {/* Categories count indicator */}
               {!loading && categories.length > 0 && (
-                <div className="hidden md:flex items-center space-x-2">
+                <div className="hidden md:flex items-center space-x-2 day-mode-muted">
                   <div className="h-3 w-px bg-[#2b2f36]"></div>
                   <TrendingUp size={14} className="text-[#fcd535]" />
                   <span className="text-gray-400">{categories.length} Categories</span>
