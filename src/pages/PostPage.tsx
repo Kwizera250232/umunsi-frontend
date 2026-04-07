@@ -65,6 +65,8 @@ const ADSENSE_BEFORE_CONTENT_SLOT = '5789865998';
 
 const SUPPORT_WHATSAPP = '250791859465';
 const SUPPORT_CALL = '0791859465';
+const AUTHOR_APP_BADGE_IMAGE = 'https://umunsi.com/uploads/media/thumbnails/thumb_files-1775580260927-532416125.jpg';
+const DEFAULT_AUTHOR_ACCOUNT_URL = 'https://www.umunsimedia.com/';
 const SPECIAL_ADMIN_NAME = 'kwizera jean de dieu';
 const SPECIAL_ADMIN_USERNAME = 'kwizerajeandedieu250';
 
@@ -74,6 +76,12 @@ const normalizeIdentityName = (name: string) =>
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .trim();
+
+const normalizeExternalUrl = (url?: string) => {
+  if (!url) return DEFAULT_AUTHOR_ACCOUNT_URL;
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  return `https://${url}`;
+};
 
 const injectAdAfterSecondParagraph = (html: string) => {
   if (!html) return '';
@@ -171,6 +179,7 @@ const PostPage = () => {
     authorRole === 'ADMIN' &&
     (normalizeIdentityName(authorDisplayName) === SPECIAL_ADMIN_NAME || normalizedAuthorUsername === SPECIAL_ADMIN_USERNAME);
   const isVerifiedAuthor = (authorRole === 'AUTHOR' && Boolean(post?.author?.isVerified)) || isSpecialAdmin;
+  const authorAccountUrl = normalizeExternalUrl(post?.author?.profileUrl);
 
   const authorMemberSinceDate = useMemo(() => {
     if (post?.author?.createdAt) {
@@ -489,14 +498,31 @@ const PostPage = () => {
                       <User className="w-5 h-5 text-[#0b0e11]" />
                     </div>
                     <div>
-                      <button
-                        type="button"
-                        onClick={() => setIsAuthorProfileOpen(true)}
-                        className="inline-flex items-center gap-1.5 text-white text-sm font-medium hover:text-[#4ea1ff] transition-colors"
-                      >
-                        <span>{authorDisplayName}</span>
-                        {isVerifiedAuthor && <BadgeCheck className="w-4 h-4 text-[#1d9bf0]" />}
-                      </button>
+                      <div className="inline-flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setIsAuthorProfileOpen(true)}
+                          className="inline-flex items-center gap-1.5 text-white text-sm font-medium hover:text-[#4ea1ff] transition-colors"
+                        >
+                          <span>{authorDisplayName}</span>
+                          {isVerifiedAuthor && <BadgeCheck className="w-4 h-4 text-[#1d9bf0]" />}
+                        </button>
+                        {isVerifiedAuthor && (
+                          <a
+                            href={authorAccountUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title="Sura account ya writer"
+                            className="inline-flex items-center justify-center rounded-full ring-1 ring-[#1d9bf0]/40 hover:ring-[#1d9bf0] transition-all overflow-hidden"
+                          >
+                            <img
+                              src={AUTHOR_APP_BADGE_IMAGE}
+                              alt="Umunsi Media App"
+                              className="w-5 h-5 object-cover"
+                            />
+                          </a>
+                        )}
+                      </div>
                       <p className="text-gray-500 text-xs">{authorRole === 'ADMIN' ? 'Admin' : 'Author'}</p>
                     </div>
                   </div>
@@ -856,6 +882,21 @@ const PostPage = () => {
                 <p className="text-white font-semibold flex items-center gap-2">
                   <span>{authorDisplayName}</span>
                   {isVerifiedAuthor && <BadgeCheck className="w-4 h-4 text-[#1d9bf0]" />}
+                  {isVerifiedAuthor && (
+                    <a
+                      href={authorAccountUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="Sura account ya writer"
+                      className="inline-flex items-center justify-center rounded-full ring-1 ring-[#1d9bf0]/40 hover:ring-[#1d9bf0] transition-all overflow-hidden"
+                    >
+                      <img
+                        src={AUTHOR_APP_BADGE_IMAGE}
+                        alt="Umunsi Media App"
+                        className="w-5 h-5 object-cover"
+                      />
+                    </a>
+                  )}
                 </p>
                 <p className="text-gray-400 text-sm mt-1">Role: {authorRole === 'ADMIN' ? 'Admin' : authorRole === 'AUTHOR' ? 'Author' : authorRole}</p>
                 <p className="text-gray-400 text-sm">Member Since: {authorMemberSinceDate ? new Date(authorMemberSinceDate).toLocaleDateString('rw-RW', { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A'}</p>

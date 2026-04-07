@@ -47,7 +47,8 @@ const Profile = () => {
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
-    bio: ''
+    bio: '',
+    profileUrl: ''
   });
   
   const [passwordData, setPasswordData] = useState({
@@ -73,7 +74,8 @@ const Profile = () => {
         setFormData({
           firstName: response.user.firstName || '',
           lastName: response.user.lastName || '',
-          bio: response.user.bio || ''
+          bio: response.user.bio || '',
+          profileUrl: response.user.profileUrl || ''
         });
       }
     } catch (error) {
@@ -349,6 +351,18 @@ const Profile = () => {
                   rows={3}
                   placeholder="Tell us about yourself..."
                   className="w-full px-4 py-3 bg-[#2b2f36] border border-[#2b2f36] rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-[#fcd535]/50 resize-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-1">URL ya Account</label>
+                <input
+                  type="url"
+                  name="profileUrl"
+                  value={formData.profileUrl}
+                  onChange={handleInputChange}
+                  placeholder="https://www.umunsimedia.com/your-account"
+                  className="w-full px-4 py-3 bg-[#2b2f36] border border-[#2b2f36] rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-[#fcd535]/50"
                 />
               </div>
               
