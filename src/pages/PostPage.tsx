@@ -654,14 +654,7 @@ const PostPage = () => {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-[#0b0e11] flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 text-[#fcd535] animate-spin mx-auto mb-4" />
-          <p className="text-gray-400">Loading article...</p>
-        </div>
-      </div>
-    );
+    return <div className="min-h-screen bg-[#0b0e11]" />;
   }
 
   if (error || !post) {
