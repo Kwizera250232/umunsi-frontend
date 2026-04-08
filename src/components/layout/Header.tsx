@@ -193,12 +193,7 @@ const Header = () => {
 
           {/* Desktop Navigation - All active categories from database */}
           <nav className="hidden lg:flex items-center space-x-1">
-            {loading ? (
-              <div className="flex items-center space-x-2 px-4 py-2 text-gray-400">
-                <Loader2 size={16} className="animate-spin" />
-                <span className="text-sm">Loading categories...</span>
-              </div>
-            ) : categories.length === 0 ? (
+            {categories.length === 0 ? (
               <div className="px-4 py-2 text-gray-500 text-sm">No categories available</div>
             ) : (
               <>
@@ -315,12 +310,7 @@ const Header = () => {
         {isMenuOpen && (
           <div className="lg:hidden mt-4 pb-4">
             <nav className="space-y-1 max-h-[60vh] overflow-y-auto">
-              {loading ? (
-                <div className="flex items-center justify-center py-4 text-gray-400">
-                  <Loader2 size={20} className="animate-spin mr-2" />
-                  <span>Loading categories...</span>
-                </div>
-              ) : categories.length === 0 ? (
+              {categories.length === 0 ? (
                 <div className="text-center py-4 text-gray-500">No categories available</div>
               ) : (
                 <>
