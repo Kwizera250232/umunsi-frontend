@@ -12,6 +12,8 @@ import Newsletter from './pages/Newsletter';
 import ClassifiedAds from './pages/ClassifiedAds';
 import Login from './pages/Login';
 import AdminLogin from './pages/AdminLogin';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import SubscriberAccount from './pages/SubscriberAccount';
 import Register from './pages/Register';
 import TestLogin from './pages/TestLogin';
@@ -35,7 +37,7 @@ import EditPost from './pages/admin/EditPost';
 import PostDetail from './pages/admin/PostDetail';
 import Roles from './pages/admin/Roles';
 import AdsManagement from './pages/admin/AdsManagement';
-import { withAuth, withAdmin, withEditor, withAuthor } from './contexts/AuthContext';
+import { useAuth, withAuth, withAdmin, withEditor, withAuthor } from './contexts/AuthContext';
 import AdSenseManager from './components/common/AdSenseManager';
 
 // Create wrapped components
@@ -60,6 +62,16 @@ const ProtectedAdsManagement = withEditor(AdsManagement);
 const ProtectedProfile = withAuth(Profile);
 const ProtectedSubscriberAccount = withAuth(SubscriberAccount);
 
+const AdminHomeRedirect: React.FC = () => {
+  const { user } = useAuth();
+
+  if (user?.role === 'AUTHOR') {
+    return <Navigate to="/admin/posts" replace />;
+  }
+
+  return <ProtectedAdminDashboard />;
+};
+
 function App() {
   const secretAdminLoginPath = '/portal-auth-umunsi-admin-2026';
 
@@ -71,7 +83,10 @@ function App() {
           {/* Login routes - standalone, no layout wrapper */}
           <Route path="/login" element={<Navigate to="/subscriber-login" replace />} />
           <Route path="/subscriber-login" element={<Login />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/author-signup" element={<Register />} />
           <Route path="/admin-login" element={<AdminLogin />} />
           <Route path={secretAdminLoginPath} element={<AdminLogin />} />
           {/* Test login page for debugging */}
@@ -95,6 +110,7 @@ function App() {
                 <Route path="/category/:slug" element={<CategoryPage />} />
                 <Route path="/post/:slug" element={<PostPage />} />
                 <Route path="/article/:id" element={<PostPage />} />
+                <Route path="/:year/:month/:day/:slug" element={<PostPage />} />
                 <Route path="/newsletter" element={<Newsletter />} />
                 <Route path="/amatangazo" element={<ClassifiedAds />} />
                 <Route path="/amatangazo/:category" element={<ClassifiedAds />} />
@@ -108,7 +124,7 @@ function App() {
           <Route path="/admin/*" element={
             <AdminLayout />
           }>
-            <Route index element={<ProtectedAdminDashboard />} />
+            <Route index element={<AdminHomeRedirect />} />
             <Route path="articles" element={<ProtectedArticles />} />
             <Route path="news" element={<ProtectedNews />} />
             <Route path="breaking-news" element={<ProtectedBreakingNews />} />

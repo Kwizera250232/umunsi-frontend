@@ -17,10 +17,15 @@ const Register = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const redirectParam = new URLSearchParams(window.location.search).get('redirect') || '';
+  const searchParams = new URLSearchParams(window.location.search);
+  const redirectParam = searchParams.get('redirect') || '';
+  const requestedRole = (searchParams.get('role') || '').toLowerCase();
+  const isAuthorSignupPath = window.location.pathname === '/author-signup';
+  const isAuthorSignup = isAuthorSignupPath || requestedRole === 'author';
+  const authorInviteKey = searchParams.get('key') || '';
   const safeRedirect = redirectParam.startsWith('/') && !redirectParam.startsWith('//')
     ? redirectParam
-    : '/subscriber/account';
+    : isAuthorSignup ? '/admin/posts' : '/subscriber/account';
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -44,18 +49,28 @@ const Register = () => {
     setIsLoading(true);
 
     try {
-      const username = formData.email.split('@')[0] || `user${Date.now()}`;
+      const emailLocalPart = (formData.email.split('@')[0] || '')
+        .toLowerCase()
+        .replace(/[^a-z0-9._-]/g, '');
+      const username = `${emailLocalPart || 'user'}_${Date.now().toString().slice(-6)}${Math.floor(Math.random() * 90 + 10)}`;
       const response = await apiClient.register({
         username,
         email: formData.email,
         password: formData.password,
         firstName: formData.firstName,
         lastName: formData.lastName,
-        profileUrl: formData.profileUrl ? formData.profileUrl.trim() : undefined
+        profileUrl: isAuthorSignup && formData.profileUrl ? formData.profileUrl.trim() : undefined,
+        role: isAuthorSignup ? 'AUTHOR' : 'USER',
+        authorInviteKey: isAuthorSignup ? authorInviteKey : undefined
       });
 
       if (response.success) {
-        if (response.user?.role !== 'USER') {
+        if (isAuthorSignup && response.user?.role !== 'AUTHOR') {
+          setError("Author signup ntabwo yemewe. Reba invite key cyangwa hamagara admin.");
+          return;
+        }
+
+        if (!isAuthorSignup && response.user?.role !== 'USER') {
           setError("Kwiyandikisha byagenze nabi ku ruhande rwa server. Ongera ugerageze cyangwa hamagara support.");
           return;
         }
@@ -83,8 +98,8 @@ const Register = () => {
           <Link to="/" className="inline-block mb-4">
             <img src="/images/logo.png" alt="Umunsi.com Logo" className="h-12 mx-auto" />
           </Link>
-          <h1 className="text-2xl font-bold text-white">Fungura Konti y'Abafatabuguzi</h1>
-          <p className="text-gray-400 text-sm mt-1">Kwiyandikisha ukoresheje imeyili</p>
+          <h1 className="text-2xl font-bold text-white">{isAuthorSignup ? 'Fungura Konti y\'Umwanditsi' : "Fungura Konti y'Abafatabuguzi"}</h1>
+          <p className="text-gray-400 text-sm mt-1">{isAuthorSignup ? 'Uzabona dashboard yo kwandika inkuru no kubika muri Draft' : 'Kwiyandikisha ukoresheje imeyili'}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -131,17 +146,20 @@ const Register = () => {
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm text-gray-300 mb-1">URL ya Account yawe (Optional)</label>
-            <input
-              type="url"
-              name="profileUrl"
-              value={formData.profileUrl}
-              onChange={handleInputChange}
-              placeholder="https://www.umunsimedia.com/your-account"
-              className="w-full bg-[#1e2329] border border-[#2b2f36] rounded-lg px-3 py-3 text-white"
-            />
-          </div>
+          {isAuthorSignup && (
+            <div>
+              <label className="block text-sm text-gray-300 mb-1">Kora konte kuri umunsimedia.com ushyireho URL ya konte yawe hano *</label>
+              <input
+                type="url"
+                name="profileUrl"
+                required
+                value={formData.profileUrl}
+                onChange={handleInputChange}
+                placeholder="https://www.umunsimedia.com/author-name"
+                className="w-full bg-[#1e2329] border border-[#2b2f36] rounded-lg px-3 py-3 text-white"
+              />
+            </div>
+          )}
 
           <div>
             <label className="block text-sm text-gray-300 mb-1">Ijambo ry'ibanga</label>
@@ -198,7 +216,7 @@ const Register = () => {
             disabled={isLoading}
             className="w-full bg-[#fcd535] text-[#0b0e11] font-bold py-3 rounded-lg hover:bg-[#f0b90b] disabled:opacity-60"
           >
-            {isLoading ? 'Birimo...' : 'Fungura Konti'}
+            {isLoading ? 'Birimo...' : isAuthorSignup ? 'Fungura Author Konti' : 'Fungura Konti'}
           </button>
         </form>
 
@@ -208,8 +226,15 @@ const Register = () => {
 
         <div className="mt-4 text-center text-sm text-gray-400">
           Usanzwe ufite konti?
-          <Link to="/subscriber-login" className="text-[#fcd535] ml-1 hover:underline">
+          <Link to={isAuthorSignup ? '/admin-login' : '/subscriber-login'} className="text-[#fcd535] ml-1 hover:underline">
             Injira
+          </Link>
+        </div>
+
+        <div className="mt-2 text-center text-sm text-gray-400">
+          Wibagiwe ijambo ry'ibanga?
+          <Link to="/forgot-password" className="text-[#fcd535] ml-1 hover:underline">
+            Hindura password
           </Link>
         </div>
       </div>

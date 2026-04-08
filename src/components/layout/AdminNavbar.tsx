@@ -43,6 +43,7 @@ interface MobileNavItem {
   href: string;
   icon: React.ComponentType<{ className?: string; size?: number }>;
   adminOnly?: boolean;
+  hiddenForAuthor?: boolean;
 }
 
 const AdminNavbar: React.FC<AdminNavbarProps> = ({ user: propUser }) => {
@@ -66,28 +67,31 @@ const AdminNavbar: React.FC<AdminNavbarProps> = ({ user: propUser }) => {
   }, [theme]);
 
   const isAdmin = user?.role?.toUpperCase() === 'ADMIN';
+  const isAuthorOnly = user?.role?.toUpperCase() === 'AUTHOR';
 
   const navigation: MobileNavItem[] = [
     { name: 'Dashboard', href: '/admin', icon: BarChart3 },
-    { name: 'Articles', href: '/admin/articles', icon: FileText },
-    { name: 'News', href: '/admin/news', icon: FileText },
-    { name: 'Breaking News', href: '/admin/breaking-news', icon: Bell },
-    { name: 'Featured News', href: '/admin/featured-news', icon: Crown },
+    { name: 'Articles', href: '/admin/articles', icon: FileText, hiddenForAuthor: true },
+    { name: 'News', href: '/admin/news', icon: FileText, hiddenForAuthor: true },
+    { name: 'Breaking News', href: '/admin/breaking-news', icon: Bell, hiddenForAuthor: true },
+    { name: 'Featured News', href: '/admin/featured-news', icon: Crown, hiddenForAuthor: true },
     { name: 'Posts', href: '/admin/posts', icon: FileText },
     { name: 'Add Story', href: '/admin/posts/add', icon: FileText },
-    { name: 'Categories', href: '/admin/categories', icon: FolderOpen },
+    { name: 'Categories', href: '/admin/categories', icon: FolderOpen, hiddenForAuthor: true },
     { name: 'Media Library', href: '/admin/media/library', icon: Image },
     { name: 'Upload Media', href: '/admin/media/add', icon: Image },
-    { name: 'Media', href: '/admin/media', icon: Image },
-    { name: 'Users', href: '/admin/users', icon: Users },
+    { name: 'Media', href: '/admin/media', icon: Image, hiddenForAuthor: true },
+    { name: 'Users', href: '/admin/users', icon: Users, hiddenForAuthor: true },
     { name: 'Roles', href: '/admin/roles', icon: Shield, adminOnly: true },
-    { name: 'Ads', href: '/admin/ads-management', icon: Megaphone },
-    { name: 'Analytics', href: '/admin/analytics', icon: Activity },
+    { name: 'Ads', href: '/admin/ads-management', icon: Megaphone, hiddenForAuthor: true },
+    { name: 'Analytics', href: '/admin/analytics', icon: Activity, hiddenForAuthor: true },
     { name: 'Logs', href: '/admin/logs', icon: Activity, adminOnly: true },
-    { name: 'Settings', href: '/admin/settings', icon: Settings },
+    { name: 'Settings', href: '/admin/settings', icon: Settings, hiddenForAuthor: true },
   ];
 
-  const visibleNavigation = navigation.filter((item) => !item.adminOnly || isAdmin);
+  const visibleNavigation = navigation.filter(
+    (item) => (!item.adminOnly || isAdmin) && (!isAuthorOnly || !item.hiddenForAuthor)
+  );
 
   const handleLogout = async () => {
     try {

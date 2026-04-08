@@ -11,11 +11,15 @@ export interface ApiResponse<T = any> {
 
 export interface PaginatedResponse<T> {
   data: T[];
+  users?: T[];
   pagination: {
     page: number;
     limit: number;
     total: number;
     totalPages: number;
+    currentPage?: number;
+    totalItems?: number;
+    itemsPerPage?: number;
   };
 }
 
@@ -26,12 +30,14 @@ export interface LoginCredentials {
 }
 
 export interface RegisterData {
-  username: string;
+  username?: string;
   email: string;
   password: string;
   firstName: string;
   lastName: string;
   profileUrl?: string;
+  role?: 'AUTHOR' | 'USER';
+  authorInviteKey?: string;
 }
 
 export interface AuthResponse {
@@ -52,6 +58,31 @@ export interface AuthResponse {
     lastLogin?: string;
   };
   token: string;
+}
+
+export interface ForgotPasswordPayload {
+  email: string;
+}
+
+export interface ResetPasswordPayload {
+  token: string;
+  email: string;
+  code: string;
+  password: string;
+}
+
+export interface ChangePasswordWithEmailPayload {
+  email: string;
+  oldPassword: string;
+  newPassword: string;
+}
+
+export interface PasswordFlowResponse {
+  success: boolean;
+  message: string;
+  resetLink?: string;
+  resetToken?: string;
+  debugCode?: string;
 }
 
 // News Types
@@ -385,6 +416,7 @@ export interface FlutterwaveVerifyResponse {
 
 export interface AdBannerSlot {
   enabled: boolean;
+  adCode?: string;
   imageUrl: string;
   targetUrl: string;
   altText: string;
@@ -550,6 +582,27 @@ class ApiClient {
     }
     
     return response;
+  }
+
+  async forgotPassword(payload: ForgotPasswordPayload): Promise<PasswordFlowResponse> {
+    return this.request<PasswordFlowResponse>('/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async resetPassword(payload: ResetPasswordPayload): Promise<PasswordFlowResponse> {
+    return this.request<PasswordFlowResponse>('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async changePasswordWithEmail(payload: ChangePasswordWithEmailPayload): Promise<PasswordFlowResponse> {
+    return this.request<PasswordFlowResponse>('/auth/change-password-with-email', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
   }
 
   async logout(): Promise<void> {
@@ -779,10 +832,38 @@ class ApiClient {
     if (params?.role) searchParams.append('role', params.role);
     if (params?.status) searchParams.append('status', params.status);
 
-    const response = await this.request<PaginatedResponse<User>>(
+    const response = await this.request<PaginatedResponse<User> & { users?: User[] }>(
       `/users?${searchParams.toString()}`
     );
-    return response;
+
+    const users = Array.isArray(response.data)
+      ? response.data
+      : Array.isArray(response.users)
+        ? response.users
+        : [];
+
+    const rawPagination = response.pagination || ({} as PaginatedResponse<User>['pagination']);
+    const page = Number(rawPagination.page ?? rawPagination.currentPage ?? params?.page ?? 1);
+    const fallbackLimit = params?.limit ?? (users.length > 0 ? users.length : 10);
+    const limit = Number(rawPagination.limit ?? rawPagination.itemsPerPage ?? fallbackLimit);
+    const total = Number(rawPagination.total ?? rawPagination.totalItems ?? users.length);
+    const totalPages = Number(rawPagination.totalPages ?? Math.max(1, Math.ceil(total / Math.max(1, limit))));
+
+    return {
+      ...response,
+      data: users,
+      users,
+      pagination: {
+        ...rawPagination,
+        page,
+        limit,
+        total,
+        totalPages,
+        currentPage: page,
+        totalItems: total,
+        itemsPerPage: limit,
+      },
+    };
   }
 
   async createUser(userData: {

@@ -118,6 +118,12 @@ const AdminLogin = () => {
           >
             {isLoading ? 'Birimo...' : 'Kwinjira muri Admin'}
           </button>
+
+          <div className="text-right">
+            <Link to="/forgot-password" className="text-sm text-[#fcd535] hover:underline">
+              Wibagiwe ijambo ry'ibanga?
+            </Link>
+          </div>
         </form>
 
         <div className="mt-5 text-center text-sm text-gray-400">

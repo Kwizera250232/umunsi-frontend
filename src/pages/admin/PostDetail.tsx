@@ -18,8 +18,8 @@ import {
   Image as ImageIcon,
   AlertCircle,
   Clock,
-  Share2,
-  Bookmark
+  Copy,
+  Check
 } from 'lucide-react';
 import { apiClient, Post } from '../../services/api';
 
@@ -29,6 +29,7 @@ const PostDetail: React.FC = () => {
   const [post, setPost] = useState<Post | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [articleUrlCopied, setArticleUrlCopied] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -67,6 +68,25 @@ const PostDetail: React.FC = () => {
   const getServerBaseUrl = () => {
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
     return apiUrl.replace('/api', '');
+  };
+
+  const getArticleUrl = () => {
+    if (!post) return '';
+    const identifier = post.slug || post.id;
+    return `${window.location.origin}/post/${identifier}`;
+  };
+
+  const copyArticleUrl = async () => {
+    const articleUrl = getArticleUrl();
+    if (!articleUrl) return;
+
+    try {
+      await navigator.clipboard.writeText(articleUrl);
+      setArticleUrlCopied(true);
+      setTimeout(() => setArticleUrlCopied(false), 2000);
+    } catch (copyError) {
+      console.error('Failed to copy article URL:', copyError);
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -374,9 +394,19 @@ const PostDetail: React.FC = () => {
                   <span className="text-gray-500">ID</span>
                   <span className="font-mono text-gray-300 text-xs">{post.id.slice(0, 8)}...</span>
                 </div>
-                <div className="flex justify-between p-3 bg-[#0b0e11] rounded-xl border border-[#2b2f36]">
-                  <span className="text-gray-500">Slug</span>
-                  <span className="font-mono text-gray-300 text-xs truncate max-w-[150px]">{post.slug}</span>
+                <div className="p-3 bg-[#0b0e11] rounded-xl border border-[#2b2f36]">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-gray-500">Article URL</span>
+                    <button
+                      type="button"
+                      onClick={copyArticleUrl}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[#2b2f36] text-gray-300 hover:text-[#fcd535] hover:border-[#fcd535]/50 transition-colors"
+                    >
+                      {articleUrlCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span className="text-xs">{articleUrlCopied ? 'Copied' : 'Copy URL'}</span>
+                    </button>
+                  </div>
+                  <p className="font-mono text-gray-300 text-xs mt-2 truncate">{getArticleUrl()}</p>
                 </div>
                 <div className="flex justify-between p-3 bg-[#0b0e11] rounded-xl border border-[#2b2f36]">
                   <span className="text-gray-500">Created</span>

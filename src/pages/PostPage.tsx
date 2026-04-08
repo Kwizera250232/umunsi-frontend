@@ -1,9 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { 
   Eye, 
   Calendar,
   User,
+  Bookmark,
+  Copy,
   Heart,
   MessageCircle,
   Share2,
@@ -15,8 +17,6 @@ import {
   Facebook,
   Twitter,
   Linkedin,
-  Link2,
-  Check,
   ArrowLeft,
   Lock,
   Crown,
@@ -30,6 +30,8 @@ import { useAuth } from '../contexts/AuthContext';
 declare global {
   interface Window {
     adsbygoogle?: Array<Record<string, unknown>>;
+    instgrm?: { Embeds?: { process?: () => void } };
+    twttr?: { widgets?: { load?: (el?: HTMLElement) => void } };
   }
 }
 
@@ -38,16 +40,150 @@ const getServerBaseUrl = () => {
   return apiUrl.replace('/api', '');
 };
 
+const resolveArticleImageSrc = (src: string) => {
+  if (!src) return src;
+  if (src.startsWith('http://') || src.startsWith('https://') || src.startsWith('data:')) return src;
+  if (src.startsWith('/')) return `${getServerBaseUrl()}${src}`;
+  return `${getServerBaseUrl()}/uploads/${src}`;
+};
+
+const extractFirstImageFromHtml = (html?: string) => {
+  if (!html) return null;
+  const match = html.match(/<img[^>]*src=["']([^"']+)["'][^>]*>/i);
+  if (!match || !match[1]) return null;
+  return resolveArticleImageSrc(match[1].trim());
+};
+
+const hasBlockLevelMarkup = (html: string) => /<(p|div|h[1-6]|ul|ol|li|blockquote|figure|table|iframe|img|video|br)\b/i.test(html);
+
+const getYouTubeVideoId = (url: string) => {
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.replace(/^www\./, '');
+
+    if (host === 'youtu.be') {
+      const id = parsed.pathname.split('/').filter(Boolean)[0];
+      return id || null;
+    }
+
+    if (host.includes('youtube.com')) {
+      const id = parsed.searchParams.get('v');
+      if (id) return id;
+
+      const parts = parsed.pathname.split('/').filter(Boolean);
+      const markerIndex = parts.findIndex((part) => part === 'embed' || part === 'shorts');
+      if (markerIndex !== -1 && parts[markerIndex + 1]) {
+        return parts[markerIndex + 1];
+      }
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+};
+
+const isInstagramUrl = (url: string) => /(^https?:\/\/)?(www\.)?instagram\.com\//i.test(url);
+const isXUrl = (url: string) => /(^https?:\/\/)?(www\.)?(x\.com|twitter\.com)\//i.test(url);
+
+const renderStandaloneUrlBlock = (rawUrl: string) => {
+  const url = rawUrl.replace(/&amp;/g, '&').trim();
+  const youtubeId = getYouTubeVideoId(url);
+
+  if (youtubeId) {
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://umunsi.com';
+    const params = `rel=0&modestbranding=1&playsinline=1&origin=${encodeURIComponent(origin)}`;
+    return `
+      <div class="not-prose my-6 overflow-hidden rounded-xl border border-[#2b2f36] bg-[#0b0e11]">
+        <iframe
+          src="https://www.youtube-nocookie.com/embed/${youtubeId}?${params}"
+          title="YouTube video"
+          class="w-full aspect-video"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allowfullscreen
+          loading="lazy"
+          referrerpolicy="strict-origin-when-cross-origin"
+        ></iframe>
+      </div>
+    `;
+  }
+
+  if (isInstagramUrl(url)) {
+    return `
+      <blockquote class="instagram-media not-prose my-6" data-instgrm-permalink="${url}" data-instgrm-version="14">
+        <a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>
+      </blockquote>
+    `;
+  }
+
+  if (isXUrl(url)) {
+    return `
+      <blockquote class="twitter-tweet not-prose my-6">
+        <a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>
+      </blockquote>
+    `;
+  }
+
+  return `<p><a href="${url}" target="_blank" rel="noopener noreferrer" class="underline break-all">${url}</a></p>`;
+};
+
+const buildParagraphMarkup = (rawText: string) => {
+  const normalized = rawText.replace(/\r\n/g, '\n').trim();
+  if (!normalized) return '';
+
+  const byBlankLines = normalized
+    .split(/\n{2,}/)
+    .map((chunk) => chunk.trim())
+    .filter(Boolean);
+
+  const sourceParagraphs = byBlankLines.length > 1
+    ? byBlankLines
+    : (() => {
+        const compact = normalized.replace(/\s+/g, ' ').trim();
+        const sentences = compact
+          .split(/(?<=[.!?])\s+/)
+          .map((part) => part.trim())
+          .filter(Boolean);
+
+        if (sentences.length >= 4) {
+          const grouped: string[] = [];
+          for (let i = 0; i < sentences.length; i += 2) {
+            grouped.push(sentences.slice(i, i + 2).join(' '));
+          }
+          return grouped;
+        }
+
+        return [compact];
+      })();
+
+  return sourceParagraphs
+    .map((paragraph) => `<p>${paragraph.replace(/\n+/g, '<br />')}</p>`)
+    .join('');
+};
+
 const normalizeArticleHtml = (content?: string) => {
-  return content?.replace(
+  const raw = String(content || '').trim();
+  if (!raw) return '';
+
+  let html = raw.replace(/\[embed\]\s*(https?:\/\/[^\s\]]+)\s*\[\/embed\]/gi, (_match, url) => {
+    const safeUrl = String(url || '').trim();
+    if (!safeUrl) return '';
+    return renderStandaloneUrlBlock(safeUrl);
+  });
+
+  if (!hasBlockLevelMarkup(html)) {
+    html = buildParagraphMarkup(html);
+  }
+
+  html = html.replace(/<p>\s*((?:https?:\/\/)[^<\s]+)\s*<\/p>/gi, (_match, url) => renderStandaloneUrlBlock(url));
+
+  return html.replace(
     /<img([^>]*)src="([^"]*)"([^>]*)>/gi,
     (match, before, src, after) => {
-      const correctedSrc = src.startsWith('/uploads/')
-        ? `${getServerBaseUrl()}${src}`
-        : src.startsWith('http') ? src : `${getServerBaseUrl()}/uploads/${src}`;
+      const correctedSrc = resolveArticleImageSrc(src);
       return `<img${before}src="${correctedSrc}"${after} class="w-full h-auto rounded-lg my-4" onerror="this.style.display='none'">`;
     }
-  ) || '';
+  );
 };
 
 const ADSENSE_ARTICLE_BLOCK = `
@@ -125,6 +261,7 @@ const injectAdAfterSecondParagraph = (html: string) => {
 
 const PostPage = () => {
   const { slug, id } = useParams<{ slug?: string; id?: string }>();
+  const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
   const showAds = true;
   const canSeeViews = user?.role === 'ADMIN';
@@ -136,7 +273,9 @@ const PostPage = () => {
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
   const [showShareMenu, setShowShareMenu] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [topUrlCopied, setTopUrlCopied] = useState(false);
+  const [isBookmarked, setIsBookmarked] = useState(false);
+  const [authorAvatarLoadFailed, setAuthorAvatarLoadFailed] = useState(false);
   const [isAuthorProfileOpen, setIsAuthorProfileOpen] = useState(false);
   const [authorPosts, setAuthorPosts] = useState<Post[]>([]);
   const [loadingAuthorPosts, setLoadingAuthorPosts] = useState(false);
@@ -157,6 +296,8 @@ const PostPage = () => {
   }, [postIdentifier]);
 
   const normalizedContent = normalizeArticleHtml(post?.content);
+  const fallbackFeaturedImage = useMemo(() => extractFirstImageFromHtml(normalizedContent), [normalizedContent]);
+  const effectiveFeaturedImage = post?.featuredImage || fallbackFeaturedImage || '';
   const contentWithInlineAd = useMemo(
     () => injectAdAfterSecondParagraph(normalizedContent),
     [normalizedContent]
@@ -173,6 +314,7 @@ const PostPage = () => {
   const isPremiumLocked = Boolean(post?.isPremium) && !hasPremiumAccess;
   const returnToCurrentPost = encodeURIComponent(`${window.location.pathname}${window.location.search}`);
   const authorDisplayName = `${post?.author?.firstName || ''} ${post?.author?.lastName || ''}`.trim() || post?.author?.username || 'Unknown';
+  const authorInitial = (authorDisplayName || 'U').charAt(0).toUpperCase();
   const authorRole = (post?.author?.role || 'AUTHOR').toUpperCase();
   const normalizedAuthorUsername = normalizeIdentityName(post?.author?.username || '');
   const isSpecialAdmin =
@@ -197,6 +339,20 @@ const PostPage = () => {
     if (post?.id) unique.add(post.id);
     return unique.size;
   }, [authorPosts, post?.id]);
+
+  useEffect(() => {
+    if (!post?.id || typeof window === 'undefined') {
+      setIsBookmarked(false);
+      return;
+    }
+
+    const saved = JSON.parse(localStorage.getItem('umunsi_saved_articles') || '[]') as string[];
+    setIsBookmarked(saved.includes(post.id));
+  }, [post?.id]);
+
+  useEffect(() => {
+    setAuthorAvatarLoadFailed(false);
+  }, [post?.author?.avatar, post?.author?.id]);
 
   useEffect(() => {
     if (!showAds || !contentWithInlineAd || typeof window === 'undefined') {
@@ -252,6 +408,33 @@ const PostPage = () => {
       cancelled = true;
     };
   }, [contentWithInlineAd, showAds, post?.id]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !contentWithInlineAd) return;
+
+    const processEmbeds = () => {
+      window.instgrm?.Embeds?.process?.();
+      window.twttr?.widgets?.load?.();
+    };
+
+    const loadScript = (id: string, src: string, onLoad?: () => void) => {
+      let script = document.getElementById(id) as HTMLScriptElement | null;
+      if (!script) {
+        script = document.createElement('script');
+        script.id = id;
+        script.src = src;
+        script.async = true;
+        if (onLoad) script.addEventListener('load', onLoad, { once: true });
+        document.body.appendChild(script);
+      } else if (onLoad) {
+        onLoad();
+      }
+    };
+
+    loadScript('instagram-embed-script', 'https://www.instagram.com/embed.js', processEmbeds);
+    loadScript('twitter-widget-script', 'https://platform.twitter.com/widgets.js', processEmbeds);
+    processEmbeds();
+  }, [contentWithInlineAd]);
 
   useEffect(() => {
     if (!isAuthorProfileOpen || !post?.author?.id) {
@@ -364,11 +547,6 @@ const PostPage = () => {
       case 'whatsapp':
         window.open(`https://wa.me/?text=${encodeURIComponent(title + ' ' + url)}`, '_blank');
         break;
-      case 'copy':
-        navigator.clipboard.writeText(url);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-        break;
     }
     setShowShareMenu(false);
   };
@@ -387,6 +565,63 @@ const PostPage = () => {
     setComments(prev => [comment, ...prev]);
     setNewComment('');
     setSubmittingComment(false);
+  };
+
+  const handleToggleBookmark = () => {
+    const premiumBookmarkMessage = 'Wifuza kubika iyi nkuru ukunze kugira ngo uze kongera kuyisoma nyuma ? Iyandikishe uyu  munsi kuri UMUNSI.COM Premium ukora konte.';
+
+    if (!hasPremiumAccess) {
+      if (post?.id && typeof window !== 'undefined') {
+        const existingRequests = JSON.parse(localStorage.getItem('umunsi_premium_request_articles') || '[]') as Array<{
+          id: string;
+          title: string;
+          slug?: string;
+          url: string;
+          requestedAt: string;
+        }>;
+
+        const hasSameRequest = existingRequests.some((item) => item.id === post.id);
+        if (!hasSameRequest) {
+          const requestItem = {
+            id: post.id,
+            title: post.title,
+            slug: post.slug,
+            url: `${window.location.origin}/post/${post.slug || post.id}`,
+            requestedAt: new Date().toISOString()
+          };
+          localStorage.setItem('umunsi_premium_request_articles', JSON.stringify([requestItem, ...existingRequests].slice(0, 20)));
+        }
+      }
+
+      const shouldRegister = window.confirm(premiumBookmarkMessage);
+      if (shouldRegister) {
+        if (isAuthenticated) {
+          navigate('/subscriber/account');
+        } else {
+          navigate(`/register?redirect=${returnToCurrentPost}`);
+        }
+      }
+      return;
+    }
+
+    if (!post?.id || typeof window === 'undefined') return;
+
+    const saved = JSON.parse(localStorage.getItem('umunsi_saved_articles') || '[]') as string[];
+    const alreadySaved = saved.includes(post.id);
+    const next = alreadySaved ? saved.filter((savedId) => savedId !== post.id) : [...saved, post.id];
+
+    localStorage.setItem('umunsi_saved_articles', JSON.stringify(next));
+    setIsBookmarked(!alreadySaved);
+  };
+
+  const handleCopyTopArticleUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setTopUrlCopied(true);
+      setTimeout(() => setTopUrlCopied(false), 2000);
+    } catch (error) {
+      console.error('Failed to copy article URL:', error);
+    }
   };
 
   const formatDate = (dateString?: string) => {
@@ -410,6 +645,12 @@ const PostPage = () => {
     if (!url) return 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=800&h=400&fit=crop';
     if (url.startsWith('http')) return url;
     return `${getServerBaseUrl()}${url}`;
+  };
+
+  const getAuthorAvatarUrl = (avatar?: string) => {
+    if (!avatar) return '';
+    if (avatar.startsWith('http')) return avatar;
+    return `${getServerBaseUrl()}${avatar}`;
   };
 
   if (loading) {
@@ -493,9 +734,18 @@ const PostPage = () => {
 
                 {/* Author & Stats Row */}
                 <div className="flex items-center justify-between flex-wrap gap-3 pb-4 border-b border-[#2b2f36]">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-[#fcd535] flex items-center justify-center">
-                      <User className="w-5 h-5 text-[#0b0e11]" />
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-full bg-[#fcd535] flex items-center justify-center overflow-hidden flex-shrink-0">
+                      {post.author?.avatar && !authorAvatarLoadFailed ? (
+                        <img
+                          src={getAuthorAvatarUrl(post.author.avatar)}
+                          alt={authorDisplayName}
+                          className="w-full h-full object-cover"
+                          onError={() => setAuthorAvatarLoadFailed(true)}
+                        />
+                      ) : (
+                        <span className="text-[#0b0e11] font-bold text-sm">{authorInitial}</span>
+                      )}
                     </div>
                     <div>
                       <div className="inline-flex items-center gap-2">
@@ -518,12 +768,37 @@ const PostPage = () => {
                             <img
                               src={AUTHOR_APP_BADGE_IMAGE}
                               alt="Umunsi Media App"
-                              className="w-5 h-5 object-cover"
+                                className="h-5 w-auto max-w-10 object-contain bg-[#0b0e11]"
                             />
                           </a>
                         )}
                       </div>
-                      <p className="text-gray-500 text-xs">{authorRole === 'ADMIN' ? 'Admin' : 'Author'}</p>
+                      {['ADMIN', 'EDITOR', 'AUTHOR'].includes(authorRole) && (
+                        <div className="flex items-center gap-2 flex-wrap mt-2">
+                        <button
+                          type="button"
+                          onClick={handleToggleBookmark}
+                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                            isBookmarked
+                              ? 'bg-[#fcd535] text-[#0b0e11] border-[#fcd535]'
+                              : 'bg-transparent text-gray-300 border-[#3a4049] hover:border-[#fcd535] hover:text-[#fcd535]'
+                          }`}
+                          title={isBookmarked ? 'Remove from saved articles' : 'Save this article'}
+                        >
+                          <Bookmark className={`w-3.5 h-3.5 ${isBookmarked ? 'fill-current' : ''}`} />
+                          {isBookmarked ? 'Saved with Love' : 'Save Article'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleCopyTopArticleUrl}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border border-[#3a4049] text-gray-300 hover:border-[#fcd535] hover:text-[#fcd535] transition-all"
+                          title="Copy article URL"
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                          {topUrlCopied ? 'URL Copied' : 'Copy URL'}
+                        </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-4 text-sm text-gray-500">
@@ -533,23 +808,16 @@ const PostPage = () => {
                         {post.viewCount}
                       </span>
                     )}
-                    <span className="flex items-center gap-1">
-                      <Heart className="w-4 h-4" />
-                      {likeCount}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <MessageCircle className="w-4 h-4" />
-                      {post.commentCount || comments.length}
-                    </span>
+                    <span>{post.commentCount || comments.length} comments</span>
                   </div>
                 </div>
               </div>
 
               {/* Featured Image */}
-              {post.featuredImage && !isPremiumLocked && (
+              {effectiveFeaturedImage && !isPremiumLocked && (
                 <div className="px-4 py-4">
                   <img
-                    src={getImageUrl(post.featuredImage)}
+                    src={getImageUrl(effectiveFeaturedImage)}
                     alt={post.title}
                     className="w-full h-auto rounded-lg"
                   />
@@ -585,12 +853,6 @@ const PostPage = () => {
                     className="w-8 h-8 rounded-full bg-[#0077b5] flex items-center justify-center hover:opacity-80 transition-opacity"
                   >
                     <Linkedin className="w-4 h-4 text-white" />
-                  </button>
-                  <button 
-                    onClick={() => handleShare('copy')}
-                    className="w-8 h-8 rounded-full bg-[#2b2f36] flex items-center justify-center hover:bg-[#363a45] transition-colors"
-                  >
-                    {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Link2 className="w-4 h-4 text-gray-400" />}
                   </button>
                 </div>
               </div>
@@ -893,7 +1155,7 @@ const PostPage = () => {
                       <img
                         src={AUTHOR_APP_BADGE_IMAGE}
                         alt="Umunsi Media App"
-                        className="w-5 h-5 object-cover"
+                        className="h-5 w-auto max-w-10 object-contain bg-[#0b0e11]"
                       />
                     </a>
                   )}

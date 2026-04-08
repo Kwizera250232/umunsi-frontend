@@ -28,6 +28,7 @@ import {
   MoreHorizontal
 } from 'lucide-react';
 import { apiClient } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 
 interface DashboardStats {
   totalUsers: number;
@@ -75,6 +76,8 @@ interface MaintenanceState {
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isAuthorOnly = user?.role === 'AUTHOR';
   const [loading, setLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [stats, setStats] = useState<DashboardStats>({
@@ -122,6 +125,43 @@ const AdminDashboard = () => {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
+
+      if (isAuthorOnly && user?.id) {
+        const postsResponse = await apiClient.getPosts({ limit: 1000, authorId: user.id }).catch(() => null);
+        const postsData = postsResponse?.data || [];
+        const totalViews = postsData.reduce((sum: number, post: any) => sum + (post.viewCount || 0), 0);
+        const totalLikes = postsData.reduce((sum: number, post: any) => sum + (post.likeCount || 0), 0);
+        const totalComments = postsData.reduce((sum: number, post: any) => sum + (post.commentCount || post._count?.comments || 0), 0);
+        const categoriesCount = new Set(postsData.map((post: any) => post.category?.id).filter(Boolean)).size;
+
+        setStats({
+          totalUsers: 0,
+          totalPosts: postsData.length,
+          totalCategories: categoriesCount,
+          totalComments,
+          totalViews,
+          todayViews: 0,
+          dailyViews: [],
+          totalLikes
+        });
+
+        setRecentPosts(
+          postsData.slice(0, 5).map((post: any) => ({
+            id: post.id,
+            title: post.title,
+            author: `${post.author?.firstName || ''} ${post.author?.lastName || ''}`.trim() || post.author?.username || 'Unknown Author',
+            views: post.viewCount || 0,
+            likes: post.likeCount || 0,
+            comments: post.commentCount || post._count?.comments || 0,
+            status: post.status?.toLowerCase() || 'draft',
+            publishedAt: post.publishedAt || post.createdAt || new Date().toISOString()
+          }))
+        );
+
+        setRecentUsers([]);
+        setSystemStatus({ database: 'healthy', server: 'healthy' });
+        return;
+      }
       
       // Fetch dashboard stats and posts/users in parallel
       const [dashboardResponse, postsResponse, usersResponse] = await Promise.all([
@@ -342,9 +382,9 @@ const AdminDashboard = () => {
                   {currentTime.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                 </span>
               </div>
-              <h2 className="text-3xl font-bold text-white mb-2">Welcome back, Admin!</h2>
+              <h2 className="text-3xl font-bold text-white mb-2">{isAuthorOnly ? 'Welcome back, Author!' : 'Welcome back, Admin!'}</h2>
               <p className="text-gray-400 max-w-lg">
-                Your dashboard is looking great. Here's what's happening with your content platform today.
+                {isAuthorOnly ? 'Aha urabona inkuru wanditse gusa n\'imibare yayo.' : "Your dashboard is looking great. Here's what's happening with your content platform today."}
               </p>
             </div>
             <div className="hidden lg:flex items-center space-x-4">
@@ -355,17 +395,17 @@ const AdminDashboard = () => {
                 <Plus className="w-5 h-5" />
                 <span>New Post</span>
               </button>
-              <button className="px-5 py-3 bg-[#2b2f36] text-white font-medium rounded-xl hover:bg-[#363a45] transition-all border border-[#2b2f36] flex items-center space-x-2">
+              {!isAuthorOnly && <button className="px-5 py-3 bg-[#2b2f36] text-white font-medium rounded-xl hover:bg-[#363a45] transition-all border border-[#2b2f36] flex items-center space-x-2">
                 <Download className="w-5 h-5" />
                 <span>Export</span>
-              </button>
+              </button>}
             </div>
           </div>
         </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="mb-8 bg-[#181a20] rounded-2xl border border-[#2b2f36] p-6">
+      {!isAuthorOnly && <div className="mb-8 bg-[#181a20] rounded-2xl border border-[#2b2f36] p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-white">Maintenance Mode</h3>
           <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${maintenance.enabled ? 'bg-red-500/20 text-red-300 border-red-500/40' : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'}`}>
@@ -398,11 +438,11 @@ const AdminDashboard = () => {
         >
           {savingMaintenance ? 'Saving...' : 'Save Maintenance Settings'}
         </button>
-      </div>
+      </div>}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
         {/* Total Users */}
-        <div 
+        {!isAuthorOnly && <div 
           onClick={() => navigate('/admin/users')}
           className="group relative bg-[#181a20] rounded-2xl border border-[#2b2f36] overflow-hidden hover:border-blue-500/50 transition-all duration-300 cursor-pointer"
         >
@@ -418,8 +458,8 @@ const AdminDashboard = () => {
               <p className="text-3xl font-bold text-white mb-1">{formatNumber(stats.totalUsers)}</p>
               <p className="text-sm text-gray-500 group-hover:text-gray-400">Total Users</p>
             </div>
-            </div>
           </div>
+        </div>}
 
         {/* Total Posts */}
         <div 
@@ -443,7 +483,7 @@ const AdminDashboard = () => {
 
         {/* Total Views */}
         <div 
-          onClick={() => navigate('/admin/analytics')}
+          onClick={() => navigate(isAuthorOnly ? '/admin/posts' : '/admin/analytics')}
           className="group relative bg-[#181a20] rounded-2xl border border-[#2b2f36] overflow-hidden hover:border-emerald-500/50 transition-all duration-300 cursor-pointer"
         >
           <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
@@ -456,14 +496,14 @@ const AdminDashboard = () => {
             </div>
             <div>
               <p className="text-3xl font-bold text-white mb-1">{formatNumber(stats.totalViews)}</p>
-              <p className="text-sm text-gray-500 group-hover:text-gray-400">Total Views</p>
+              <p className="text-sm text-gray-500 group-hover:text-gray-400">{isAuthorOnly ? 'Views on Your Posts' : 'Total Views'}</p>
             </div>
             </div>
           </div>
 
         {/* Today Views */}
         <div 
-          onClick={() => navigate('/admin/analytics')}
+          onClick={() => navigate(isAuthorOnly ? '/admin/posts' : '/admin/analytics')}
           className="group relative bg-[#181a20] rounded-2xl border border-[#2b2f36] overflow-hidden hover:border-teal-500/50 transition-all duration-300 cursor-pointer"
         >
           <div className="absolute inset-0 bg-gradient-to-br from-teal-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
@@ -476,14 +516,14 @@ const AdminDashboard = () => {
             </div>
             <div>
               <p className="text-3xl font-bold text-white mb-1">{formatNumber(stats.todayViews)}</p>
-              <p className="text-sm text-gray-500 group-hover:text-gray-400">Today's Views</p>
+              <p className="text-sm text-gray-500 group-hover:text-gray-400">{isAuthorOnly ? 'Recent Views' : "Today's Views"}</p>
             </div>
           </div>
         </div>
 
         {/* Engagement */}
         <div 
-          onClick={() => navigate('/admin/analytics')}
+          onClick={() => navigate(isAuthorOnly ? '/admin/posts' : '/admin/analytics')}
           className="group relative bg-[#181a20] rounded-2xl border border-[#2b2f36] overflow-hidden hover:border-[#fcd535]/50 transition-all duration-300 cursor-pointer"
         >
           <div className="absolute inset-0 bg-gradient-to-br from-[#fcd535]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
@@ -496,13 +536,13 @@ const AdminDashboard = () => {
             </div>
             <div>
               <p className="text-3xl font-bold text-white mb-1">{formatNumber(stats.totalLikes + stats.totalComments)}</p>
-              <p className="text-sm text-gray-500 group-hover:text-gray-400">Total Engagement</p>
+              <p className="text-sm text-gray-500 group-hover:text-gray-400">{isAuthorOnly ? 'Your Posts Engagement' : 'Total Engagement'}</p>
             </div>
             </div>
           </div>
         </div>
 
-        <div className="mb-8 bg-[#181a20] rounded-2xl border border-[#2b2f36] p-6">
+        {!isAuthorOnly && <div className="mb-8 bg-[#181a20] rounded-2xl border border-[#2b2f36] p-6">
           <h3 className="text-lg font-semibold text-white mb-4">Reading Trend (Last 7 Days)</h3>
           {stats.dailyViews.length > 0 ? (
             <div className="space-y-3">
@@ -526,9 +566,9 @@ const AdminDashboard = () => {
           ) : (
             <p className="text-sm text-gray-500">No daily view data yet.</p>
           )}
-        </div>
+        </div>}
 
-        <div className="mb-8 bg-[#181a20] rounded-2xl border border-[#2b2f36] p-6">
+        {!isAuthorOnly && <div className="mb-8 bg-[#181a20] rounded-2xl border border-[#2b2f36] p-6">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-5">
             <h3 className="text-lg font-semibold text-white">Daily Views Check</h3>
             <input
@@ -561,7 +601,7 @@ const AdminDashboard = () => {
           ) : (
             <p className="text-sm text-gray-500">No daily views data available to check yet.</p>
           )}
-        </div>
+        </div>}
 
       {/* Main Grid */}
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
@@ -656,7 +696,7 @@ const AdminDashboard = () => {
         {/* Right Column */}
           <div className="space-y-6">
             {/* Recent Users */}
-          <div className="bg-[#181a20] rounded-2xl border border-[#2b2f36] overflow-hidden">
+          {!isAuthorOnly && <div className="bg-[#181a20] rounded-2xl border border-[#2b2f36] overflow-hidden">
             <div className="px-6 py-5 border-b border-[#2b2f36] flex items-center justify-between">
               <div className="flex items-center space-x-3">
                 <div className="p-2 bg-blue-500/10 rounded-lg">
@@ -707,9 +747,9 @@ const AdminDashboard = () => {
                   </div>
                 )}
               </div>
-            </div>
+            </div>}
 
-            <div className="bg-[#181a20] rounded-2xl border border-[#2b2f36] overflow-hidden">
+            {!isAuthorOnly && <div className="bg-[#181a20] rounded-2xl border border-[#2b2f36] overflow-hidden">
               <div className="px-6 py-5 border-b border-[#2b2f36]">
                 <div className="flex items-center space-x-3">
                   <div className="p-2 bg-amber-500/10 rounded-lg">
@@ -735,7 +775,7 @@ const AdminDashboard = () => {
                   <ChevronRight className="w-4 h-4" />
                 </button>
               </div>
-            </div>
+            </div>}
 
             {/* System Status */}
           <div className="bg-[#181a20] rounded-2xl border border-[#2b2f36] overflow-hidden">
@@ -792,7 +832,7 @@ const AdminDashboard = () => {
                   </div>
                   <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors">Create New Post</span>
                 </button>
-                <button 
+                {!isAuthorOnly && <button 
                   onClick={() => navigate('/admin/users')}
                   className="w-full flex items-center space-x-3 p-4 bg-[#2b2f36]/50 hover:bg-[#2b2f36] rounded-xl transition-all group border border-transparent hover:border-blue-500/30"
                 >
@@ -800,8 +840,8 @@ const AdminDashboard = () => {
                     <Users className="w-5 h-5 text-blue-400" />
                   </div>
                   <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors">Manage Users</span>
-                </button>
-                <button 
+                </button>}
+                {!isAuthorOnly && <button 
                   onClick={() => navigate('/admin/analytics')}
                   className="w-full flex items-center space-x-3 p-4 bg-[#2b2f36]/50 hover:bg-[#2b2f36] rounded-xl transition-all group border border-transparent hover:border-purple-500/30"
                 >
@@ -809,7 +849,7 @@ const AdminDashboard = () => {
                     <BarChart3 className="w-5 h-5 text-purple-400" />
                   </div>
                   <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors">View Analytics</span>
-                </button>
+                </button>}
               </div>
               </div>
             </div>
@@ -849,7 +889,7 @@ const AdminDashboard = () => {
         </div>
 
         {/* Likes */}
-        <div 
+        {!isAuthorOnly && <div 
           onClick={() => navigate('/admin/analytics')}
           className="bg-[#181a20] rounded-2xl border border-[#2b2f36] p-6 group hover:border-pink-500/50 transition-all cursor-pointer"
         >
@@ -861,10 +901,10 @@ const AdminDashboard = () => {
           </div>
           <p className="text-3xl font-bold text-white mb-1">{formatNumber(stats.totalLikes)}</p>
           <p className="text-sm text-gray-500 group-hover:text-gray-400">Total Likes</p>
-        </div>
+        </div>}
 
         {/* Avg. Engagement */}
-        <div 
+        {!isAuthorOnly && <div 
           onClick={() => navigate('/admin/analytics')}
           className="bg-[#181a20] rounded-2xl border border-[#2b2f36] p-6 group hover:border-[#fcd535]/50 transition-all cursor-pointer"
         >
@@ -878,7 +918,7 @@ const AdminDashboard = () => {
             {stats.totalPosts > 0 ? ((stats.totalLikes + stats.totalComments) / stats.totalPosts).toFixed(1) : '0'}
           </p>
           <p className="text-sm text-gray-500 group-hover:text-gray-400">Avg. Engagement / Post</p>
-        </div>
+        </div>}
       </div>
     </div>
   );
