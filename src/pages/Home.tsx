@@ -58,27 +58,30 @@ const Home = () => {
       }
     };
 
-    loadAdsBanners();
+    const timer = window.setTimeout(loadAdsBanners, 200);
+    return () => window.clearTimeout(timer);
   }, []);
 
   const fetchHomeData = async () => {
     try {
       setLoading(true);
-      
-      const postsResponse = await apiClient.getPosts({ 
-        status: 'PUBLISHED', 
-        limit: 30 
-      });
-      
-      if (postsResponse?.data) {
-        setPosts(postsResponse.data);
-        const featured = postsResponse.data.find(p => p.isFeatured) || null;
+
+      const [postsResult, categoriesResult] = await Promise.allSettled([
+        apiClient.getPosts({
+          status: 'PUBLISHED',
+          limit: 20
+        }),
+        apiClient.getCategories({ includeInactive: false })
+      ]);
+
+      if (postsResult.status === 'fulfilled' && postsResult.value?.data) {
+        setPosts(postsResult.value.data);
+        const featured = postsResult.value.data.find((p) => p.isFeatured) || null;
         setFeaturedPost(featured);
       }
 
-      const categoriesResponse = await apiClient.getCategories({ includeInactive: false });
-      if (categoriesResponse) {
-        setCategories(categoriesResponse);
+      if (categoriesResult.status === 'fulfilled' && categoriesResult.value) {
+        setCategories(categoriesResult.value);
       }
     } catch (error) {
       console.error('Error fetching home data:', error);
@@ -211,6 +214,17 @@ const Home = () => {
           ) : (
             bannerImage
           )}
+        </div>
+      );
+    }
+
+    if (slot?.enabled && slot.adCode) {
+      return (
+        <div className={`${className} bg-[#0b0e11] rounded-lg overflow-hidden`}>
+          <div
+            className="w-full h-full"
+            dangerouslySetInnerHTML={{ __html: slot.adCode }}
+          />
         </div>
       );
     }

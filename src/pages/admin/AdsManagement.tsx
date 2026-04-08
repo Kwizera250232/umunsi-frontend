@@ -8,6 +8,7 @@ const defaultAdsSettings: AdsBannersState = {
   slots: {
     leaderboardTop970x120: {
       enabled: false,
+      adCode: '',
       imageUrl: '',
       targetUrl: '',
       altText: 'Top Leaderboard Banner',
@@ -16,6 +17,7 @@ const defaultAdsSettings: AdsBannersState = {
     },
     business728x250: {
       enabled: false,
+      adCode: '',
       imageUrl: '',
       targetUrl: '',
       altText: "Ahantu h'Ubucuruzi Banner",
@@ -24,6 +26,7 @@ const defaultAdsSettings: AdsBannersState = {
     },
     sidebar300x250: {
       enabled: false,
+      adCode: '',
       imageUrl: '',
       targetUrl: '',
       altText: 'Sidebar 300x250 Banner',
@@ -32,6 +35,7 @@ const defaultAdsSettings: AdsBannersState = {
     },
     adminSidebar240x320: {
       enabled: false,
+      adCode: '',
       imageUrl: '',
       targetUrl: '',
       altText: 'Admin Sidebar Banner',
@@ -40,6 +44,7 @@ const defaultAdsSettings: AdsBannersState = {
     },
     square300x300: {
       enabled: false,
+      adCode: '',
       imageUrl: '',
       targetUrl: '',
       altText: 'Square 300x300 Banner',
@@ -48,6 +53,7 @@ const defaultAdsSettings: AdsBannersState = {
     },
     skyscraper300x600: {
       enabled: false,
+      adCode: '',
       imageUrl: '',
       targetUrl: '',
       altText: 'Skyscraper 300x600 Banner',
@@ -56,6 +62,7 @@ const defaultAdsSettings: AdsBannersState = {
     },
     leaderboardBottom970x120: {
       enabled: false,
+      adCode: '',
       imageUrl: '',
       targetUrl: '',
       altText: 'Bottom Leaderboard Banner',
@@ -137,6 +144,7 @@ const AdsManagement = () => {
     try {
       const parser = new DOMParser();
       const doc = parser.parseFromString(htmlCode, 'text/html');
+      const insAd = doc.querySelector('ins.adsbygoogle');
       const image = doc.querySelector('img, source');
       const link = doc.querySelector('a[href]');
 
@@ -147,6 +155,13 @@ const AdsManagement = () => {
       if (src) updateSlot(slotKey, 'imageUrl', src);
       if (href) updateSlot(slotKey, 'targetUrl', href);
       if (alt) updateSlot(slotKey, 'altText', alt);
+
+      // Keep the original AdSense slot markup so homepage can render provider snippets.
+      if (insAd) {
+        updateSlot(slotKey, 'adCode', insAd.outerHTML);
+      } else {
+        updateSlot(slotKey, 'adCode', htmlCode.trim());
+      }
     } catch (error) {
       console.error('Failed to parse ad HTML code:', error);
     }

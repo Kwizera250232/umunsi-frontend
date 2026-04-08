@@ -1027,7 +1027,7 @@ const Users = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-400 mb-1">URL ya Account (Author)</label>
+                <label className="block text-sm font-medium text-gray-400 mb-1">Kora konte kuri umunsimedia.com ushyireho URL ya konte yawe hano</label>
                 <input
                   type="url"
                   value={formData.profileUrl}
@@ -1129,7 +1129,7 @@ const Users = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-400 mb-1">URL ya Account (Author)</label>
+                <label className="block text-sm font-medium text-gray-400 mb-1">Kora konte kuri umunsimedia.com ushyireho URL ya konte yawe hano</label>
                 <input
                   type="url"
                   value={formData.profileUrl}

@@ -4,6 +4,14 @@ import { Crown, HeartHandshake, Lock, Mail, PhoneCall, MessageCircle } from 'luc
 import { useAuth } from '../contexts/AuthContext';
 import { apiClient, PremiumDashboardPost, ClassifiedAd } from '../services/api';
 
+interface PremiumRequestArticle {
+  id: string;
+  title: string;
+  slug?: string;
+  url: string;
+  requestedAt: string;
+}
+
 const SUPPORT_WHATSAPP = '250791859465';
 const SUPPORT_CALL = '0791859465';
 const CLASSIFIED_CATEGORY_LABELS = {
@@ -27,6 +35,7 @@ const SubscriberAccount = () => {
   const [premiumUntil, setPremiumUntil] = useState<string | null>(user?.premiumUntil || null);
   const [premiumStories, setPremiumStories] = useState<PremiumDashboardPost[]>([]);
   const [myClassifiedAds, setMyClassifiedAds] = useState<ClassifiedAd[]>([]);
+  const [requestedPremiumArticles, setRequestedPremiumArticles] = useState<PremiumRequestArticle[]>([]);
 
   if (!user) return null;
 
@@ -44,6 +53,17 @@ const SubscriberAccount = () => {
       day: 'numeric'
     });
   }, [premiumUntil]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    try {
+      const storedRequests = JSON.parse(localStorage.getItem('umunsi_premium_request_articles') || '[]') as PremiumRequestArticle[];
+      setRequestedPremiumArticles(storedRequests);
+    } catch (error) {
+      setRequestedPremiumArticles([]);
+    }
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -131,6 +151,7 @@ const SubscriberAccount = () => {
               <Crown className="w-5 h-5" />
               Premium Membership
             </div>
+            <p className="text-[#fcd535] text-sm mt-2 font-semibold">Gusoma inkuru ziri Premium ni ukwishyura 500 RWF ku Kwezi.</p>
             <p className="text-gray-400 text-sm mt-1">Direct payment izagaruka nyuma. Ubu dukoresha manual verification.</p>
 
             <div className="mt-3 space-y-2">
@@ -176,6 +197,26 @@ const SubscriberAccount = () => {
             <p className="text-gray-400 text-sm">1. Kora ubwishyu uko mubyumvikanye na support.</p>
             <p className="text-gray-400 text-sm">2. Ohereza proof kuri WhatsApp cyangwa telefone.</p>
             <p className="text-gray-400 text-sm">3. Admin agufungurira Premium access nyuma yo kubyemeza.</p>
+            <p className="text-gray-400 text-sm">4. Iyo Premium ikuweho cyangwa igihe kirangiye, inkuru zose za Premium zihita zifungwa kugeza wongereye kwishyura tukongera kugufungurira.</p>
+          </div>
+
+          <div className="subscriber-dark-card mt-6 rounded-xl border border-[#2b2f36] bg-[#0f1115] p-4">
+            <h4 className="text-white font-semibold mb-3">Inkuru wasabye ukoresheje Bookmark</h4>
+            {requestedPremiumArticles.length === 0 ? (
+              <p className="text-sm text-gray-400">Nta nkuru urasaba. Kanda Bookmark ku nkuru ya Premium kugira ngo igaragare hano.</p>
+            ) : (
+              <div className="space-y-2">
+                {requestedPremiumArticles.slice(0, 10).map((story) => (
+                  <div key={story.id} className="subscriber-dark-card border border-[#2b2f36] rounded-lg p-3 bg-[#12161c]">
+                    <div className="flex items-center gap-2 text-gray-300">
+                      <Lock className="w-4 h-4 text-[#fcd535]" />
+                      <p className="font-medium text-white">{story.title}</p>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">Iyi nkuru iri muri Premium. Ntisomeka kugeza wishyuye, watwandikiye, hanyuma admin akagufungurira access.</p>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="subscriber-dark-card mt-6 rounded-xl border border-[#2b2f36] bg-[#0f1115] p-4">
