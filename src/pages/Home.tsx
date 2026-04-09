@@ -225,10 +225,6 @@ const Home = () => {
     ? posts 
     : posts.filter(p => p.category?.id === activeTab);
 
-  const homeCategorySections = newsCategoryTabs
-    .filter((category) => posts.some((post) => post.category?.id === category.id))
-    .slice(0, 3);
-
   const imyidagaduroPosts = posts
     .filter((post) => {
       const categoryName = normalizeText(post.category?.name || '');
