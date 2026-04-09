@@ -118,7 +118,7 @@ const Home = () => {
       const [postsResult, categoriesResult] = await Promise.allSettled([
         apiClient.getPosts({
           status: 'PUBLISHED',
-          limit: 20
+          limit: 100
         }),
         apiClient.getCategories({ includeInactive: false })
       ]);
@@ -191,6 +191,22 @@ const Home = () => {
     ...postDerivedCategories.filter((postCat) => !categories.some((cat) => cat.id === postCat.id))
   ];
 
+  const findTabByKeywords = (keywords: string[]) =>
+    newsCategoryTabs.find((category) => {
+      const categoryName = normalizeText(category.name || '');
+      const categorySlug = normalizeText(category.slug || '');
+      return keywords.some((keyword) => categoryName.includes(keyword) || categorySlug.includes(keyword));
+    });
+
+  const ubuzimaTab = findTabByKeywords(['ubuzima', 'health']);
+  const urukundoTab = findTabByKeywords(['urukundo', 'love', 'relationship']);
+  const pinnedTabs = [ubuzimaTab, urukundoTab].filter(Boolean) as Category[];
+  const pinnedTabIds = new Set(pinnedTabs.map((tab) => tab.id));
+  const orderedNewsCategoryTabs = [
+    ...pinnedTabs,
+    ...newsCategoryTabs.filter((tab) => !pinnedTabIds.has(tab.id))
+  ];
+
   const getSpecialCategory = (key: SpecialCategoryKey) => {
     const bySlug = categories.find((cat) => normalizeText(cat.slug || '') === key);
     if (bySlug) return bySlug;
@@ -248,13 +264,12 @@ const Home = () => {
         categoryName.includes('sports') ||
         categorySlug.includes('sports')
       );
-    })
-    .slice(0, 5);
+    });
 
   const imyidagaduroBelowMain = imyidagaduroPosts.slice(1, 3);
   const imyidagaduroSidePosts = imyidagaduroPosts.slice(3, 7);
   const imikinoMain = imikinoPosts[0] || null;
-  const imikinoSidePosts = imikinoPosts.slice(1, 5);
+  const imikinoSidePosts = imikinoPosts.slice(1);
 
   const formatFullDate = () => {
     const days = ['Ku cyumweru', 'Ku wa mbere', 'Ku wa kabiri', 'Ku wa gatatu', 'Ku wa kane', 'Ku wa gatanu', 'Ku wa gatandatu'];
@@ -588,7 +603,7 @@ const Home = () => {
 
             {imikinoMain && (
               <div className="bg-[#181a20] rounded-lg overflow-hidden border border-[#2b2f36]">
-                <div className="bg-[#6b7680] text-white px-4 py-2">
+                <div className="bg-emerald-700 text-white px-4 py-2">
                   <h2 className="text-sm md:text-base font-extrabold uppercase tracking-wide">Imikino</h2>
                 </div>
                 <div className="p-3 md:p-4 grid grid-cols-1 lg:grid-cols-12 gap-4">
@@ -660,7 +675,7 @@ const Home = () => {
               <div className="p-4 border-b border-[#2b2f36] flex items-center justify-between">
                 <h2 className="text-lg font-bold text-white flex items-center gap-2">
                   <span className="w-1 h-6 bg-[#fcd535] rounded"></span>
-                  {activeTab === 'all' ? 'Amakuru Mashya' : newsCategoryTabs.find(c => c.id === activeTab)?.name || 'Amakuru'}
+                  {activeTab === 'all' ? 'Amakuru Mashya' : orderedNewsCategoryTabs.find(c => c.id === activeTab)?.name || 'Amakuru'}
                 </h2>
                 <Link to="/news" className="text-[#fcd535] text-sm hover:underline flex items-center gap-1">
                   Reba Yose <ChevronRight className="w-4 h-4" />
@@ -679,7 +694,7 @@ const Home = () => {
                   >
                     Byose
                   </button>
-                  {newsCategoryTabs.map((cat) => (
+                  {orderedNewsCategoryTabs.map((cat) => (
                     <button
                       key={cat.id}
                       onClick={() => setActiveTab(cat.id)}
