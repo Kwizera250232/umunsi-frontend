@@ -198,6 +198,7 @@ const ADSENSE_ARTICLE_BLOCK = `
 `;
 
 const ADSENSE_BEFORE_CONTENT_SLOT = '5789865998';
+const ADSENSE_AFTER_CONTENT_SLOT = '4412538868';
 
 const SUPPORT_WHATSAPP = '250791859465';
 const SUPPORT_CALL = '0791859465';
@@ -367,7 +368,7 @@ const PostPage = () => {
       if (cancelled) return;
 
       const adElements = Array.from(
-        document.querySelectorAll('.article-before-content-ad ins.adsbygoogle, .article-inline-ad ins.adsbygoogle')
+        document.querySelectorAll('.article-before-content-ad ins.adsbygoogle, .article-inline-ad ins.adsbygoogle, .article-after-content-ad ins.adsbygoogle')
       ) as HTMLElement[];
 
       if (adElements.length === 0) {
@@ -922,11 +923,25 @@ const PostPage = () => {
                     )}
                   </div>
                 ) : (
-                  <div 
-                    className="article-content-readable prose prose-invert prose-lg max-w-none text-gray-300"
-                    style={{ wordBreak: 'break-word' }}
-                    dangerouslySetInnerHTML={{ __html: contentWithInlineAd }}
-                  />
+                  <>
+                    <div 
+                      className="article-content-readable prose prose-invert prose-lg max-w-none text-gray-300"
+                      style={{ wordBreak: 'break-word' }}
+                      dangerouslySetInnerHTML={{ __html: contentWithInlineAd }}
+                    />
+
+                    {showAds && (
+                      <div className="article-after-content-ad not-prose mt-8 mb-2">
+                        <ins
+                          className="adsbygoogle"
+                          style={{ display: 'block' }}
+                          data-ad-format="autorelaxed"
+                          data-ad-client="ca-pub-3584259871242471"
+                          data-ad-slot={ADSENSE_AFTER_CONTENT_SLOT}
+                        ></ins>
+                      </div>
+                    )}
+                  </>
                 )}
 
                 {/* Tags */}
