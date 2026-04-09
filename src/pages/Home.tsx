@@ -27,6 +27,8 @@ const getServerBaseUrl = () => {
   return (import.meta.env.VITE_API_URL || '').replace('/api', '');
 };
 
+const ADSENSE_HOME_AFTER_PARAGRAPH_7_SLOT = '1353027611';
+
 const Home = () => {
   const { user } = useAuth();
   // Ads should remain visible even for admin accounts so placements can be verified after updates.
@@ -470,41 +472,56 @@ const Home = () => {
               <div className="divide-y divide-[#2b2f36]">
                 {latestPosts.length === 0 ? (
                   <div className="p-4 text-sm text-gray-400">Nta nkuru ziboneka muri iki cyiciro ubu.</div>
-                ) : latestPosts.map((post) => (
-                  <Link key={post.id} to={`/post/${post.slug}`} className="flex gap-4 p-4 hover:bg-[#1e2329] transition-colors group">
-                    <div className="relative flex-shrink-0">
-                      <img 
-                        src={getImageUrl(post.featuredImage)} 
-                        alt={post.title}
-                        className="w-28 h-20 md:w-36 md:h-24 object-cover rounded"
-                      />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      {post.category && (
-                        <span className="inline-block text-[#fcd535] text-xs font-medium mb-1">
-                          {post.category.name}
-                        </span>
-                      )}
-                      <h3 className="text-white font-semibold group-hover:text-[#fcd535] transition-colors line-clamp-2 text-sm md:text-base">
-                        {post.title}
-                      </h3>
-                      <p className="text-gray-500 text-xs mt-1 line-clamp-1 hidden md:block">
-                        {post.excerpt}
-                      </p>
-                      <div className="flex items-center gap-3 text-xs text-gray-500 mt-2">
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
-                          {formatDate(post.publishedAt || post.createdAt)}
-                        </span>
-                        {canSeeViews && (
-                          <span className="flex items-center gap-1">
-                            <Eye className="w-3 h-3" />
-                            {post.viewCount}
+                ) : latestPosts.map((post, index) => (
+                  <div key={post.id}>
+                    <Link to={`/post/${post.slug}`} className="flex gap-4 p-4 hover:bg-[#1e2329] transition-colors group">
+                      <div className="relative flex-shrink-0">
+                        <img 
+                          src={getImageUrl(post.featuredImage)} 
+                          alt={post.title}
+                          className="w-28 h-20 md:w-36 md:h-24 object-cover rounded"
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        {post.category && (
+                          <span className="inline-block text-[#fcd535] text-xs font-medium mb-1">
+                            {post.category.name}
                           </span>
                         )}
+                        <h3 className="text-white font-semibold group-hover:text-[#fcd535] transition-colors line-clamp-2 text-sm md:text-base">
+                          {post.title}
+                        </h3>
+                        <p className="text-gray-500 text-xs mt-1 line-clamp-1 hidden md:block">
+                          {post.excerpt}
+                        </p>
+                        <div className="flex items-center gap-3 text-xs text-gray-500 mt-2">
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            {formatDate(post.publishedAt || post.createdAt)}
+                          </span>
+                          {canSeeViews && (
+                            <span className="flex items-center gap-1">
+                              <Eye className="w-3 h-3" />
+                              {post.viewCount}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  </Link>
+                    </Link>
+
+                    {showAds && index === 6 && (
+                      <div className="home-after-paragraph-7-ad p-4 border-t border-[#2b2f36]">
+                        <ins
+                          className="adsbygoogle"
+                          style={{ display: 'block' }}
+                          data-ad-client="ca-pub-3584259871242471"
+                          data-ad-slot={ADSENSE_HOME_AFTER_PARAGRAPH_7_SLOT}
+                          data-ad-format="auto"
+                          data-full-width-responsive="true"
+                        ></ins>
+                      </div>
+                    )}
+                  </div>
                 ))}
               </div>
             </div>
