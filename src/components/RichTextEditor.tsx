@@ -8,12 +8,13 @@ import {
   Quote, 
   Link, 
   Image as ImageIcon,
-  Type,
   AlignLeft,
   AlignCenter,
   AlignRight,
   Undo,
-  Redo
+  Redo,
+  ChevronDown,
+  Plus
 } from 'lucide-react';
 import MediaLibraryModal from './MediaLibraryModal';
 import { apiClient, MediaFile } from '../services/api';
@@ -40,10 +41,11 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
   const [urlInputValue, setUrlInputValue] = useState('');
   const [urlPreviewHtml, setUrlPreviewHtml] = useState('');
   const [urlPreviewValid, setUrlPreviewValid] = useState(false);
+  const [editorMode, setEditorMode] = useState<'visual' | 'code'>('visual');
+  const [blockFormat, setBlockFormat] = useState('P');
 
   useEffect(() => {
     if (editorRef.current && editorRef.current.innerHTML !== value) {
-      console.log('🔄 Setting editor content, value length:', value.length);
       editorRef.current.innerHTML = value;
       // Add resize handles to existing images
       setTimeout(() => {
@@ -54,16 +56,44 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
 
   useEffect(() => {
     // Add resize handles when component mounts
-    console.log('🚀 RichTextEditor mounted, editorRef:', editorRef.current);
     setTimeout(() => {
       addImageResizeHandles();
     }, 100);
   }, []);
 
+  const normalizeFormatTag = (tagName: string | undefined) => {
+    if (!tagName) return 'P';
+    const normalized = tagName.toUpperCase();
+    if (['P', 'H2', 'H3', 'H4', 'BLOCKQUOTE'].includes(normalized)) {
+      return normalized;
+    }
+    return 'P';
+  };
+
+  const detectCurrentBlockFormat = () => {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) {
+      setBlockFormat('P');
+      return;
+    }
+
+    let node: Node | null = selection.focusNode;
+    while (node && node !== editorRef.current) {
+      if (node instanceof HTMLElement && /^(P|H2|H3|H4|BLOCKQUOTE)$/i.test(node.tagName)) {
+        setBlockFormat(normalizeFormatTag(node.tagName));
+        return;
+      }
+      node = node.parentNode;
+    }
+
+    setBlockFormat('P');
+  };
+
   const execCommand = (command: string, value?: string) => {
     document.execCommand(command, false, value);
     editorRef.current?.focus();
     handleContentChange();
+    detectCurrentBlockFormat();
   };
 
   const getServerBaseUrl = () => {
@@ -81,12 +111,22 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
   const handleContentChange = () => {
     if (editorRef.current) {
       const content = editorRef.current.innerHTML;
-      console.log('📝 Content changed, new content length:', content.length);
-      console.log('📄 Content preview:', content.substring(0, 200) + (content.length > 200 ? '...' : ''));
       onChange(content);
     } else {
-      console.error('❌ Editor ref is null in handleContentChange');
+      console.error('Editor reference is null in handleContentChange');
     }
+  };
+
+  const handleCodeChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const updatedContent = e.target.value;
+    onChange(updatedContent);
+    if (editorRef.current) {
+      editorRef.current.innerHTML = updatedContent;
+    }
+  };
+
+  const applyFormatBlock = (format: string) => {
+    execCommand('formatBlock', format === 'P' ? 'p' : format.toLowerCase());
   };
 
   const escapeHtml = (text: string) => {
@@ -171,6 +211,10 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
         case 'u':
           e.preventDefault();
           execCommand('underline');
+          break;
+        case 'k':
+          e.preventDefault();
+          insertLink();
           break;
         case 'z':
           e.preventDefault();
@@ -595,8 +639,10 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
       type="button"
       onClick={onClick}
       title={title}
-      className={`p-2 rounded hover:bg-[#2b2f36] transition-colors ${
-        isActive ? 'bg-[#2b2f36] text-[#fcd535]' : 'text-gray-400 hover:text-white'
+      className={`p-2 rounded border transition-colors ${
+        isActive
+          ? 'bg-[#f0f6fc] border-[#8c8f94] text-[#1d2327]'
+          : 'bg-white border-[#dcdcde] text-[#3c434a] hover:bg-[#f6f7f7]'
       }`}
     >
       {icon}
@@ -604,11 +650,60 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
   );
 
   return (
-    <div className={`rich-text-editor border border-[#2b2f36] rounded-xl bg-[#0b0e11] ${className}`}>
+    <div className={`rich-text-editor relative border border-[#c3c4c7] rounded-md bg-white shadow-sm ${className}`}>
+      {/* Top bar */}
+      <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-[#dcdcde] bg-[#f6f7f7] rounded-t-md">
+        <button
+          type="button"
+          onClick={() => setShowImageSourceMenu((prev) => !prev)}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded border border-[#2271b1] text-[#2271b1] bg-white hover:bg-[#f0f6fc]"
+        >
+          <Plus className="w-4 h-4" />
+          Add Media
+        </button>
+
+        <div className="inline-flex rounded border border-[#c3c4c7] overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setEditorMode('visual')}
+            className={`px-4 py-1.5 text-sm font-medium ${editorMode === 'visual' ? 'bg-white text-[#1d2327]' : 'bg-[#f0f0f1] text-[#50575e]'}`}
+          >
+            Visual
+          </button>
+          <button
+            type="button"
+            onClick={() => setEditorMode('code')}
+            className={`px-4 py-1.5 text-sm font-medium border-l border-[#c3c4c7] ${editorMode === 'code' ? 'bg-white text-[#1d2327]' : 'bg-[#f0f0f1] text-[#50575e]'}`}
+          >
+            Code
+          </button>
+        </div>
+      </div>
+
       {/* Toolbar */}
-      <div className="relative flex items-center gap-1 p-2 border-b border-[#2b2f36] bg-[#1e2329] rounded-t-xl">
+      {editorMode === 'visual' && (
+      <div className="relative flex flex-wrap items-center gap-1 p-2 border-b border-[#dcdcde] bg-white">
+        <div className="flex items-center gap-2 border-r border-[#dcdcde] pr-2 mr-1">
+          <div className="relative">
+            <select
+              value={blockFormat}
+              onChange={(e) => applyFormatBlock(e.target.value)}
+              onFocus={detectCurrentBlockFormat}
+              className="appearance-none h-8 pl-3 pr-8 text-sm rounded border border-[#8c8f94] bg-white text-[#1d2327]"
+              title="Paragraph format"
+            >
+              <option value="P">Paragraph</option>
+              <option value="H2">Heading 2</option>
+              <option value="H3">Heading 3</option>
+              <option value="H4">Heading 4</option>
+              <option value="BLOCKQUOTE">Quote</option>
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-2 top-2 w-4 h-4 text-[#646970]" />
+          </div>
+        </div>
+
         {/* Text Formatting */}
-        <div className="flex items-center gap-1 border-r border-[#2b2f36] pr-2">
+        <div className="flex items-center gap-1 border-r border-[#dcdcde] pr-2 mr-1">
           <ToolbarButton
             onClick={() => execCommand('bold')}
             icon={<Bold className="w-4 h-4" />}
@@ -627,7 +722,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
         </div>
 
         {/* Lists */}
-        <div className="flex items-center gap-1 border-r border-[#2b2f36] pr-2">
+        <div className="flex items-center gap-1 border-r border-[#dcdcde] pr-2 mr-1">
           <ToolbarButton
             onClick={() => execCommand('insertUnorderedList')}
             icon={<List className="w-4 h-4" />}
@@ -641,7 +736,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
         </div>
 
         {/* Alignment */}
-        <div className="flex items-center gap-1 border-r border-[#2b2f36] pr-2">
+        <div className="flex items-center gap-1 border-r border-[#dcdcde] pr-2 mr-1">
           <ToolbarButton
             onClick={() => execCommand('justifyLeft')}
             icon={<AlignLeft className="w-4 h-4" />}
@@ -660,11 +755,11 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
         </div>
 
         {/* Insert */}
-        <div className="flex items-center gap-1 border-r border-[#2b2f36] pr-2">
+        <div className="flex items-center gap-1 border-r border-[#dcdcde] pr-2 mr-1">
           <ToolbarButton
             onClick={insertLink}
             icon={<Link className="w-4 h-4" />}
-            title="Insert Link"
+            title="Insert/edit link (Ctrl+K)"
           />
           <ToolbarButton
             onClick={() => setShowImageSourceMenu((prev) => !prev)}
@@ -672,7 +767,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
             title="Insert Image"
           />
           <ToolbarButton
-            onClick={() => execCommand('formatBlock', 'blockquote')}
+            onClick={() => applyFormatBlock('BLOCKQUOTE')}
             icon={<Quote className="w-4 h-4" />}
             title="Quote"
           />
@@ -693,27 +788,27 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
         </div>
 
         {showImageSourceMenu && (
-          <div className="absolute top-12 left-[285px] z-20 bg-[#0b0e11] border border-[#2b2f36] rounded-lg shadow-xl p-2 min-w-[240px]">
+          <div className="absolute top-12 left-3 z-20 bg-white border border-[#c3c4c7] rounded-md shadow-xl p-2 min-w-[240px]">
             <button
               type="button"
               onClick={chooseImageFromLibrary}
-              className="w-full text-left px-3 py-2 rounded text-sm text-gray-200 hover:bg-[#1e2329]"
+              className="w-full text-left px-3 py-2 rounded text-sm text-[#1d2327] hover:bg-[#f6f7f7]"
             >
-              Library
+              Media Library
             </button>
             <button
               type="button"
               onClick={chooseImageFromComputer}
-              className="w-full text-left px-3 py-2 rounded text-sm text-gray-200 hover:bg-[#1e2329]"
+              className="w-full text-left px-3 py-2 rounded text-sm text-[#1d2327] hover:bg-[#f6f7f7]"
             >
-              Desktop / Device
+              Upload Files
             </button>
           </div>
         )}
 
         {showUrlInsertMenu && (
-          <div className="absolute top-12 left-[220px] z-30 bg-[#0b0e11] border border-[#2b2f36] rounded-lg shadow-xl p-3 w-[380px]">
-            <p className="text-xs text-gray-400 mb-2">Insert URL (YouTube, Instagram, X/Twitter or normal link)</p>
+          <div className="absolute top-12 left-20 z-30 bg-white border border-[#c3c4c7] rounded-md shadow-xl p-3 w-[380px]">
+            <p className="text-xs text-[#646970] mb-2">Insert URL (YouTube, Instagram, X/Twitter or normal link)</p>
             <input
               type="url"
               value={urlInputValue}
@@ -721,17 +816,17 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
                 const nextValue = e.target.value;
                 setUrlInputValue(nextValue);
                 const nextPreview = buildEmbedHtmlFromUrl(nextValue);
-                setUrlPreviewHtml(nextPreview || (nextValue.trim() ? '<p class="text-gray-400">Invalid URL</p>' : ''));
+                setUrlPreviewHtml(nextPreview || (nextValue.trim() ? '<p class="text-gray-500">Invalid URL</p>' : ''));
                 setUrlPreviewValid(Boolean(nextPreview));
               }}
               placeholder="https://..."
-              className="w-full px-3 py-2 rounded bg-[#11151b] border border-[#2b2f36] text-sm text-gray-100"
+              className="w-full px-3 py-2 rounded border border-[#8c8f94] text-sm text-[#1d2327]"
             />
             <div className="mt-2 flex items-center gap-2">
               <button
                 type="button"
                 onClick={handleGenerateUrlPreview}
-                className="px-3 py-1.5 rounded bg-[#2b2f36] text-gray-200 text-xs"
+                className="px-3 py-1.5 rounded border border-[#8c8f94] text-[#3c434a] text-xs bg-white hover:bg-[#f6f7f7]"
               >
                 Preview
               </button>
@@ -739,40 +834,55 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
                 type="button"
                 onClick={handleInsertUrlEmbed}
                 disabled={!urlPreviewValid}
-                className="px-3 py-1.5 rounded bg-[#fcd535] text-[#0b0e11] font-semibold text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-3 py-1.5 rounded bg-[#2271b1] text-white font-semibold text-xs disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Insert Preview in Article
               </button>
             </div>
             {urlPreviewHtml && (
-              <div className="mt-3 border border-[#2b2f36] rounded p-2 max-h-52 overflow-auto">
+              <div className="mt-3 border border-[#dcdcde] rounded p-2 max-h-52 overflow-auto">
                 <div dangerouslySetInnerHTML={{ __html: urlPreviewHtml }} />
               </div>
             )}
           </div>
         )}
       </div>
+      )}
 
       {/* Editor */}
-      <div
-        ref={editorRef}
-        contentEditable
-        onInput={handleContentChange}
-        onPaste={handlePaste}
-        onKeyDown={handleKeyDown}
-        onFocus={() => setIsFocused(true)}
-        onBlur={() => setIsFocused(false)}
-        className={`min-h-[300px] p-4 focus:outline-none text-white bg-[#0b0e11] rounded-b-xl ${
-          isFocused ? 'ring-2 ring-[#fcd535]/50' : ''
-        }`}
-        style={{ minHeight: '300px', color: 'white' }}
-        data-placeholder={placeholder}
-        suppressContentEditableWarning={true}
-      />
+      {editorMode === 'visual' ? (
+        <div
+          ref={editorRef}
+          contentEditable
+          onInput={handleContentChange}
+          onPaste={handlePaste}
+          onKeyDown={handleKeyDown}
+          onFocus={() => {
+            setIsFocused(true);
+            detectCurrentBlockFormat();
+          }}
+          onBlur={() => setIsFocused(false)}
+          onMouseUp={detectCurrentBlockFormat}
+          onKeyUp={detectCurrentBlockFormat}
+          className={`min-h-[360px] p-4 focus:outline-none text-[#1d2327] bg-white rounded-b-md ${
+            isFocused ? 'ring-1 ring-[#2271b1] ring-inset' : ''
+          }`}
+          style={{ minHeight: '360px' }}
+          data-placeholder={placeholder}
+          suppressContentEditableWarning={true}
+        />
+      ) : (
+        <textarea
+          value={value}
+          onChange={handleCodeChange}
+          className="w-full min-h-[360px] p-4 font-mono text-sm border-0 focus:outline-none text-[#1d2327] rounded-b-md"
+          placeholder="Write HTML content..."
+        />
+      )}
 
       {/* Placeholder */}
-      {!value && (
-        <div className="absolute top-16 left-4 text-gray-500 pointer-events-none">
+      {!value && editorMode === 'visual' && (
+        <div className="absolute top-[98px] left-4 text-[#8c8f94] pointer-events-none">
           {placeholder}
         </div>
       )}
