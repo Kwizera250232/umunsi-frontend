@@ -278,6 +278,20 @@ html.day-mode .admin-article-content * {
   border-radius: 0.75rem;
 }
 
+/* Homepage hero cards: keep title readable on top of photos in all modes */
+.home-image-overlay {
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.88) 0%, rgba(0, 0, 0, 0.62) 38%, rgba(0, 0, 0, 0.08) 100%);
+}
+
+.home-image-overlay-title {
+  color: #ffffff !important;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.85);
+}
+
+html.day-mode .home-image-overlay-title {
+  color: #ffffff !important;
+}
+
 .article-content-readable p + img,
 .article-content-readable img + p,
 .admin-article-content p + img,
