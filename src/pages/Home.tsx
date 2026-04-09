@@ -28,6 +28,7 @@ const getServerBaseUrl = () => {
 };
 
 const ADSENSE_HOME_AFTER_PARAGRAPH_7_SLOT = '1353027611';
+const ADSENSE_HOME_TOP_LATEST_SLOT = '5829562310';
 
 const Home = () => {
   const { user } = useAuth();
@@ -63,6 +64,46 @@ const Home = () => {
     const timer = window.setTimeout(loadAdsBanners, 200);
     return () => window.clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    if (!showAds || typeof window === 'undefined') return;
+
+    let cancelled = false;
+    let attempts = 0;
+    const maxAttempts = 28;
+
+    const initHomeAds = () => {
+      if (cancelled) return;
+
+      const queue = (window as Window & { adsbygoogle?: Array<Record<string, unknown>> }).adsbygoogle;
+      if (!queue) {
+        if (attempts++ < maxAttempts) window.setTimeout(initHomeAds, 250);
+        return;
+      }
+
+      const slots = Array.from(
+        document.querySelectorAll('.home-top-latest-ad ins.adsbygoogle, .home-after-paragraph-7-ad ins.adsbygoogle')
+      ) as HTMLElement[];
+
+      const pending = slots.filter((slot) => slot.dataset.adInitialized !== '1' && !slot.getAttribute('data-ad-status'));
+      if (pending.length === 0) return;
+
+      try {
+        pending.forEach((slot) => {
+          queue.push({});
+          slot.dataset.adInitialized = '1';
+        });
+      } catch {
+        if (attempts++ < maxAttempts) window.setTimeout(initHomeAds, 400);
+      }
+    };
+
+    initHomeAds();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [showAds, latestPosts.length]);
 
   const fetchHomeData = async () => {
     try {
@@ -429,6 +470,24 @@ const Home = () => {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Left Content - Articles */}
           <div className="lg:col-span-8 space-y-6">
+            {showAds && (
+              <div className="home-top-latest-ad bg-[#181a20] rounded-lg overflow-hidden">
+                <div className="p-2 border-b border-[#2b2f36]">
+                  <p className="text-gray-500 text-[10px] text-center uppercase tracking-wider">Kwamamaza</p>
+                </div>
+                <div className="p-4">
+                  <ins
+                    className="adsbygoogle"
+                    style={{ display: 'block' }}
+                    data-ad-client="ca-pub-3584259871242471"
+                    data-ad-slot={ADSENSE_HOME_TOP_LATEST_SLOT}
+                    data-ad-format="auto"
+                    data-full-width-responsive="true"
+                  ></ins>
+                </div>
+              </div>
+            )}
+
             {/* Latest News Section */}
             <div className="bg-[#181a20] rounded-lg overflow-hidden">
               <div className="p-4 border-b border-[#2b2f36] flex items-center justify-between">
