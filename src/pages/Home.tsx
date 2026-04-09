@@ -92,6 +92,12 @@ const Home = () => {
         pending.forEach((slot) => {
           queue.push({});
           slot.dataset.adInitialized = '1';
+          window.setTimeout(() => {
+            if (slot.getAttribute('data-ad-status') === 'unfilled') {
+              const wrapper = slot.closest('.home-top-latest-ad, .home-after-paragraph-7-ad') as HTMLElement | null;
+              if (wrapper) wrapper.style.display = 'none';
+            }
+          }, 1800);
         });
       } catch {
         if (attempts++ < maxAttempts) window.setTimeout(initHomeAds, 400);
@@ -167,6 +173,11 @@ const Home = () => {
     return posts.filter(p => p.category?.id === categoryId).slice(0, STORIES_PER_CATEGORY);
   };
 
+  const hasBannerContent = (slotKey: keyof AdsBannersState['slots']) => {
+    const slot = adsBanners?.slots?.[slotKey];
+    return Boolean(slot?.enabled && (slot.imageUrl || slot.adCode));
+  };
+
   const postDerivedCategories = Array.from(
     new Map(
       posts
@@ -218,6 +229,19 @@ const Home = () => {
     .filter((category) => posts.some((post) => post.category?.id === category.id))
     .slice(0, 3);
 
+  const imyidagaduroPosts = posts
+    .filter((post) => {
+      const categoryName = normalizeText(post.category?.name || '');
+      const categorySlug = normalizeText(post.category?.slug || '');
+      return (
+        categoryName.includes('imyidagaduro') ||
+        categorySlug.includes('imyidagaduro') ||
+        categoryName.includes('entertainment') ||
+        categorySlug.includes('entertainment')
+      );
+    })
+    .slice(0, 5);
+
   const formatFullDate = () => {
     const days = ['Ku cyumweru', 'Ku wa mbere', 'Ku wa kabiri', 'Ku wa gatatu', 'Ku wa kane', 'Ku wa gatanu', 'Ku wa gatandatu'];
     const months = ['Mutarama', 'Gashyantare', 'Werurwe', 'Mata', 'Gicurasi', 'Kamena', 'Nyakanga', 'Kanama', 'Nzeri', 'Ukwakira', 'Ugushyingo', 'Ukuboza'];
@@ -245,11 +269,15 @@ const Home = () => {
           className="w-full h-full object-contain"
           style={{ imageRendering: 'auto' }}
           loading="lazy"
+          onError={(e) => {
+            const wrapper = e.currentTarget.closest('[data-banner-wrapper="true"]') as HTMLElement | null;
+            if (wrapper) wrapper.style.display = 'none';
+          }}
         />
       );
 
       return (
-        <div className={className}>
+        <div className={className} data-banner-wrapper="true">
           {slot.targetUrl ? (
             <a href={slot.targetUrl} target="_blank" rel="noopener noreferrer" className="block w-full h-full">
               {bannerImage}
@@ -287,8 +315,9 @@ const Home = () => {
   };
 
   const featuredTopStories = posts.filter((p) => p.isFeatured);
-  const mainHighlight = featuredPost || featuredTopStories[0] || null;
-  const topSectionPool = featuredTopStories.filter((p) => p.id !== mainHighlight?.id);
+  const mainHighlight = featuredPost || featuredTopStories[0] || posts[0] || null;
+  const topSource = featuredTopStories.length > 0 ? featuredTopStories : posts;
+  const topSectionPool = topSource.filter((p) => p.id !== mainHighlight?.id);
   const leftPrimary = topSectionPool[0] || null;
   const leftSecondary = topSectionPool[1] || null;
   const middleTop = topSectionPool[2] || null;
@@ -455,7 +484,7 @@ const Home = () => {
           </div>
         </div>
 
-        {showAds && (
+        {showAds && hasBannerContent('leaderboardTop970x120') && (
           <div className="mb-6 bg-[#181a20] rounded-lg overflow-hidden">
             <div className="p-2 border-b border-[#2b2f36]">
               <p className="text-gray-500 text-[10px] text-center uppercase tracking-wider">Kwamamaza</p>
@@ -470,6 +499,56 @@ const Home = () => {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Left Content - Articles */}
           <div className="lg:col-span-8 space-y-6">
+            {imyidagaduroPosts.length > 0 && (
+              <div className="bg-[#181a20] rounded-lg overflow-hidden border border-[#2b2f36]">
+                <div className="bg-[#6b7680] text-white px-4 py-2">
+                  <h2 className="text-sm md:text-base font-extrabold uppercase tracking-wide">Imyidagaduro</h2>
+                </div>
+                <div className="p-3 md:p-4 grid grid-cols-1 lg:grid-cols-12 gap-4">
+                  <div className="lg:col-span-7">
+                    <Link to={`/post/${imyidagaduroPosts[0].slug}`} className="block group">
+                      <div className="relative overflow-hidden rounded bg-[#0b0e11]">
+                        <img
+                          src={getImageUrl(imyidagaduroPosts[0].featuredImage)}
+                          alt={imyidagaduroPosts[0].title}
+                          className="w-full h-[300px] md:h-[360px] object-cover"
+                        />
+                        <span className="absolute top-3 right-3 bg-white/90 text-[#0b0e11] text-xs font-semibold px-3 py-1 rounded">
+                          Imyidagaduro
+                        </span>
+                        <div className="absolute inset-x-0 bottom-0 bg-black/55 px-3 py-3">
+                          <h3 className="text-white text-lg md:text-xl font-bold leading-snug line-clamp-2 group-hover:text-[#fcd535] transition-colors">
+                            {imyidagaduroPosts[0].title}
+                          </h3>
+                        </div>
+                      </div>
+                    </Link>
+                  </div>
+
+                  <div className="lg:col-span-5 space-y-3">
+                    {imyidagaduroPosts.slice(1).map((post) => (
+                      <Link key={post.id} to={`/post/${post.slug}`} className="flex gap-3 p-2 rounded bg-[#0b0e11] group">
+                        <img
+                          src={getImageUrl(post.featuredImage)}
+                          alt={post.title}
+                          className="w-28 h-20 object-cover rounded flex-shrink-0"
+                        />
+                        <div className="min-w-0">
+                          <span className="inline-block bg-white/85 text-[#0b0e11] text-[10px] font-semibold px-2 py-0.5 rounded mb-1">
+                            Imyidagaduro
+                          </span>
+                          <h4 className="text-gray-200 text-sm font-semibold line-clamp-2 group-hover:text-[#fcd535] transition-colors">
+                            {post.title}
+                          </h4>
+                          <p className="text-gray-500 text-xs mt-1">{formatDate(post.publishedAt || post.createdAt)}</p>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {showAds && (
               <div className="home-top-latest-ad bg-[#181a20] rounded-lg overflow-hidden">
                 <div className="p-2 border-b border-[#2b2f36]">
@@ -586,7 +665,7 @@ const Home = () => {
               </div>
             </div>
 
-            {showAds && (
+            {showAds && hasBannerContent('business728x250') && (
               <div className="bg-[#181a20] rounded-lg overflow-hidden">
                 <div className="p-2 border-b border-[#2b2f36]">
                   <p className="text-gray-500 text-xs text-center uppercase tracking-wider">Kwamamaza</p>
@@ -696,7 +775,7 @@ const Home = () => {
               </div>
             </div>
 
-            {showAds && (
+            {showAds && hasBannerContent('sidebar300x250') && (
               <div className="bg-[#181a20] rounded-lg overflow-hidden">
                 <div className="p-2 border-b border-[#2b2f36]">
                   <p className="text-gray-500 text-[10px] text-center uppercase tracking-wider">Kwamamaza</p>
@@ -732,7 +811,7 @@ const Home = () => {
               </div>
             </div>
 
-            {showAds && (
+            {showAds && hasBannerContent('square300x300') && (
               <div className="bg-[#181a20] rounded-lg overflow-hidden">
                 <div className="p-2 border-b border-[#2b2f36]">
                   <p className="text-gray-500 text-[10px] text-center uppercase tracking-wider">Kwamamaza</p>
@@ -841,7 +920,7 @@ const Home = () => {
           </div>
         </div>
 
-        {showAds && (
+        {showAds && hasBannerContent('leaderboardBottom970x120') && (
           <div className="mt-6 bg-[#181a20] rounded-lg overflow-hidden">
             <div className="p-2 border-b border-[#2b2f36]">
               <p className="text-gray-500 text-[10px] text-center uppercase tracking-wider">Kwamamaza</p>
