@@ -359,6 +359,19 @@ html.day-mode .home-image-overlay-title {
   outline: none;
 }
 
+/* Keep editor text readable after paste/drag formatting changes */
+.rich-text-editor [contenteditable],
+.rich-text-editor [contenteditable] p,
+.rich-text-editor [contenteditable] div,
+.rich-text-editor [contenteditable] span,
+.rich-text-editor [contenteditable] li,
+.rich-text-editor [contenteditable] strong,
+.rich-text-editor [contenteditable] em,
+.rich-text-editor [contenteditable] u {
+  color: var(--app-text) !important;
+  -webkit-text-fill-color: var(--app-text) !important;
+}
+
 .rich-text-editor [contenteditable] img {
   max-width: 100%;
   height: auto;
