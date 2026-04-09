@@ -1,4 +1,5 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import Layout from './components/layout/Layout';
 import Home from './pages/Home';
@@ -40,6 +41,28 @@ import AdsManagement from './pages/admin/AdsManagement';
 import { useAuth, withAuth, withAdmin, withEditor, withAuthor } from './contexts/AuthContext';
 import AdSenseManager from './components/common/AdSenseManager';
 
+const GA_MEASUREMENT_ID = 'G-Q5B9VWGY87';
+
+declare global {
+  interface Window {
+    gtag?: (...args: unknown[]) => void;
+  }
+}
+
+const RouteAnalyticsTracker: React.FC = () => {
+  const location = useLocation();
+
+  useEffect(() => {
+    if (typeof window.gtag === 'function') {
+      window.gtag('config', GA_MEASUREMENT_ID, {
+        page_path: `${location.pathname}${location.search}${location.hash}`,
+      });
+    }
+  }, [location]);
+
+  return null;
+};
+
 // Create wrapped components
 const ProtectedAdminDashboard = withAuthor(AdminDashboard);
 const ProtectedArticles = withEditor(Articles);
@@ -78,6 +101,7 @@ function App() {
   return (
     <AuthProvider>
       <Router>
+        <RouteAnalyticsTracker />
         <AdSenseManager />
         <Routes>
           {/* Login routes - standalone, no layout wrapper */}
