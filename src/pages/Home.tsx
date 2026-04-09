@@ -475,8 +475,8 @@ const Home = () => {
                       alt={mainHighlight.title}
                       className="w-full h-[260px] md:h-[340px] object-cover"
                     />
-                    <div className="absolute inset-x-0 bottom-0 bg-black/45 px-3 py-3">
-                      <h2 className="text-white text-lg md:text-2xl font-bold leading-tight line-clamp-2 group-hover:text-[#fcd535] transition-colors">
+                    <div className="home-image-overlay absolute inset-x-0 bottom-0 px-3 py-3">
+                      <h2 className="home-image-overlay-title text-white text-lg md:text-2xl font-bold leading-tight line-clamp-2 group-hover:text-[#fcd535] transition-colors">
                         {mainHighlight.title}
                       </h2>
                     </div>
@@ -547,8 +547,8 @@ const Home = () => {
                         <span className="absolute top-3 right-3 bg-white/90 text-[#0b0e11] text-xs font-semibold px-3 py-1 rounded">
                           Imyidagaduro
                         </span>
-                        <div className="absolute inset-x-0 bottom-0 bg-black/55 px-3 py-3">
-                          <h3 className="text-white text-lg md:text-xl font-bold leading-snug line-clamp-2 group-hover:text-[#fcd535] transition-colors">
+                        <div className="home-image-overlay absolute inset-x-0 bottom-0 px-3 py-3">
+                          <h3 className="home-image-overlay-title text-white text-lg md:text-xl font-bold leading-snug line-clamp-2 group-hover:text-[#fcd535] transition-colors">
                             {imyidagaduroPosts[0].title}
                           </h3>
                         </div>
@@ -620,8 +620,8 @@ const Home = () => {
                         <span className="absolute top-3 right-3 bg-white/90 text-[#0b0e11] text-xs font-semibold px-3 py-1 rounded">
                           Imikino
                         </span>
-                        <div className="absolute inset-x-0 bottom-0 bg-black/55 px-3 py-3">
-                          <h3 className="text-white text-lg md:text-xl font-bold leading-snug line-clamp-2 group-hover:text-[#fcd535] transition-colors">
+                        <div className="home-image-overlay absolute inset-x-0 bottom-0 px-3 py-3">
+                          <h3 className="home-image-overlay-title text-white text-lg md:text-xl font-bold leading-snug line-clamp-2 group-hover:text-[#fcd535] transition-colors">
                             {imikinoMain.title}
                           </h3>
                         </div>
