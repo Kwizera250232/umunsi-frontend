@@ -156,6 +156,23 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     handleContentChange();
   };
 
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+
+    const html = e.dataTransfer.getData('text/html');
+    const text = e.dataTransfer.getData('text/plain');
+
+    if (html) {
+      const cleanedHtml = sanitizePastedHtml(html);
+      document.execCommand('insertHTML', false, cleanedHtml);
+    } else if (text) {
+      const safeText = escapeHtml(text).replace(/\n/g, '<br>');
+      document.execCommand('insertHTML', false, safeText);
+    }
+
+    handleContentChange();
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     // Handle keyboard shortcuts
     if (e.ctrlKey || e.metaKey) {
@@ -759,6 +776,8 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
         contentEditable
         onInput={handleContentChange}
         onPaste={handlePaste}
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={handleDrop}
         onKeyDown={handleKeyDown}
         onFocus={() => setIsFocused(true)}
         onBlur={() => setIsFocused(false)}
