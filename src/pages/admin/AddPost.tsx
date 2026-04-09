@@ -30,7 +30,6 @@ const AddPost: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const isAuthorOnly = user?.role === 'AUTHOR';
-  const roleLabel = user?.role ? user.role.charAt(0) + user.role.slice(1).toLowerCase() : 'Writer';
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [formData, setFormData] = useState({
@@ -242,13 +241,10 @@ const AddPost: React.FC = () => {
                 </div>
                 <div>
                   <h1 className="text-2xl font-bold text-white">Create New Article</h1>
-                  <p className="text-gray-300 mt-1">{isAuthorOnly ? 'Andika inkuru yawe uyishyire muri Draft, admin cyangwa editor ni bo bayipubulisha.' : 'WordPress-style writing workspace for fast article publishing'}</p>
+                  <p className="text-gray-300 mt-1">{isAuthorOnly ? 'Andika inkuru yawe uyishyire muri Draft, admin ni we uyipubulisha.' : 'Write and publish a new news article'}</p>
                 </div>
               </div>
             </div>
-          </div>
-          <div className="inline-flex items-center px-3 py-1 rounded-full border border-[#2b2f36] bg-[#11151b] text-xs text-gray-300">
-            Role: <span className="ml-1 font-semibold text-white">{roleLabel}</span>
           </div>
           <div className="flex items-center space-x-3">
             <button
@@ -257,7 +253,7 @@ const AddPost: React.FC = () => {
               className="flex items-center px-4 py-2.5 text-gray-300 border border-[#2b2f36] rounded-xl hover:bg-[#1e2329] transition-colors"
             >
               <Eye className="w-4 h-4 mr-2" />
-              {previewMode ? 'Back to Editor' : 'Preview Article'}
+              {previewMode ? 'Edit' : 'Preview'}
             </button>
             <button
               type="submit"
@@ -319,22 +315,12 @@ const AddPost: React.FC = () => {
                 <label htmlFor="content" className="block text-sm font-medium text-white mb-2">
                   Content *
                 </label>
-                {previewMode ? (
-                  <div className="min-h-[360px] p-4 bg-white rounded-xl border border-[#2b2f36] overflow-auto">
-                    {formData.content ? (
-                      <div className="prose max-w-none text-[#1d2327]" dangerouslySetInnerHTML={{ __html: formData.content }} />
-                    ) : (
-                      <p className="text-gray-500">No content yet. Switch back to editor mode to write your article.</p>
-                    )}
-                  </div>
-                ) : (
-                  <RichTextEditor
-                    value={formData.content}
-                    onChange={(value) => setFormData(prev => ({ ...prev, content: value }))}
-                    placeholder="Write your article content here..."
-                    className={errors.content ? 'border-red-500' : ''}
-                  />
-                )}
+                <RichTextEditor
+                  value={formData.content}
+                  onChange={(value) => setFormData(prev => ({ ...prev, content: value }))}
+                  placeholder="Write your article content here..."
+                  className={errors.content ? 'border-red-500' : ''}
+                />
                 {errors.content && (
                   <p className="mt-1 text-sm text-red-400">{errors.content}</p>
                 )}
