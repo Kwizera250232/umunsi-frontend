@@ -264,12 +264,14 @@ const Home = () => {
         categoryName.includes('sports') ||
         categorySlug.includes('sports')
       );
-    });
+    })
+    .slice(0, 7);
 
   const imyidagaduroBelowMain = imyidagaduroPosts.slice(1, 3);
   const imyidagaduroSidePosts = imyidagaduroPosts.slice(3, 7);
   const imikinoMain = imikinoPosts[0] || null;
-  const imikinoSidePosts = imikinoPosts.slice(1);
+  const imikinoBelowMain = imikinoPosts.slice(1, 3);
+  const imikinoSidePosts = imikinoPosts.slice(3, 7);
 
   const formatFullDate = () => {
     const days = ['Ku cyumweru', 'Ku wa mbere', 'Ku wa kabiri', 'Ku wa gatatu', 'Ku wa kane', 'Ku wa gatanu', 'Ku wa gatandatu'];
@@ -530,7 +532,7 @@ const Home = () => {
           <div className="lg:col-span-8 space-y-6">
             {imyidagaduroPosts.length > 0 && (
               <div className="bg-[#181a20] rounded-lg overflow-hidden border border-[#2b2f36]">
-                <div className="bg-[#6b7680] text-white px-4 py-2">
+                <div className="bg-emerald-700 text-white px-4 py-2">
                   <h2 className="text-sm md:text-base font-extrabold uppercase tracking-wide">Imyidagaduro</h2>
                 </div>
                 <div className="p-3 md:p-4 grid grid-cols-1 lg:grid-cols-12 gap-4">
@@ -625,6 +627,29 @@ const Home = () => {
                         </div>
                       </div>
                     </Link>
+
+                    {imikinoBelowMain.length > 0 && (
+                      <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {imikinoBelowMain.map((post) => (
+                          <Link key={post.id} to={`/post/${post.slug}`} className="flex gap-3 p-2 rounded bg-[#0b0e11] group">
+                            <img
+                              src={getImageUrl(post.featuredImage)}
+                              alt={post.title}
+                              className="w-24 h-16 object-cover rounded flex-shrink-0"
+                            />
+                            <div className="min-w-0">
+                              <span className="inline-block bg-white/85 text-[#0b0e11] text-[10px] font-semibold px-2 py-0.5 rounded mb-1">
+                                Imikino
+                              </span>
+                              <h4 className="text-gray-200 text-sm font-semibold line-clamp-2 group-hover:text-[#fcd535] transition-colors">
+                                {post.title}
+                              </h4>
+                              <p className="text-gray-500 text-xs mt-1">{formatDate(post.publishedAt || post.createdAt)}</p>
+                            </div>
+                          </Link>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   <div className="lg:col-span-5 space-y-3">
