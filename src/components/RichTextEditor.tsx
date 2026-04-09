@@ -7,7 +7,6 @@ import {
   ListOrdered, 
   Quote, 
   Link, 
-  Unlink,
   Image as ImageIcon,
   AlignLeft,
   AlignCenter,
@@ -38,6 +37,10 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
   const [isFocused, setIsFocused] = useState(false);
   const [showMediaLibrary, setShowMediaLibrary] = useState(false);
   const [showImageSourceMenu, setShowImageSourceMenu] = useState(false);
+  const [showUrlInsertMenu, setShowUrlInsertMenu] = useState(false);
+  const [urlInputValue, setUrlInputValue] = useState('');
+  const [urlPreviewHtml, setUrlPreviewHtml] = useState('');
+  const [urlPreviewValid, setUrlPreviewValid] = useState(false);
   const [editorMode, setEditorMode] = useState<'visual' | 'code'>('visual');
   const [blockFormat, setBlockFormat] = useState('P');
 
@@ -287,25 +290,94 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
   };
 
   const insertLink = () => {
-    const selectedText = window.getSelection()?.toString() || '';
-    const url = window.prompt('Enter URL', 'https://');
-    if (!url || !url.trim()) {
-      return;
-    }
-
-    if (selectedText) {
-      execCommand('createLink', url.trim());
-      return;
-    }
-
-    const safeUrl = escapeHtml(url.trim());
-    document.execCommand('insertHTML', false, `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer">${safeUrl}</a>`);
-    editorRef.current?.focus();
-    handleContentChange();
+    setShowUrlInsertMenu((prev) => !prev);
   };
 
-  const removeLink = () => {
-    execCommand('unlink');
+  const getYouTubeVideoId = (url: string) => {
+    try {
+      const parsed = new URL(url);
+      const host = parsed.hostname.replace(/^www\./, '');
+
+      if (host === 'youtu.be') {
+        return parsed.pathname.split('/').filter(Boolean)[0] || null;
+      }
+
+      if (host.includes('youtube.com')) {
+        const id = parsed.searchParams.get('v');
+        if (id) return id;
+
+        const parts = parsed.pathname.split('/').filter(Boolean);
+        const markerIndex = parts.findIndex((part) => part === 'embed' || part === 'shorts');
+        if (markerIndex !== -1 && parts[markerIndex + 1]) {
+          return parts[markerIndex + 1];
+        }
+      }
+    } catch {
+      return null;
+    }
+
+    return null;
+  };
+
+  const buildEmbedHtmlFromUrl = (rawUrl: string) => {
+    const url = rawUrl.trim();
+    if (!url) return '';
+
+    const youtubeId = getYouTubeVideoId(url);
+    if (youtubeId) {
+      const origin = typeof window !== 'undefined' ? window.location.origin : 'https://umunsi.com';
+      const params = `rel=0&modestbranding=1&playsinline=1&origin=${encodeURIComponent(origin)}`;
+      return `
+        <div class="not-prose my-6 overflow-hidden rounded-xl border border-[#2b2f36] bg-[#0b0e11]">
+          <iframe
+            src="https://www.youtube-nocookie.com/embed/${youtubeId}?${params}"
+            title="YouTube video"
+            class="w-full aspect-video"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allowfullscreen
+            loading="lazy"
+            referrerpolicy="strict-origin-when-cross-origin"
+          ></iframe>
+        </div>
+      `;
+    }
+
+    if (/(^https?:\/\/)?(www\.)?instagram\.com\//i.test(url)) {
+      return `
+        <blockquote class="instagram-media not-prose my-6" data-instgrm-permalink="${url}" data-instgrm-version="14">
+          <a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>
+        </blockquote>
+      `;
+    }
+
+    if (/(^https?:\/\/)?(www\.)?(x\.com|twitter\.com)\//i.test(url)) {
+      return `
+        <blockquote class="twitter-tweet not-prose my-6">
+          <a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>
+        </blockquote>
+      `;
+    }
+
+    return `<p><a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a></p>`;
+  };
+
+  const handleGenerateUrlPreview = () => {
+    const embed = buildEmbedHtmlFromUrl(urlInputValue);
+    setUrlPreviewHtml(embed || '<p class="text-gray-400">Invalid URL</p>');
+    setUrlPreviewValid(Boolean(embed));
+  };
+
+  const handleInsertUrlEmbed = () => {
+    const embed = buildEmbedHtmlFromUrl(urlInputValue);
+    if (!embed) return;
+
+    document.execCommand('insertHTML', false, `${embed}<p><br></p>`);
+    editorRef.current?.focus();
+    handleContentChange();
+    setShowUrlInsertMenu(false);
+    setUrlInputValue('');
+    setUrlPreviewHtml('');
+    setUrlPreviewValid(false);
   };
 
   const addImageResizeHandles = () => {
@@ -610,7 +682,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
 
       {/* Toolbar */}
       {editorMode === 'visual' && (
-      <div className="relative flex flex-nowrap items-center gap-1 p-2 border-b border-[#dcdcde] bg-white overflow-x-auto">
+      <div className="relative flex flex-wrap items-center gap-1 p-2 border-b border-[#dcdcde] bg-white">
         <div className="flex items-center gap-2 border-r border-[#dcdcde] pr-2 mr-1">
           <div className="relative">
             <select
@@ -690,11 +762,6 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
             title="Insert/edit link (Ctrl+K)"
           />
           <ToolbarButton
-            onClick={removeLink}
-            icon={<Unlink className="w-4 h-4" />}
-            title="Remove link"
-          />
-          <ToolbarButton
             onClick={() => setShowImageSourceMenu((prev) => !prev)}
             icon={<ImageIcon className="w-4 h-4" />}
             title="Insert Image"
@@ -739,6 +806,46 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
           </div>
         )}
 
+        {showUrlInsertMenu && (
+          <div className="absolute top-12 left-20 z-30 bg-white border border-[#c3c4c7] rounded-md shadow-xl p-3 w-[380px]">
+            <p className="text-xs text-[#646970] mb-2">Insert URL (YouTube, Instagram, X/Twitter or normal link)</p>
+            <input
+              type="url"
+              value={urlInputValue}
+              onChange={(e) => {
+                const nextValue = e.target.value;
+                setUrlInputValue(nextValue);
+                const nextPreview = buildEmbedHtmlFromUrl(nextValue);
+                setUrlPreviewHtml(nextPreview || (nextValue.trim() ? '<p class="text-gray-500">Invalid URL</p>' : ''));
+                setUrlPreviewValid(Boolean(nextPreview));
+              }}
+              placeholder="https://..."
+              className="w-full px-3 py-2 rounded border border-[#8c8f94] text-sm text-[#1d2327]"
+            />
+            <div className="mt-2 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleGenerateUrlPreview}
+                className="px-3 py-1.5 rounded border border-[#8c8f94] text-[#3c434a] text-xs bg-white hover:bg-[#f6f7f7]"
+              >
+                Preview
+              </button>
+              <button
+                type="button"
+                onClick={handleInsertUrlEmbed}
+                disabled={!urlPreviewValid}
+                className="px-3 py-1.5 rounded bg-[#2271b1] text-white font-semibold text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Insert Preview in Article
+              </button>
+            </div>
+            {urlPreviewHtml && (
+              <div className="mt-3 border border-[#dcdcde] rounded p-2 max-h-52 overflow-auto">
+                <div dangerouslySetInnerHTML={{ __html: urlPreviewHtml }} />
+              </div>
+            )}
+          </div>
+        )}
       </div>
       )}
 
@@ -771,6 +878,13 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
           className="w-full min-h-[360px] p-4 font-mono text-sm border-0 focus:outline-none text-[#1d2327] rounded-b-md"
           placeholder="Write HTML content..."
         />
+      )}
+
+      {/* Placeholder */}
+      {!value && editorMode === 'visual' && (
+        <div className="absolute top-[98px] left-4 text-[#8c8f94] pointer-events-none">
+          {placeholder}
+        </div>
       )}
 
       <input
