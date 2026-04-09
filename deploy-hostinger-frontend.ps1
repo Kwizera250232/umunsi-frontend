@@ -1,5 +1,10 @@
 $ErrorActionPreference = 'Stop'
 
+# Avoid treating native command stderr warnings as terminating errors during deploy steps.
+if ($PSVersionTable.PSVersion.Major -ge 7) {
+  $PSNativeCommandUseErrorActionPreference = $false
+}
+
 $serverHost = if ($env:UMUNSI_SERVER_HOST) { $env:UMUNSI_SERVER_HOST } else { '93.127.186.217' }
 $serverHostKey = if ($env:UMUNSI_SERVER_HOSTKEY) { $env:UMUNSI_SERVER_HOSTKEY } else { 'ssh-ed25519 255 SHA256:jYsWizDft9Sm+hAuCTR9zWtpWeehF5XLunkPQPf/IBo' }
 $credentialFile = if ($env:UMUNSI_DEPLOY_CREDENTIAL_FILE) {
@@ -30,6 +35,7 @@ if (-not (Test-Path $pscp)) { throw 'pscp not found' }
 
 Write-Host 'Building frontend...' -ForegroundColor Cyan
 npm run build
+if ($LASTEXITCODE -ne 0) { throw 'Frontend build failed' }
 
 $zipPath = Join-Path $env:TEMP 'umunsi_dist.zip'
 if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
