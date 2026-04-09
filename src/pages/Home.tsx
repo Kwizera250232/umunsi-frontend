@@ -240,7 +240,10 @@ const Home = () => {
         categorySlug.includes('entertainment')
       );
     })
-    .slice(0, 5);
+    .slice(0, 7);
+
+  const imyidagaduroBelowMain = imyidagaduroPosts.slice(1, 3);
+  const imyidagaduroSidePosts = imyidagaduroPosts.slice(3, 7);
 
   const formatFullDate = () => {
     const days = ['Ku cyumweru', 'Ku wa mbere', 'Ku wa kabiri', 'Ku wa gatatu', 'Ku wa kane', 'Ku wa gatanu', 'Ku wa gatandatu'];
@@ -523,10 +526,33 @@ const Home = () => {
                         </div>
                       </div>
                     </Link>
+
+                    {imyidagaduroBelowMain.length > 0 && (
+                      <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {imyidagaduroBelowMain.map((post) => (
+                          <Link key={post.id} to={`/post/${post.slug}`} className="flex gap-3 p-2 rounded bg-[#0b0e11] group">
+                            <img
+                              src={getImageUrl(post.featuredImage)}
+                              alt={post.title}
+                              className="w-24 h-16 object-cover rounded flex-shrink-0"
+                            />
+                            <div className="min-w-0">
+                              <span className="inline-block bg-white/85 text-[#0b0e11] text-[10px] font-semibold px-2 py-0.5 rounded mb-1">
+                                Imyidagaduro
+                              </span>
+                              <h4 className="text-gray-200 text-sm font-semibold line-clamp-2 group-hover:text-[#fcd535] transition-colors">
+                                {post.title}
+                              </h4>
+                              <p className="text-gray-500 text-xs mt-1">{formatDate(post.publishedAt || post.createdAt)}</p>
+                            </div>
+                          </Link>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   <div className="lg:col-span-5 space-y-3">
-                    {imyidagaduroPosts.slice(1).map((post) => (
+                    {imyidagaduroSidePosts.map((post) => (
                       <Link key={post.id} to={`/post/${post.slug}`} className="flex gap-3 p-2 rounded bg-[#0b0e11] group">
                         <img
                           src={getImageUrl(post.featuredImage)}
