@@ -103,7 +103,7 @@ const Home = () => {
     return () => {
       cancelled = true;
     };
-  }, [showAds, latestPosts.length]);
+  }, [showAds, posts.length, activeTab]);
 
   const fetchHomeData = async () => {
     try {
@@ -478,12 +478,13 @@ const Home = () => {
                 <div className="p-4">
                   <ins
                     className="adsbygoogle"
-                    style={{ display: 'block' }}
+                    style={{ display: 'block', minHeight: '120px' }}
                     data-ad-client="ca-pub-3584259871242471"
                     data-ad-slot={ADSENSE_HOME_TOP_LATEST_SLOT}
                     data-ad-format="auto"
                     data-full-width-responsive="true"
                   ></ins>
+                  <p className="text-[11px] text-gray-500 mt-2 text-center">Kwamamaza</p>
                 </div>
               </div>
             )}
