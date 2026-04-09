@@ -242,8 +242,23 @@ const Home = () => {
     })
     .slice(0, 7);
 
+  const imikinoPosts = posts
+    .filter((post) => {
+      const categoryName = normalizeText(post.category?.name || '');
+      const categorySlug = normalizeText(post.category?.slug || '');
+      return (
+        categoryName.includes('imikino') ||
+        categorySlug.includes('imikino') ||
+        categoryName.includes('sports') ||
+        categorySlug.includes('sports')
+      );
+    })
+    .slice(0, 5);
+
   const imyidagaduroBelowMain = imyidagaduroPosts.slice(1, 3);
   const imyidagaduroSidePosts = imyidagaduroPosts.slice(3, 7);
+  const imikinoMain = imikinoPosts[0] || null;
+  const imikinoSidePosts = imikinoPosts.slice(1, 5);
 
   const formatFullDate = () => {
     const days = ['Ku cyumweru', 'Ku wa mbere', 'Ku wa kabiri', 'Ku wa gatatu', 'Ku wa kane', 'Ku wa gatanu', 'Ku wa gatandatu'];
@@ -575,6 +590,56 @@ const Home = () => {
               </div>
             )}
 
+            {imikinoMain && (
+              <div className="bg-[#181a20] rounded-lg overflow-hidden border border-[#2b2f36]">
+                <div className="bg-[#6b7680] text-white px-4 py-2">
+                  <h2 className="text-sm md:text-base font-extrabold uppercase tracking-wide">Imikino</h2>
+                </div>
+                <div className="p-3 md:p-4 grid grid-cols-1 lg:grid-cols-12 gap-4">
+                  <div className="lg:col-span-7">
+                    <Link to={`/post/${imikinoMain.slug}`} className="block group">
+                      <div className="relative overflow-hidden rounded bg-[#0b0e11]">
+                        <img
+                          src={getImageUrl(imikinoMain.featuredImage)}
+                          alt={imikinoMain.title}
+                          className="w-full h-[300px] md:h-[360px] object-cover"
+                        />
+                        <span className="absolute top-3 right-3 bg-white/90 text-[#0b0e11] text-xs font-semibold px-3 py-1 rounded">
+                          Imikino
+                        </span>
+                        <div className="absolute inset-x-0 bottom-0 bg-black/55 px-3 py-3">
+                          <h3 className="text-white text-lg md:text-xl font-bold leading-snug line-clamp-2 group-hover:text-[#fcd535] transition-colors">
+                            {imikinoMain.title}
+                          </h3>
+                        </div>
+                      </div>
+                    </Link>
+                  </div>
+
+                  <div className="lg:col-span-5 space-y-3">
+                    {imikinoSidePosts.map((post) => (
+                      <Link key={post.id} to={`/post/${post.slug}`} className="flex gap-3 p-2 rounded bg-[#0b0e11] group">
+                        <img
+                          src={getImageUrl(post.featuredImage)}
+                          alt={post.title}
+                          className="w-28 h-20 object-cover rounded flex-shrink-0"
+                        />
+                        <div className="min-w-0">
+                          <span className="inline-block bg-white/85 text-[#0b0e11] text-[10px] font-semibold px-2 py-0.5 rounded mb-1">
+                            Imikino
+                          </span>
+                          <h4 className="text-gray-200 text-sm font-semibold line-clamp-2 group-hover:text-[#fcd535] transition-colors">
+                            {post.title}
+                          </h4>
+                          <p className="text-gray-500 text-xs mt-1">{formatDate(post.publishedAt || post.createdAt)}</p>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {showAds && (
               <div className="home-top-latest-ad bg-[#181a20] rounded-lg overflow-hidden">
                 <div className="p-2 border-b border-[#2b2f36]">
@@ -702,45 +767,7 @@ const Home = () => {
               </div>
             )}
 
-            {/* Categories with Posts */}
-            {homeCategorySections.map((category) => {
-              const categoryPosts = getPostsByCategory(category.id);
-              if (categoryPosts.length === 0) return null;
-              
-              return (
-                <div key={category.id} className="bg-[#181a20] rounded-lg overflow-hidden">
-                  <div className="p-4 border-b border-[#2b2f36] flex items-center justify-between">
-                    <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                      <span className="w-1 h-6 bg-[#fcd535] rounded"></span>
-                      {category.name}
-                    </h2>
-                    <Link to={`/category/${category.slug}`} className="text-[#fcd535] text-sm hover:underline flex items-center gap-1">
-                      Reba Yose <ChevronRight className="w-4 h-4" />
-                    </Link>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
-                    {categoryPosts.map((post) => (
-                      <Link key={post.id} to={`/post/${post.slug}`} className="group">
-                        <div className="relative rounded-lg overflow-hidden mb-2">
-                          <img 
-                            src={getImageUrl(post.featuredImage)} 
-                            alt={post.title}
-                            className="w-full h-40 object-cover group-hover:scale-105 transition-transform duration-300"
-                          />
-                        </div>
-                        <h3 className="text-white font-semibold group-hover:text-[#fcd535] transition-colors line-clamp-2 text-sm">
-                          {post.title}
-                        </h3>
-                        <p className="text-gray-500 text-xs mt-1">
-                          {formatDate(post.publishedAt || post.createdAt)}
-                        </p>
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
+            {/* Other categories remain under Amakuru Mashya tabs as parent section */}
           </div>
 
           {/* Right Sidebar */}
