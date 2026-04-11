@@ -11,7 +11,6 @@ import {
   Share2,
   Clock,
   ChevronRight,
-  Loader2,
   AlertCircle,
   Send,
   Facebook,
@@ -220,6 +219,30 @@ const normalizeExternalUrl = (url?: string) => {
   return `https://${url}`;
 };
 
+const getCachedPost = (identifier?: string) => {
+  if (!identifier || typeof window === 'undefined') return null;
+  try {
+    const cachedRaw = sessionStorage.getItem(`umunsi_post_${identifier}`);
+    if (!cachedRaw) return null;
+    const cached = JSON.parse(cachedRaw) as Post;
+    return cached || null;
+  } catch {
+    return null;
+  }
+};
+
+const cachePost = (value: Post) => {
+  if (typeof window === 'undefined') return;
+  try {
+    sessionStorage.setItem(`umunsi_post_${value.id}`, JSON.stringify(value));
+    if (value.slug) {
+      sessionStorage.setItem(`umunsi_post_${value.slug}`, JSON.stringify(value));
+    }
+  } catch {
+    // Ignore cache write failures.
+  }
+};
+
 const injectAdAfterSecondParagraph = (html: string) => {
   if (!html) return '';
 
@@ -264,11 +287,12 @@ const PostPage = () => {
   const { slug, id } = useParams<{ slug?: string; id?: string }>();
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
+  const postIdentifier = slug || id;
   const showAds = true;
   const canSeeViews = user?.role === 'ADMIN';
-  const [post, setPost] = useState<Post | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [post, setPost] = useState<Post | null>(() => getCachedPost(postIdentifier));
   const [error, setError] = useState<string | null>(null);
+  const [hasResolvedInitialFetch, setHasResolvedInitialFetch] = useState(false);
   const [relatedPosts, setRelatedPosts] = useState<Post[]>([]);
   const [latestPosts, setLatestPosts] = useState<Post[]>([]);
   const [liked, setLiked] = useState(false);
@@ -286,11 +310,15 @@ const PostPage = () => {
   const [newComment, setNewComment] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
 
-  // Get the identifier (either slug or id)
-  const postIdentifier = slug || id;
-
   useEffect(() => {
     if (postIdentifier) {
+      const cached = getCachedPost(postIdentifier);
+      if (cached) {
+        setPost(cached);
+        setLikeCount(cached.likeCount || 0);
+      }
+      setError(null);
+      setHasResolvedInitialFetch(false);
       fetchPost();
       window.scrollTo(0, 0);
     }
@@ -476,7 +504,6 @@ const PostPage = () => {
 
   const fetchPost = async () => {
     try {
-      setLoading(true);
       setError(null);
       
       // Fetch post directly by ID or slug (backend supports both)
@@ -485,6 +512,7 @@ const PostPage = () => {
       if (foundPost) {
         setPost(foundPost);
         setLikeCount(foundPost.likeCount || 0);
+        cachePost(foundPost);
         
         // Fetch related posts and latest posts in parallel
         const postsResponse = await apiClient.getPosts({ limit: 20, status: 'PUBLISHED' });
@@ -501,13 +529,15 @@ const PostPage = () => {
           }
         }
       } else {
+        setPost(null);
         setError('Post not found');
       }
     } catch (error: any) {
       console.error('Error fetching post:', error);
+      setPost((prev) => prev);
       setError('Failed to load article.');
     } finally {
-      setLoading(false);
+      setHasResolvedInitialFetch(true);
     }
   };
 
@@ -654,11 +684,7 @@ const PostPage = () => {
     return `${getServerBaseUrl()}${avatar}`;
   };
 
-  if (loading) {
-    return <div className="min-h-screen bg-[#0b0e11]" />;
-  }
-
-  if (error || !post) {
+  if (hasResolvedInitialFetch && (error || !post)) {
     return (
       <div className="min-h-screen bg-[#0b0e11] flex items-center justify-center">
         <div className="text-center">
@@ -669,6 +695,10 @@ const PostPage = () => {
         </div>
       </div>
     );
+  }
+
+  if (!post) {
+    return <div className="min-h-screen bg-[#0b0e11]" />;
   }
 
   return (
