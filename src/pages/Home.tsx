@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Clock, Eye, ChevronRight, Loader2, Heart, TrendingUp, Zap, AlertCircle, Mail, Calendar, MapPin, CloudSun, Send, ThumbsUp } from 'lucide-react';
+import { Clock, Eye, ChevronRight, Heart, TrendingUp, Zap, AlertCircle, Mail, Calendar, MapPin, CloudSun, Send, ThumbsUp } from 'lucide-react';
 import { apiClient, Post, Category, AdsBannersState } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -36,7 +36,6 @@ const Home = () => {
   const showAds = true;
   const canSeeViews = user?.role === 'ADMIN';
 
-  const [loading, setLoading] = useState(true);
   const [posts, setPosts] = useState<Post[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [featuredPost, setFeaturedPost] = useState<Post | null>(null);
@@ -113,8 +112,6 @@ const Home = () => {
 
   const fetchHomeData = async () => {
     try {
-      setLoading(true);
-
       const [postsResult, categoriesResult] = await Promise.allSettled([
         apiClient.getPosts({
           status: 'PUBLISHED',
@@ -135,7 +132,7 @@ const Home = () => {
     } catch (error) {
       console.error('Error fetching home data:', error);
     } finally {
-      setLoading(false);
+      // Keep rendering existing UI immediately; no blocking loading state.
     }
   };
 

@@ -172,7 +172,7 @@ const Header = () => {
                   className="flex items-center space-x-1.5 px-3 py-1.5 bg-gradient-to-r from-[#fcd535] to-[#f0b90b] text-[#0b0e11] font-semibold rounded-lg hover:from-[#f0b90b] hover:to-[#fcd535] transition-all transform hover:scale-105"
                 >
                   <User size={14} />
-                  <span>Kwinjira (Abafatabuguzi)</span>
+                  <span>Premium</span>
                 </Link>
               )}
             </div>
