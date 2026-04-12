@@ -4,6 +4,7 @@ import { Mail, Lock, User, Eye, EyeOff } from 'lucide-react';
 import { apiClient } from '../services/api';
 
 const Register = () => {
+  const [registrationStep, setRegistrationStep] = useState<'details' | 'payment'>('details');
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -25,7 +26,7 @@ const Register = () => {
   const authorInviteKey = searchParams.get('key') || '';
   const safeRedirect = redirectParam.startsWith('/') && !redirectParam.startsWith('//')
     ? redirectParam
-    : isAuthorSignup ? '/admin/posts' : '/subscriber/account';
+    : isAuthorSignup ? '/admin/posts' : '/subscriber/account?onboardPayment=1';
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -43,6 +44,11 @@ const Register = () => {
 
     if (formData.password.length < 6) {
       setError("Ijambo ry'ibanga rigomba kuba nibura inyuguti 6.");
+      return;
+    }
+
+    if (!isAuthorSignup && registrationStep === 'details') {
+      setRegistrationStep('payment');
       return;
     }
 
@@ -99,111 +105,147 @@ const Register = () => {
             <img src="/images/logo.png" alt="Umunsi.com Logo" className="h-12 mx-auto" />
           </Link>
           <h1 className="text-2xl font-bold text-white">{isAuthorSignup ? 'Fungura Konti y\'Umwanditsi' : "Fungura Konti y'Abafatabuguzi"}</h1>
-          <p className="text-gray-400 text-sm mt-1">{isAuthorSignup ? 'Uzabona dashboard yo kwandika inkuru no kubika muri Draft' : 'Kwiyandikisha ukoresheje imeyili'}</p>
+          <p className="text-gray-400 text-sm mt-1">{isAuthorSignup ? 'Uzabona dashboard yo kwandika inkuru no kubika muri Draft' : registrationStep === 'details' ? 'Banza wuzuze amakuru yawe, ubundi ukomeze ku gice cyo kwishyura' : 'Konti yawe igiye gufungurwa hanyuma ukomeze wishyure Premium'}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm text-gray-300 mb-1">Izina</label>
-              <div className="relative">
-                <User className="w-4 h-4 text-gray-500 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  name="firstName"
-                  required
-                  value={formData.firstName}
-                  onChange={handleInputChange}
-                  className="w-full bg-[#1e2329] border border-[#2b2f36] rounded-lg pl-10 pr-3 py-3 text-white"
-                />
+          {(isAuthorSignup || registrationStep === 'details') ? (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm text-gray-300 mb-1">Izina</label>
+                  <div className="relative">
+                    <User className="w-4 h-4 text-gray-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      name="firstName"
+                      required
+                      value={formData.firstName}
+                      onChange={handleInputChange}
+                      className="w-full bg-[#1e2329] border border-[#2b2f36] rounded-lg pl-10 pr-3 py-3 text-white"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-300 mb-1">Izina ry'umuryango</label>
+                  <input
+                    type="text"
+                    name="lastName"
+                    required
+                    value={formData.lastName}
+                    onChange={handleInputChange}
+                    className="w-full bg-[#1e2329] border border-[#2b2f36] rounded-lg px-3 py-3 text-white"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm text-gray-300 mb-1">Imeyili</label>
+                <div className="relative">
+                  <Mail className="w-4 h-4 text-gray-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="email"
+                    name="email"
+                    required
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    className="w-full bg-[#1e2329] border border-[#2b2f36] rounded-lg pl-10 pr-3 py-3 text-white"
+                  />
+                </div>
+              </div>
+
+              {isAuthorSignup && (
+                <div>
+                  <label className="block text-sm text-gray-300 mb-1">Kora konte kuri umunsimedia.com ushyireho URL ya konte yawe hano *</label>
+                  <input
+                    type="url"
+                    name="profileUrl"
+                    required
+                    value={formData.profileUrl}
+                    onChange={handleInputChange}
+                    placeholder="https://www.umunsimedia.com/author-name"
+                    className="w-full bg-[#1e2329] border border-[#2b2f36] rounded-lg px-3 py-3 text-white"
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm text-gray-300 mb-1">Ijambo ry'ibanga</label>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-gray-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    name="password"
+                    required
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    className="w-full bg-[#1e2329] border border-[#2b2f36] rounded-lg pl-10 pr-10 py-3 text-white"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm text-gray-300 mb-1">Emeza ijambo ry'ibanga</label>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-gray-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    name="confirmPassword"
+                    required
+                    value={formData.confirmPassword}
+                    onChange={handleInputChange}
+                    className="w-full bg-[#1e2329] border border-[#2b2f36] rounded-lg pl-10 pr-10 py-3 text-white"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword((prev) => !prev)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500"
+                  >
+                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="rounded-xl border border-[#fcd535]/30 bg-[#11151b] p-5 space-y-4">
+              <div>
+                <h2 className="text-lg font-semibold text-white">Dushyigikire</h2>
+                <p className="text-sm text-gray-300 mt-2">
+                  Wishyure 500 RWF / Ku kwezi ubone inkuru za Premium ndetse ubashe no kuvugana natwe byoroshye.
+                </p>
+              </div>
+
+              <div className="rounded-lg border border-[#2b2f36] bg-[#0f1115] p-4 text-sm text-gray-300 space-y-2">
+                <p>Izina: <span className="text-white font-medium">{formData.firstName} {formData.lastName}</span></p>
+                <p>Imeyili: <span className="text-white font-medium">{formData.email}</span></p>
+                <p className="text-gray-400">Nyuma yo gufungura konti, uzahita ujyanwa aho wishyurira KPay muri konti yawe ya subscriber.</p>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setRegistrationStep('details')}
+                  className="flex-1 rounded-lg bg-[#2b2f36] py-3 text-white hover:bg-[#363a45]"
+                >
+                  Subira inyuma
+                </button>
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="flex-1 rounded-lg bg-[#fcd535] py-3 font-bold text-[#0b0e11] hover:bg-[#f0b90b] disabled:opacity-60"
+                >
+                  {isLoading ? 'Birimo...' : 'Fungura konti ukomeze wishyure'}
+                </button>
               </div>
             </div>
-            <div>
-              <label className="block text-sm text-gray-300 mb-1">Izina ry'umuryango</label>
-              <input
-                type="text"
-                name="lastName"
-                required
-                value={formData.lastName}
-                onChange={handleInputChange}
-                className="w-full bg-[#1e2329] border border-[#2b2f36] rounded-lg px-3 py-3 text-white"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm text-gray-300 mb-1">Imeyili</label>
-            <div className="relative">
-              <Mail className="w-4 h-4 text-gray-500 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="email"
-                name="email"
-                required
-                value={formData.email}
-                onChange={handleInputChange}
-                className="w-full bg-[#1e2329] border border-[#2b2f36] rounded-lg pl-10 pr-3 py-3 text-white"
-              />
-            </div>
-          </div>
-
-          {isAuthorSignup && (
-            <div>
-              <label className="block text-sm text-gray-300 mb-1">Kora konte kuri umunsimedia.com ushyireho URL ya konte yawe hano *</label>
-              <input
-                type="url"
-                name="profileUrl"
-                required
-                value={formData.profileUrl}
-                onChange={handleInputChange}
-                placeholder="https://www.umunsimedia.com/author-name"
-                className="w-full bg-[#1e2329] border border-[#2b2f36] rounded-lg px-3 py-3 text-white"
-              />
-            </div>
           )}
-
-          <div>
-            <label className="block text-sm text-gray-300 mb-1">Ijambo ry'ibanga</label>
-            <div className="relative">
-              <Lock className="w-4 h-4 text-gray-500 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type={showPassword ? 'text' : 'password'}
-                name="password"
-                required
-                value={formData.password}
-                onChange={handleInputChange}
-                className="w-full bg-[#1e2329] border border-[#2b2f36] rounded-lg pl-10 pr-10 py-3 text-white"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword((prev) => !prev)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500"
-              >
-                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm text-gray-300 mb-1">Emeza ijambo ry'ibanga</label>
-            <div className="relative">
-              <Lock className="w-4 h-4 text-gray-500 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type={showConfirmPassword ? 'text' : 'password'}
-                name="confirmPassword"
-                required
-                value={formData.confirmPassword}
-                onChange={handleInputChange}
-                className="w-full bg-[#1e2329] border border-[#2b2f36] rounded-lg pl-10 pr-10 py-3 text-white"
-              />
-              <button
-                type="button"
-                onClick={() => setShowConfirmPassword((prev) => !prev)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500"
-              >
-                {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-          </div>
 
           {error && (
             <div className="text-sm text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">
@@ -211,13 +253,15 @@ const Register = () => {
             </div>
           )}
 
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="w-full bg-[#fcd535] text-[#0b0e11] font-bold py-3 rounded-lg hover:bg-[#f0b90b] disabled:opacity-60"
-          >
-            {isLoading ? 'Birimo...' : isAuthorSignup ? 'Fungura Author Konti' : 'Fungura Konti'}
-          </button>
+          {(isAuthorSignup || registrationStep === 'details') && (
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full bg-[#fcd535] text-[#0b0e11] font-bold py-3 rounded-lg hover:bg-[#f0b90b] disabled:opacity-60"
+            >
+              {isLoading ? 'Birimo...' : isAuthorSignup ? 'Fungura Author Konti' : 'Next'}
+            </button>
+          )}
         </form>
 
         <div className="mt-4 text-center text-xs text-gray-500">
