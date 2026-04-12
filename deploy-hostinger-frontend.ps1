@@ -1,7 +1,7 @@
 $ErrorActionPreference = 'Stop'
 
 $serverHost = if ($env:UMUNSI_SERVER_HOST) { $env:UMUNSI_SERVER_HOST } else { '93.127.186.217' }
-$serverHostKey = if ($env:UMUNSI_SERVER_HOSTKEY) { $env:UMUNSI_SERVER_HOSTKEY } else { 'ssh-ed25519 255 SHA256:jYsWizDft9Sm+hAuCTR9zWtpWeehF5XLunkPQPf/IBo' }
+$serverHostKey = if ($env:UMUNSI_SERVER_HOSTKEY) { $env:UMUNSI_SERVER_HOSTKEY } else { 'ssh-ed25519 255 SHA256:pluXiqOiYsEH1N2eaOqo+v1qGAN5ysG06geZCbqX9oc' }
 $credentialFile = if ($env:UMUNSI_DEPLOY_CREDENTIAL_FILE) {
   $env:UMUNSI_DEPLOY_CREDENTIAL_FILE
 } else {

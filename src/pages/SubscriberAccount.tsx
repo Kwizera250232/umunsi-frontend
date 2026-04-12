@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link, Navigate } from 'react-router-dom';
-import { Crown, HeartHandshake, Lock, Mail, PhoneCall, MessageCircle } from 'lucide-react';
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { Crown, CreditCard, HeartHandshake, Lock, Mail, PhoneCall, MessageCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { apiClient, PremiumDashboardPost, ClassifiedAd } from '../services/api';
 
@@ -28,11 +28,18 @@ const buildWhatsAppLink = (name: string, email: string) => {
 
 const SubscriberAccount = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [loadingStories, setLoadingStories] = useState(true);
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [paymentSuccess, setPaymentSuccess] = useState<string | null>(null);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [isPremium, setIsPremium] = useState<boolean>(Boolean(user?.isPremium));
   const [premiumUntil, setPremiumUntil] = useState<string | null>(user?.premiumUntil || null);
+  const [paymentPhone, setPaymentPhone] = useState('');
+  const [pendingTxRef, setPendingTxRef] = useState<string | null>(null);
   const [premiumStories, setPremiumStories] = useState<PremiumDashboardPost[]>([]);
   const [myClassifiedAds, setMyClassifiedAds] = useState<ClassifiedAd[]>([]);
   const [requestedPremiumArticles, setRequestedPremiumArticles] = useState<PremiumRequestArticle[]>([]);
@@ -121,6 +128,179 @@ const SubscriberAccount = () => {
 
   const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username;
   const whatsappLink = buildWhatsAppLink(fullName, user.email);
+  const shouldShowOnboardingPayment = searchParams.get('onboardPayment') === '1';
+
+  const refreshProfile = async () => {
+    const profile = await apiClient.getPaymentsProfile();
+    setIsPremium(Boolean(profile?.data?.user?.isPremium));
+    setPremiumUntil(profile?.data?.user?.premiumUntil || null);
+  };
+
+  const handleVerifiedPremium = async (message: string) => {
+    setPaymentSuccess(message);
+    setPendingTxRef(null);
+    await refreshProfile();
+    window.setTimeout(() => {
+      navigate('/subscriber/account', { replace: true });
+    }, 1200);
+  };
+
+  const handleStartKpayPayment = async (pmethod: 'momo' | 'cc') => {
+    setPaymentError(null);
+    setPaymentSuccess(null);
+    setPendingTxRef(null);
+
+    if (!paymentPhone.trim()) {
+      setPaymentError('Andika nimero ya telefoni wishyuriraho. Urugero: 078XXXXXXX cyangwa 25078XXXXXXX.');
+      return;
+    }
+
+    try {
+      setPaymentLoading(true);
+      const response = await apiClient.initializeKpaySupportPayment({
+        msisdn: paymentPhone.trim(),
+        pmethod,
+        amount: 500
+      });
+
+      if (response?.data?.premium?.isPremium) {
+        await handleVerifiedPremium('Ubwishyu bwemejwe ako kanya. Premium yawe yahise ifungurwa.');
+        return;
+      }
+
+      if (response?.data?.checkoutUrl) {
+        setPaymentSuccess(pmethod === 'cc' ? 'Urimo koherezwa kuri direct payment page ya KPay.' : 'Urimo koherezwa kuri KPay kugira ngo urangize ubwishyu.');
+        window.location.href = response.data.checkoutUrl;
+        return;
+      }
+
+      if (response?.data?.txRef && pmethod === 'momo') {
+        setPendingTxRef(response.data.txRef);
+        setPaymentSuccess('Ubutumwa bwo kwemeza ubwishyu bwoherejwe kuri telefoni yawe. Emeza kuri MoMo, premium ihite ifungurwa ako kanya.');
+        return;
+      }
+
+      setPaymentSuccess(pmethod === 'cc'
+        ? 'Ubusabe bwa direct payment bwoherejwe. Komeza urangirize ubwishyu kuri KPay.'
+        : 'Ubusabe bwo kwishyura bwoherejwe. Tegereza gato nyuma yo kwemeza kuri telefoni yawe.');
+    } catch (error: any) {
+      setPaymentError(error?.message || 'Ntibyashobotse gutangiza ubwishyu bwa KPay. Ongera ugerageze.');
+    } finally {
+      setPaymentLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const provider = (searchParams.get('provider') || '').toLowerCase();
+    const paymentState = (searchParams.get('payment') || '').toLowerCase();
+    const txRef = searchParams.get('txRef') || '';
+
+    if (provider !== 'kpay' || paymentState !== 'callback' || !txRef) {
+      return;
+    }
+
+    let active = true;
+    const verifyKpay = async () => {
+      try {
+        setPaymentLoading(true);
+        setPaymentError(null);
+        const verification = await apiClient.verifyKpaySupportPayment(txRef);
+        if (!active) return;
+
+        if (verification?.data?.payment?.status === 'SUCCESS') {
+          await handleVerifiedPremium('Ubwishyu bwemejwe neza. Ufunguwe gusoma inkuru za premium.');
+        } else if (verification?.data?.payment?.status === 'PENDING') {
+          setPaymentSuccess('Ubwishyu buracyagenzurwa. Turacyagenzura status ya KPay.');
+          setPendingTxRef(txRef);
+        } else {
+          setPaymentError('Ubwishyu ntabwo bwagenze neza. Ongera ugerageze kwishyura.');
+          setPendingTxRef(null);
+        }
+      } catch (error: any) {
+        if (!active) return;
+        setPaymentError(error?.message || 'Ntibyashobotse kugenzura ubwishyu bwa KPay.');
+      } finally {
+        if (active) {
+          setPaymentLoading(false);
+        }
+      }
+    };
+
+    verifyKpay();
+
+    return () => {
+      active = false;
+    };
+  }, [navigate, searchParams]);
+
+  useEffect(() => {
+    if (!pendingTxRef) {
+      return;
+    }
+
+    let cancelled = false;
+    let attemptCount = 0;
+    const maxAttempts = 20;
+
+    const pollPayment = async () => {
+      try {
+        attemptCount += 1;
+        const verification = await apiClient.verifyKpaySupportPayment(pendingTxRef);
+        if (cancelled) {
+          return;
+        }
+
+        if (verification?.data?.payment?.status === 'SUCCESS') {
+          await handleVerifiedPremium('Ubwishyu bwakiriwe neza. Premium yawe yahise ifungurwa.');
+          return;
+        }
+
+        if (verification?.data?.payment?.status === 'FAILED') {
+          setPendingTxRef(null);
+          setPaymentError('Ubwishyu bwawe ntibwemejwe. Ongera ugerageze cyangwa ugenzure telefoni yawe.');
+          return;
+        }
+
+        if (attemptCount >= maxAttempts) {
+          setPendingTxRef(null);
+          setPaymentSuccess('Twategereje igihe gihagije ariko status ntirarangira. Kanda "Reba premium status" niba wamaze kwemeza kuri telefoni yawe.');
+        }
+      } catch (error: any) {
+        if (cancelled) {
+          return;
+        }
+
+        if (attemptCount >= maxAttempts) {
+          setPendingTxRef(null);
+          setPaymentError(error?.message || 'Ntibyashobotse kugenzura ubwishyu bwa KPay.');
+        }
+      }
+    };
+
+    pollPayment();
+    const intervalId = window.setInterval(() => {
+      if (attemptCount < maxAttempts) {
+        pollPayment();
+      }
+    }, 4000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [navigate, pendingTxRef]);
+
+  const handleRefreshPremiumStatus = async () => {
+    try {
+      setLoadingProfile(true);
+      setProfileError(null);
+      await refreshProfile();
+    } catch (error) {
+      setProfileError('Ntibyashobotse kubona premium status yawe. Ongera ugerageze.');
+    } finally {
+      setLoadingProfile(false);
+    }
+  };
 
   return (
     <div className="subscriber-account-page min-h-screen bg-[#0b0e11] py-8">
@@ -140,10 +320,12 @@ const SubscriberAccount = () => {
         <div className="bg-[#181a20] border border-[#2b2f36] rounded-2xl p-6">
           <div className="flex items-center gap-2 mb-2">
             <HeartHandshake className="w-5 h-5 text-[#fcd535]" />
-            <h2 className="text-xl font-bold text-white">Premium Access (Manual)</h2>
+            <h2 className="text-xl font-bold text-white">Premium Access</h2>
           </div>
           <p className="text-gray-300 mb-4">
-            Kugira ngo ufungurirwe Premium stories, twandikire kuri WhatsApp cyangwa uduhamagare nyuma yo kwishyura. Admin ni we ufungura access yawe mu buryo bwa manual.
+            {shouldShowOnboardingPayment
+              ? 'Dushyigikire wishyure 500 RWF / Ku kwezi ubone inkuru za Premium ndetse ubashe no kuvugana natwe byoroshye.'
+              : 'Wishyura 500 RWF ku kwezi ukoresheje KPay, hanyuma premium ikahita ifungurwa iyo ubwishyu bwemejwe.'}
           </p>
 
           <div className="subscriber-dark-card bg-[#0f1115] border border-[#2b2f36] rounded-xl p-4 mb-4">
@@ -152,7 +334,42 @@ const SubscriberAccount = () => {
               Premium Membership
             </div>
             <p className="text-[#fcd535] text-sm mt-2 font-semibold">Gusoma inkuru ziri Premium ni ukwishyura 500 RWF ku Kwezi.</p>
-            <p className="text-gray-400 text-sm mt-1">Direct payment izagaruka nyuma. Ubu dukoresha manual verification.</p>
+            <p className="text-gray-400 text-sm mt-1">KPay test mode: shyiramo nimero yawe, utangize ubwishyu, hanyuma premium ifungurwe iyo status ibaye SUCCESS.</p>
+
+            <div className="mt-4 grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3">
+              <input
+                type="tel"
+                value={paymentPhone}
+                onChange={(e) => setPaymentPhone(e.target.value)}
+                placeholder="Nimero ya telefoni (078... cyangwa 25078...)"
+                className="w-full bg-[#1e2329] border border-[#2b2f36] rounded-lg px-3 py-3 text-white"
+              />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => handleStartKpayPayment('momo')}
+                  disabled={paymentLoading}
+                  className="px-4 py-3 rounded-lg bg-[#fcd535] text-[#0b0e11] font-semibold hover:bg-[#f0b90b] disabled:opacity-60"
+                >
+                  {paymentLoading ? 'Birimo...' : 'Ishyure 500 RWF / Kwezi'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleStartKpayPayment('cc')}
+                  disabled={paymentLoading}
+                  className="px-4 py-3 rounded-lg border border-[#fcd535] text-[#fcd535] font-semibold hover:bg-[#fcd535]/10 disabled:opacity-60 flex items-center justify-center gap-2"
+                >
+                  <CreditCard className="w-4 h-4" />
+                  {paymentLoading ? 'Birimo...' : 'Direct Payment'}
+                </button>
+              </div>
+            </div>
+
+            <p className="text-xs text-gray-400 mt-3">Koresha nimero ya telefoni yawe kuri MoMo cyangwa ukande Direct Payment ujye kuri KPay card checkout.</p>
+
+            {paymentSuccess && <p className="text-xs text-emerald-400 mt-3">{paymentSuccess}</p>}
+            {paymentError && <p className="text-xs text-rose-400 mt-3">{paymentError}</p>}
+            {pendingTxRef && <p className="text-xs text-[#fcd535] mt-3">Turimo kugenzura ubwishyu bwawe. Numara kwemera kuri telefoni yawe, konti irahita ifungurwa.</p>}
 
             <div className="mt-3 space-y-2">
               <p className="text-sm text-gray-300">
@@ -163,6 +380,13 @@ const SubscriberAccount = () => {
               )}
               {loadingProfile && <p className="text-xs text-gray-500">Turimo kugenzura premium status...</p>}
               {profileError && <p className="text-xs text-rose-400">{profileError}</p>}
+              <button
+                type="button"
+                onClick={handleRefreshPremiumStatus}
+                className="text-xs text-[#fcd535] hover:underline"
+              >
+                Reba premium status
+              </button>
             </div>
           </div>
 
@@ -201,7 +425,7 @@ const SubscriberAccount = () => {
           </div>
 
           <div className="subscriber-dark-card mt-6 rounded-xl border border-[#2b2f36] bg-[#0f1115] p-4">
-            <h4 className="text-white font-semibold mb-3">Inkuru wasabye ukoresheje Bookmark</h4>
+            <h4 className="text-white font-semibold mb-3">Saved Premium Articles</h4>
             {requestedPremiumArticles.length === 0 ? (
               <p className="text-sm text-gray-400">Nta nkuru urasaba. Kanda Bookmark ku nkuru ya Premium kugira ngo igaragare hano.</p>
             ) : (
@@ -213,6 +437,7 @@ const SubscriberAccount = () => {
                       <p className="font-medium text-white">{story.title}</p>
                     </div>
                     <p className="text-xs text-gray-500 mt-1">Iyi nkuru iri muri Premium. Ntisomeka kugeza wishyuye, watwandikiye, hanyuma admin akagufungurira access.</p>
+                    <a href={story.url} className="text-xs text-[#fcd535] hover:underline mt-2 inline-block">Fungura iyi nkuru</a>
                   </div>
                 ))}
               </div>

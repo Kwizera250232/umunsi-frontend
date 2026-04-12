@@ -381,7 +381,13 @@ export interface PaymentsProfileResponse {
   };
 }
 
-export interface FlutterwaveInitializeResponse {
+export interface KpayInitializePayload {
+  msisdn: string;
+  pmethod?: 'momo' | 'cc' | 'spenn';
+  amount?: number;
+}
+
+export interface KpayInitializeResponse {
   success: boolean;
   message: string;
   data: {
@@ -389,11 +395,18 @@ export interface FlutterwaveInitializeResponse {
     txRef: string;
     amount: number;
     currency: string;
-    checkoutUrl: string;
+    checkoutUrl: string | null;
+    providerReply?: Record<string, any>;
+    premium?: {
+      id: string;
+      isPremium: boolean;
+      premiumSince?: string;
+      premiumUntil?: string;
+    } | null;
   };
 }
 
-export interface FlutterwaveVerifyResponse {
+export interface KpayVerifyResponse {
   success: boolean;
   message: string;
   data: {
@@ -411,6 +424,7 @@ export interface FlutterwaveVerifyResponse {
       premiumSince?: string;
       premiumUntil?: string;
     } | null;
+    providerReply?: Record<string, any>;
   };
 }
 
@@ -684,16 +698,15 @@ class ApiClient {
     }
   }
 
-  async initializeFlutterwaveSupportPayment(amount?: number): Promise<FlutterwaveInitializeResponse> {
-    const body = amount ? { amount } : {};
-    return this.request<FlutterwaveInitializeResponse>('/payments/flutterwave/initialize', {
+  async initializeKpaySupportPayment(payload: KpayInitializePayload): Promise<KpayInitializeResponse> {
+    return this.request<KpayInitializeResponse>('/payments/kpay/initialize', {
       method: 'POST',
-      body: JSON.stringify(body),
+      body: JSON.stringify(payload),
     });
   }
 
-  async verifyFlutterwaveSupportPayment(txRef: string): Promise<FlutterwaveVerifyResponse> {
-    return this.request<FlutterwaveVerifyResponse>(`/payments/flutterwave/verify/${encodeURIComponent(txRef)}`);
+  async verifyKpaySupportPayment(txRef: string): Promise<KpayVerifyResponse> {
+    return this.request<KpayVerifyResponse>(`/payments/kpay/verify/${encodeURIComponent(txRef)}`);
   }
 
   async getPaymentsProfile(): Promise<PaymentsProfileResponse> {
