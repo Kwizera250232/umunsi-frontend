@@ -22,13 +22,13 @@ const CLASSIFIED_CATEGORY_LABELS = {
 } as const;
 
 const PAYMENT_METHOD_OPTIONS = [
-  { id: 'visa', label: 'VISA', subtitle: 'Card', pmethod: 'cc' as const },
-  { id: 'mastercard', label: 'Mastercard', subtitle: 'Card', pmethod: 'cc' as const },
-  { id: 'amex', label: 'American Express', subtitle: 'Card', pmethod: 'cc' as const },
-  { id: 'mtn-momo', label: 'MoMo MTN', subtitle: 'Mobile Money', pmethod: 'momo' as const },
-  { id: 'airtel-money', label: 'Airtel Money', subtitle: 'Mobile Money', pmethod: 'momo' as const },
-  { id: 'smartcash', label: 'SmartCash', subtitle: 'Wallet', pmethod: 'momo' as const },
-  { id: 'spenn', label: 'SPENN', subtitle: 'Wallet', pmethod: 'spenn' as const }
+  { id: 'visa', label: 'VISA', subtitle: 'Card', pmethod: 'cc' as const, type: 'card' as const },
+  { id: 'mastercard', label: 'Mastercard', subtitle: 'Card', pmethod: 'cc' as const, type: 'card' as const },
+  { id: 'amex', label: 'American Express', subtitle: 'Card', pmethod: 'cc' as const, type: 'card' as const },
+  { id: 'mtn-momo', label: 'MoMo MTN', subtitle: 'Mobile Money', pmethod: 'momo' as const, type: 'mobile' as const },
+  { id: 'airtel-money', label: 'Airtel Money', subtitle: 'Mobile Money', pmethod: 'momo' as const, type: 'mobile' as const },
+  { id: 'smartcash', label: 'SmartCash', subtitle: 'Wallet', pmethod: 'momo' as const, type: 'mobile' as const },
+  { id: 'spenn', label: 'SPENN', subtitle: 'Wallet', pmethod: 'spenn' as const, type: 'mobile' as const }
 ] as const;
 
 type PaymentMethodOption = typeof PAYMENT_METHOD_OPTIONS[number];
@@ -165,22 +165,32 @@ const SubscriberAccount = () => {
 
   const handleStartKpayPayment = async () => {
     const pmethod = selectedPaymentMethod.pmethod;
+    const methodType = selectedPaymentMethod.type;
     setPaymentError(null);
     setPaymentSuccess(null);
     setPendingTxRef(null);
 
-    if (!paymentPhone.trim()) {
+    // Phone number only required for mobile money/wallet methods
+    if (methodType === 'mobile' && !paymentPhone.trim()) {
       setPaymentError('Andika nimero ya telefoni wishyuriraho. Urugero: 078XXXXXXX cyangwa 25078XXXXXXX.');
       return;
     }
 
     try {
       setPaymentLoading(true);
-      const response = await apiClient.initializeKpaySupportPayment({
-        msisdn: paymentPhone.trim(),
+      
+      // For card methods, only send minimum required data
+      const payload: any = {
         pmethod,
         amount: 500
-      });
+      };
+      
+      // Only include phone for mobile methods
+      if (methodType === 'mobile') {
+        payload.msisdn = paymentPhone.trim();
+      }
+
+      const response = await apiClient.initializeKpaySupportPayment(payload);
 
       if (response?.data?.premium?.isPremium) {
         await handleVerifiedPremium('Ubwishyu bwemejwe ako kanya. Premium yawe yahise ifungurwa.');
@@ -188,18 +198,23 @@ const SubscriberAccount = () => {
       }
 
       if (response?.data?.checkoutUrl) {
-        setPaymentSuccess(pmethod === 'cc' ? `Urimo koherezwa kuri ${selectedPaymentMethod.label} checkout ya KPay.` : 'Urimo koherezwa kuri KPay kugira ngo urangize ubwishyu.');
-        window.location.href = response.data.checkoutUrl;
+        if (methodType === 'card') {
+          setPaymentSuccess(`Urimo koherezwa kuri ${selectedPaymentMethod.label} checkout ya KPay. Emeza ubwishyu hano.`);
+          window.location.href = response.data.checkoutUrl;
+        } else {
+          setPaymentSuccess('Urimo koherezwa kuri KPay kugira ngo urangize ubwishyu.');
+          window.location.href = response.data.checkoutUrl;
+        }
         return;
       }
 
-      if (response?.data?.txRef && pmethod !== 'cc') {
+      if (response?.data?.txRef && methodType === 'mobile') {
         setPendingTxRef(response.data.txRef);
         setPaymentSuccess(`Ubutumwa bwo kwemeza ubwishyu bwoherejwe kuri telefoni yawe (${selectedPaymentMethod.label}). Emeza ubwishyu, premium ihite ifungurwa.`);
         return;
       }
 
-      setPaymentSuccess(pmethod === 'cc'
+      setPaymentSuccess(methodType === 'card'
         ? `Ubusabe bwa ${selectedPaymentMethod.label} bwoherejwe. Komeza urangirize ubwishyu kuri KPay.`
         : 'Ubusabe bwo kwishyura bwoherejwe. Tegereza gato nyuma yo kwemeza kuri telefoni yawe.');
     } catch (error: any) {
@@ -376,17 +391,24 @@ const SubscriberAccount = () => {
             </div>
 
             <div className="mt-4 grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3">
-              <input
-                type="tel"
-                value={paymentPhone}
-                onChange={(e) => setPaymentPhone(e.target.value)}
-                placeholder="Nimero ya telefoni (078... cyangwa 25078...)"
-                className="w-full bg-[#1e2329] border border-[#2b2f36] rounded-lg px-3 py-3 text-white"
-              />
+              {selectedPaymentMethod.type === 'mobile' && (
+                <input
+                  type="tel"
+                  value={paymentPhone}
+                  onChange={(e) => setPaymentPhone(e.target.value)}
+                  placeholder="Nimero ya telefoni (078... cyangwa 25078...)"
+                  className="w-full bg-[#1e2329] border border-[#2b2f36] rounded-lg px-3 py-3 text-white"
+                />
+              )}
+              {selectedPaymentMethod.type === 'card' && (
+                <div className="text-sm text-gray-400 flex items-center px-3 py-3">
+                  <p>Kanda isano ngo ugire credit card checkout ku isafuraricye ya KPay.</p>
+                </div>
+              )}
               <button
                 type="button"
                 onClick={handleStartKpayPayment}
-                disabled={paymentLoading}
+                disabled={paymentLoading || (selectedPaymentMethod.type === 'mobile' && !paymentPhone.trim())}
                 className="px-4 py-3 rounded-lg bg-[#fcd535] text-[#0b0e11] font-semibold hover:bg-[#f0b90b] disabled:opacity-60 flex items-center justify-center gap-2"
               >
                 <CreditCard className="w-4 h-4" />
