@@ -21,6 +21,18 @@ const CLASSIFIED_CATEGORY_LABELS = {
   ibindi: 'Andi matangazo'
 } as const;
 
+const PAYMENT_METHOD_OPTIONS = [
+  { id: 'visa', label: 'VISA', subtitle: 'Card', pmethod: 'cc' as const },
+  { id: 'mastercard', label: 'Mastercard', subtitle: 'Card', pmethod: 'cc' as const },
+  { id: 'amex', label: 'American Express', subtitle: 'Card', pmethod: 'cc' as const },
+  { id: 'mtn-momo', label: 'MoMo MTN', subtitle: 'Mobile Money', pmethod: 'momo' as const },
+  { id: 'airtel-money', label: 'Airtel Money', subtitle: 'Mobile Money', pmethod: 'momo' as const },
+  { id: 'smartcash', label: 'SmartCash', subtitle: 'Wallet', pmethod: 'momo' as const },
+  { id: 'spenn', label: 'SPENN', subtitle: 'Wallet', pmethod: 'spenn' as const }
+] as const;
+
+type PaymentMethodOption = typeof PAYMENT_METHOD_OPTIONS[number];
+
 const buildWhatsAppLink = (name: string, email: string) => {
   const message = `Muraho Umunsi, nitwa ${name}, email yanjye ni ${email}. Nashatse Premium access, namaze kwishyura. Mungenzurire konti yanjye.`;
   return `https://wa.me/${SUPPORT_WHATSAPP}?text=${encodeURIComponent(message)}`;
@@ -39,6 +51,7 @@ const SubscriberAccount = () => {
   const [isPremium, setIsPremium] = useState<boolean>(Boolean(user?.isPremium));
   const [premiumUntil, setPremiumUntil] = useState<string | null>(user?.premiumUntil || null);
   const [paymentPhone, setPaymentPhone] = useState('');
+  const [selectedPaymentMethodId, setSelectedPaymentMethodId] = useState<PaymentMethodOption['id']>('mtn-momo');
   const [pendingTxRef, setPendingTxRef] = useState<string | null>(null);
   const [premiumStories, setPremiumStories] = useState<PremiumDashboardPost[]>([]);
   const [myClassifiedAds, setMyClassifiedAds] = useState<ClassifiedAd[]>([]);
@@ -136,6 +149,11 @@ const SubscriberAccount = () => {
     setPremiumUntil(profile?.data?.user?.premiumUntil || null);
   };
 
+  const selectedPaymentMethod = useMemo(
+    () => PAYMENT_METHOD_OPTIONS.find((option) => option.id === selectedPaymentMethodId) || PAYMENT_METHOD_OPTIONS[0],
+    [selectedPaymentMethodId]
+  );
+
   const handleVerifiedPremium = async (message: string) => {
     setPaymentSuccess(message);
     setPendingTxRef(null);
@@ -145,7 +163,8 @@ const SubscriberAccount = () => {
     }, 1200);
   };
 
-  const handleStartKpayPayment = async (pmethod: 'momo' | 'cc') => {
+  const handleStartKpayPayment = async () => {
+    const pmethod = selectedPaymentMethod.pmethod;
     setPaymentError(null);
     setPaymentSuccess(null);
     setPendingTxRef(null);
@@ -169,19 +188,19 @@ const SubscriberAccount = () => {
       }
 
       if (response?.data?.checkoutUrl) {
-        setPaymentSuccess(pmethod === 'cc' ? 'Urimo koherezwa kuri direct payment page ya KPay.' : 'Urimo koherezwa kuri KPay kugira ngo urangize ubwishyu.');
+        setPaymentSuccess(pmethod === 'cc' ? `Urimo koherezwa kuri ${selectedPaymentMethod.label} checkout ya KPay.` : 'Urimo koherezwa kuri KPay kugira ngo urangize ubwishyu.');
         window.location.href = response.data.checkoutUrl;
         return;
       }
 
-      if (response?.data?.txRef && pmethod === 'momo') {
+      if (response?.data?.txRef && pmethod !== 'cc') {
         setPendingTxRef(response.data.txRef);
-        setPaymentSuccess('Ubutumwa bwo kwemeza ubwishyu bwoherejwe kuri telefoni yawe. Emeza kuri MoMo, premium ihite ifungurwa ako kanya.');
+        setPaymentSuccess(`Ubutumwa bwo kwemeza ubwishyu bwoherejwe kuri telefoni yawe (${selectedPaymentMethod.label}). Emeza ubwishyu, premium ihite ifungurwa.`);
         return;
       }
 
       setPaymentSuccess(pmethod === 'cc'
-        ? 'Ubusabe bwa direct payment bwoherejwe. Komeza urangirize ubwishyu kuri KPay.'
+        ? `Ubusabe bwa ${selectedPaymentMethod.label} bwoherejwe. Komeza urangirize ubwishyu kuri KPay.`
         : 'Ubusabe bwo kwishyura bwoherejwe. Tegereza gato nyuma yo kwemeza kuri telefoni yawe.');
     } catch (error: any) {
       setPaymentError(error?.message || 'Ntibyashobotse gutangiza ubwishyu bwa KPay. Ongera ugerageze.');
@@ -334,7 +353,27 @@ const SubscriberAccount = () => {
               Premium Membership
             </div>
             <p className="text-[#fcd535] text-sm mt-2 font-semibold">Gusoma inkuru ziri Premium ni ukwishyura 500 RWF ku Kwezi.</p>
-            <p className="text-gray-400 text-sm mt-1">KPay test mode: shyiramo nimero yawe, utangize ubwishyu, hanyuma premium ifungurwe iyo status ibaye SUCCESS.</p>
+            <p className="text-gray-400 text-sm mt-1">Hitamo payment method ushaka (Card, MoMo, SmartCash cyangwa SPENN), wandike nimero ya telefoni, ubone confirmation ku gihe nyacyo.</p>
+
+            <div className="mt-4">
+              <p className="text-xs uppercase tracking-wider text-gray-400 mb-2">KPay Payment Methods</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                {PAYMENT_METHOD_OPTIONS.map((option) => {
+                  const active = selectedPaymentMethodId === option.id;
+                  return (
+                    <button
+                      key={option.id}
+                      type="button"
+                      onClick={() => setSelectedPaymentMethodId(option.id)}
+                      className={`rounded-lg border px-3 py-2 text-left transition-colors ${active ? 'border-[#fcd535] bg-[#fcd535]/10' : 'border-[#2b2f36] bg-[#12161c] hover:border-[#fcd535]/50'}`}
+                    >
+                      <p className={`text-sm font-semibold ${active ? 'text-[#fcd535]' : 'text-white'}`}>{option.label}</p>
+                      <p className="text-xs text-gray-400">{option.subtitle}</p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
 
             <div className="mt-4 grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3">
               <input
@@ -344,28 +383,18 @@ const SubscriberAccount = () => {
                 placeholder="Nimero ya telefoni (078... cyangwa 25078...)"
                 className="w-full bg-[#1e2329] border border-[#2b2f36] rounded-lg px-3 py-3 text-white"
               />
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => handleStartKpayPayment('momo')}
-                  disabled={paymentLoading}
-                  className="px-4 py-3 rounded-lg bg-[#fcd535] text-[#0b0e11] font-semibold hover:bg-[#f0b90b] disabled:opacity-60"
-                >
-                  {paymentLoading ? 'Birimo...' : 'Ishyure 500 RWF / Kwezi'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleStartKpayPayment('cc')}
-                  disabled={paymentLoading}
-                  className="px-4 py-3 rounded-lg border border-[#fcd535] text-[#fcd535] font-semibold hover:bg-[#fcd535]/10 disabled:opacity-60 flex items-center justify-center gap-2"
-                >
-                  <CreditCard className="w-4 h-4" />
-                  {paymentLoading ? 'Birimo...' : 'Direct Payment'}
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={handleStartKpayPayment}
+                disabled={paymentLoading}
+                className="px-4 py-3 rounded-lg bg-[#fcd535] text-[#0b0e11] font-semibold hover:bg-[#f0b90b] disabled:opacity-60 flex items-center justify-center gap-2"
+              >
+                <CreditCard className="w-4 h-4" />
+                {paymentLoading ? 'Birimo...' : `Komeza na ${selectedPaymentMethod.label}`}
+              </button>
             </div>
 
-            <p className="text-xs text-gray-400 mt-3">Koresha nimero ya telefoni yawe kuri MoMo cyangwa ukande Direct Payment ujye kuri KPay card checkout.</p>
+            <p className="text-xs text-gray-400 mt-3">Method wahisemo: <span className="text-[#fcd535] font-semibold">{selectedPaymentMethod.label}</span>. Nimba ari mobile money uzabona confirmation kuri telefoni yawe, maze premium ifungurwe auto.</p>
 
             {paymentSuccess && <p className="text-xs text-emerald-400 mt-3">{paymentSuccess}</p>}
             {paymentError && <p className="text-xs text-rose-400 mt-3">{paymentError}</p>}
