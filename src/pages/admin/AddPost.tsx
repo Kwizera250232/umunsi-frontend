@@ -203,13 +203,9 @@ const AddPost: React.FC = () => {
 
   const handleFeaturedImageSelect = (media: MediaFile) => {
     setSelectedFeaturedImage(media);
-    const getServerBaseUrl = () => {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-      return apiUrl.replace('/api', '');
-    };
     setFormData(prev => ({
       ...prev,
-      featuredImage: `${getServerBaseUrl()}${media.url}`
+      featuredImage: media.url || ''
     }));
   };
 
