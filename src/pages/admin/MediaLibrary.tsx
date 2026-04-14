@@ -744,9 +744,19 @@ const MediaLibrary: React.FC = () => {
             <div className="w-full h-full p-4 flex items-center justify-center">
               {selectedMediaFile.mimeType.startsWith('image/') ? (
                 <img
-                  src={resolveAssetUrl(selectedMediaFile.url)}
+                  src={resolveAssetUrl(selectedMediaFile.thumbnailUrl || selectedMediaFile.url)}
                   alt={selectedMediaFile.originalName}
                   className="max-w-full max-h-full object-contain rounded-2xl"
+                  onError={(e) => {
+                    const img = e.currentTarget;
+                    const fullImage = resolveAssetUrl(selectedMediaFile.url);
+                    if (img.dataset.fallbackApplied !== '1' && fullImage && img.src !== fullImage) {
+                      img.dataset.fallbackApplied = '1';
+                      img.src = fullImage;
+                      return;
+                    }
+                    img.src = '/images/logo.png';
+                  }}
                 />
               ) : selectedMediaFile.mimeType.startsWith('video/') ? (
                 <video
