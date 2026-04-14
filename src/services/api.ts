@@ -16,13 +16,6 @@ export const resolveAssetUrl = (url?: string | null) => {
   if (rawValue.startsWith('//')) return `https:${rawValue}`;
 
   const serverBaseUrl = getServerBaseUrl();
-  const apiBaseUrl = getApiBaseUrl().replace(/\/$/, '');
-  const buildUploadUrl = (pathname: string, search = '', hash = '') => {
-    const normalizedPath = pathname.startsWith('/uploads/')
-      ? pathname
-      : `/uploads/${pathname.replace(/^\/+/, '')}`;
-    return `${apiBaseUrl}${normalizedPath}${search}${hash}`;
-  };
 
   try {
     const parsed = rawValue.startsWith('http://') || rawValue.startsWith('https://')
@@ -30,21 +23,15 @@ export const resolveAssetUrl = (url?: string | null) => {
       : new URL(rawValue.startsWith('/') ? rawValue : `/${rawValue.replace(/^\.?\//, '')}`, serverBaseUrl);
 
     const host = parsed.hostname.toLowerCase();
-    if (parsed.pathname.startsWith('/uploads/')) {
-      return buildUploadUrl(parsed.pathname, parsed.search, parsed.hash);
-    }
-
     if (host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0') {
       return `${serverBaseUrl}${parsed.pathname}${parsed.search}${parsed.hash}`;
     }
 
     return parsed.toString();
   } catch {
-    if (rawValue.startsWith('/uploads/')) return buildUploadUrl(rawValue);
     if (rawValue.startsWith('/')) return `${serverBaseUrl}${rawValue}`;
-    if (rawValue.startsWith('uploads/')) return buildUploadUrl(`/${rawValue}`);
-    if (rawValue.startsWith('images/')) return `${serverBaseUrl}/${rawValue}`;
-    return buildUploadUrl(`/${rawValue.replace(/^\.?\//, '')}`);
+    if (rawValue.startsWith('uploads/') || rawValue.startsWith('images/')) return `${serverBaseUrl}/${rawValue}`;
+    return `${serverBaseUrl}/uploads/${rawValue.replace(/^\.?\//, '')}`;
   }
 };
 
