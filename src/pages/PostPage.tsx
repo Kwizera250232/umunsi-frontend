@@ -307,6 +307,7 @@ const PostPage = () => {
   const [latestPosts, setLatestPosts] = useState<Post[]>([]);
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
+  const [shareCount, setShareCount] = useState(0);
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [topUrlCopied, setTopUrlCopied] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
@@ -326,6 +327,7 @@ const PostPage = () => {
       if (cached) {
         setPost(cached);
         setLikeCount(cached.likeCount || 0);
+        setShareCount(cached.shareCount || 0);
       }
       setError(null);
       setHasResolvedInitialFetch(false);
@@ -522,6 +524,7 @@ const PostPage = () => {
       if (foundPost) {
         setPost(foundPost);
         setLikeCount(foundPost.likeCount || 0);
+        setShareCount(foundPost.shareCount || 0);
         cachePost(foundPost);
         
         // Fetch related posts and latest posts in parallel
@@ -571,7 +574,31 @@ const PostPage = () => {
     window.open(`https://wa.me/${SUPPORT_WHATSAPP}?text=${encodeURIComponent(message)}`, '_blank');
   };
 
+  const recordShare = async (platform: string) => {
+    const identifier = post?.slug || post?.id || postIdentifier;
+    if (!identifier) return;
+
+    try {
+      const response = await apiClient.trackPostShare(identifier, platform);
+      const nextShareCount = Number(response?.data?.shareCount || 0);
+      setShareCount(nextShareCount);
+      setPost((current) => {
+        if (!current) return current;
+        const updated = {
+          ...current,
+          shareCount: nextShareCount,
+          shareBreakdown: response?.data?.shareBreakdown || current.shareBreakdown,
+        };
+        cachePost(updated);
+        return updated;
+      });
+    } catch (error) {
+      console.error('Failed to track article share:', error);
+    }
+  };
+
   const handleShare = (platform: string) => {
+    void recordShare(platform);
     const url = window.location.href;
     const title = post?.title || '';
     
@@ -659,6 +686,7 @@ const PostPage = () => {
     try {
       await navigator.clipboard.writeText(window.location.href);
       setTopUrlCopied(true);
+      void recordShare('copy');
       setTimeout(() => setTopUrlCopied(false), 2000);
     } catch (error) {
       console.error('Failed to copy article URL:', error);
@@ -860,9 +888,13 @@ const PostPage = () => {
               <div className="px-4 py-3 border-b border-[#2b2f36] flex items-center justify-between">
                 <span className="text-sm text-gray-400">Sangiza:</span>
                 <div className="flex items-center gap-2">
+                  <span className="min-w-[36px] px-2 py-1 rounded-full bg-[#0b0e11] border border-[#2b2f36] text-[#fcd535] text-sm font-semibold text-center">
+                    {shareCount}
+                  </span>
                   <button 
                     onClick={() => handleShare('facebook')}
                     className="w-8 h-8 rounded-full bg-[#1877f2] flex items-center justify-center hover:opacity-80 transition-opacity"
+                    title={`Facebook shares • total ${shareCount}`}
                   >
                     <Facebook className="w-4 h-4 text-white" />
                   </button>

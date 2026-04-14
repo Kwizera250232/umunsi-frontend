@@ -35,6 +35,13 @@ export const resolveAssetUrl = (url?: string | null) => {
   }
 };
 
+export const extractFirstImageFromHtml = (html?: string | null) => {
+  if (!html) return '';
+
+  const match = html.match(/<img[^>]+src=["']([^"']+)["']/i);
+  return resolveAssetUrl(match?.[1]);
+};
+
 // API Response Types
 export interface ApiResponse<T = any> {
   success: boolean;
@@ -235,6 +242,8 @@ export interface Post {
   viewCount: number;
   likeCount: number;
   commentCount: number;
+  shareCount?: number;
+  shareBreakdown?: Record<string, number>;
   isFeatured: boolean;
   isPinned: boolean;
   allowComments: boolean;
@@ -1127,6 +1136,13 @@ class ApiClient {
   async getPost(id: string): Promise<Post> {
     const response = await this.request<{ success: boolean; data: Post }>(`/posts/${id}`);
     return response.data;
+  }
+
+  async trackPostShare(id: string, platform: string): Promise<{ success: boolean; data: { postId: string; platform: string; shareCount: number; shareBreakdown?: Record<string, number> } }> {
+    return this.request(`/posts/${encodeURIComponent(id)}/share`, {
+      method: 'POST',
+      body: JSON.stringify({ platform }),
+    });
   }
 
   async getPremiumDashboardPosts(): Promise<{ success: boolean; data: PremiumDashboardPost[] }> {
