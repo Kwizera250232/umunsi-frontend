@@ -29,7 +29,7 @@ import {
   Check,
   Loader
 } from 'lucide-react';
-import { apiClient, MediaFile } from '../services/api';
+import { apiClient, MediaFile, resolveAssetUrl } from '../services/api';
 
 interface MediaLibraryModalProps {
   isOpen: boolean;
@@ -90,12 +90,6 @@ const MediaLibraryModal: React.FC<MediaLibraryModalProps> = ({
     } finally {
       setLoading(false);
     }
-  };
-
-  const getServerBaseUrl = () => {
-    // Get the API URL and extract the base server URL
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-    return apiUrl.replace('/api', '');
   };
 
   const filteredMedia = mediaFiles.filter(file => {
@@ -350,11 +344,18 @@ const MediaLibraryModal: React.FC<MediaLibraryModalProps> = ({
                       {/* Grid View */}
                       {isImage(file.mimeType) ? (
                         <img
-                          src={`${getServerBaseUrl()}${file.thumbnailUrl || file.url}`}
+                          src={resolveAssetUrl(file.thumbnailUrl || file.url)}
                           alt={file.originalName}
                           className="w-full h-full object-cover rounded-lg"
                           onError={(e) => {
-                            (e.target as HTMLImageElement).style.display = 'none';
+                            const img = e.currentTarget;
+                            const fallbackUrl = resolveAssetUrl(file.url);
+                            if (img.dataset.fallbackApplied !== '1' && fallbackUrl && img.src !== fallbackUrl) {
+                              img.dataset.fallbackApplied = '1';
+                              img.src = fallbackUrl;
+                              return;
+                            }
+                            img.style.display = 'none';
                           }}
                         />
                       ) : (
@@ -395,7 +396,7 @@ const MediaLibraryModal: React.FC<MediaLibraryModalProps> = ({
                       <div className="flex-shrink-0 w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center mr-3">
                         {isImage(file.mimeType) ? (
                           <img
-                            src={`${getServerBaseUrl()}${file.thumbnailUrl || file.url}`}
+                            src={resolveAssetUrl(file.thumbnailUrl || file.url)}
                             alt={file.originalName}
                             className="w-full h-full object-cover rounded-lg"
                             onError={(e) => {

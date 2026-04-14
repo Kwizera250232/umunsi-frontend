@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Clock, Eye, ChevronRight, Heart, TrendingUp, Zap, AlertCircle, Mail, Calendar, MapPin, CloudSun, Send, ThumbsUp } from 'lucide-react';
-import { apiClient, Post, Category, AdsBannersState } from '../services/api';
+import { apiClient, Post, Category, AdsBannersState, resolveAssetUrl } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
 type SpecialCategoryKey = 'cyamunara' | 'akazi' | 'guhinduza' | 'ibindi';
@@ -19,13 +19,6 @@ const normalizeText = (value: string) =>
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .trim();
-
-const getServerBaseUrl = () => {
-  if (import.meta.env.DEV) {
-    return (import.meta.env.VITE_API_URL || 'http://localhost:5000/api').replace('/api', '');
-  }
-  return (import.meta.env.VITE_API_URL || '').replace('/api', '');
-};
 
 const ADSENSE_HOME_AFTER_PARAGRAPH_7_SLOT = '1353027611';
 const ADSENSE_HOME_TOP_LATEST_SLOT = '5829562310';
@@ -151,28 +144,16 @@ const Home = () => {
   };
 
   const getImageUrl = (url?: string) => {
-    if (!url) return 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=600&h=400&fit=crop';
-
-    const normalized = String(url).trim();
-    if (!normalized) return 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=600&h=400&fit=crop';
-    if (normalized.startsWith('http://') || normalized.startsWith('https://')) return normalized;
-    if (normalized.startsWith('//')) return `https:${normalized}`;
-
-    const fallbackBase = typeof window !== 'undefined' ? window.location.origin : 'https://umunsi.com';
-    const base = getServerBaseUrl() || fallbackBase;
-
-    if (normalized.startsWith('/')) return `${base}${normalized}`;
-    if (normalized.startsWith('uploads/') || normalized.startsWith('images/')) return `${base}/${normalized}`;
-
-    return `${base}/uploads/${normalized.replace(/^\.?\//, '')}`;
+    const resolvedUrl = resolveAssetUrl(url);
+    return resolvedUrl || 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=600&h=400&fit=crop';
   };
 
   const getBannerImageUrl = (url?: string) => {
     if (!url) return '';
-    const upgradedUrl = url.includes('/thumbnails/') ? url.replace('/thumbnails/', '/images/') : url;
-    if (upgradedUrl.startsWith('http://') || upgradedUrl.startsWith('https://') || upgradedUrl.startsWith('//')) return upgradedUrl;
-    if (upgradedUrl.startsWith('/')) return `${getServerBaseUrl()}${upgradedUrl}`;
-    return `${getServerBaseUrl()}/${upgradedUrl}`;
+    const upgradedUrl = url.includes('/uploads/media/thumbnails/')
+      ? url.replace('/uploads/media/thumbnails/thumb_', '/uploads/media/')
+      : url;
+    return resolveAssetUrl(upgradedUrl);
   };
 
   const STORIES_PER_CATEGORY = 4;

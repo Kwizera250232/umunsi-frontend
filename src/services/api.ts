@@ -1,6 +1,53 @@
 // API Base Configuration
 const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? 'https://umunsi.com/api' : 'http://localhost:5000/api');
 
+export const getApiBaseUrl = () => API_BASE_URL;
+
+export const getServerBaseUrl = () =>
+  API_BASE_URL.replace(/\/api\/?$/, '') || (typeof window !== 'undefined' ? window.location.origin : 'https://umunsi.com');
+
+export const resolveAssetUrl = (url?: string | null) => {
+  if (!url) return '';
+
+  const rawValue = String(url).trim();
+  if (!rawValue) return '';
+
+  if (rawValue.startsWith('data:') || rawValue.startsWith('blob:')) return rawValue;
+  if (rawValue.startsWith('//')) return `https:${rawValue}`;
+
+  const serverBaseUrl = getServerBaseUrl();
+  const apiBaseUrl = getApiBaseUrl().replace(/\/$/, '');
+  const buildUploadUrl = (pathname: string, search = '', hash = '') => {
+    const normalizedPath = pathname.startsWith('/uploads/')
+      ? pathname
+      : `/uploads/${pathname.replace(/^\/+/, '')}`;
+    return `${apiBaseUrl}${normalizedPath}${search}${hash}`;
+  };
+
+  try {
+    const parsed = rawValue.startsWith('http://') || rawValue.startsWith('https://')
+      ? new URL(rawValue)
+      : new URL(rawValue.startsWith('/') ? rawValue : `/${rawValue.replace(/^\.?\//, '')}`, serverBaseUrl);
+
+    const host = parsed.hostname.toLowerCase();
+    if (parsed.pathname.startsWith('/uploads/')) {
+      return buildUploadUrl(parsed.pathname, parsed.search, parsed.hash);
+    }
+
+    if (host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0') {
+      return `${serverBaseUrl}${parsed.pathname}${parsed.search}${parsed.hash}`;
+    }
+
+    return parsed.toString();
+  } catch {
+    if (rawValue.startsWith('/uploads/')) return buildUploadUrl(rawValue);
+    if (rawValue.startsWith('/')) return `${serverBaseUrl}${rawValue}`;
+    if (rawValue.startsWith('uploads/')) return buildUploadUrl(`/${rawValue}`);
+    if (rawValue.startsWith('images/')) return `${serverBaseUrl}/${rawValue}`;
+    return buildUploadUrl(`/${rawValue.replace(/^\.?\//, '')}`);
+  }
+};
+
 // API Response Types
 export interface ApiResponse<T = any> {
   success: boolean;
