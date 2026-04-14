@@ -363,6 +363,7 @@ const PostPage = () => {
     (normalizeIdentityName(authorDisplayName) === SPECIAL_ADMIN_NAME || normalizedAuthorUsername === SPECIAL_ADMIN_USERNAME);
   const isVerifiedAuthor = (authorRole === 'AUTHOR' && Boolean(post?.author?.isVerified)) || isSpecialAdmin;
   const authorAccountUrl = normalizeExternalUrl(post?.author?.profileUrl);
+  const canUseNativeShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
 
   const authorMemberSinceDate = useMemo(() => {
     if (post?.author?.createdAt) {
@@ -617,6 +618,32 @@ const PostPage = () => {
         break;
     }
     setShowShareMenu(false);
+  };
+
+  const handleNativeShare = async () => {
+    const url = window.location.href;
+    const title = post?.title || 'UMUNSI';
+    const text = post?.excerpt || title;
+
+    if (!canUseNativeShare) {
+      await handleCopyTopArticleUrl();
+      return;
+    }
+
+    try {
+      await navigator.share({
+        title,
+        text,
+        url,
+      });
+      await recordShare('native');
+    } catch (error: any) {
+      if (error?.name !== 'AbortError') {
+        console.error('Native share failed:', error);
+      }
+    } finally {
+      setShowShareMenu(false);
+    }
   };
 
   const handleSubmitComment = async (e: React.FormEvent) => {
@@ -887,10 +914,19 @@ const PostPage = () => {
               {/* Social Share Bar */}
               <div className="px-4 py-3 border-b border-[#2b2f36] flex items-center justify-between">
                 <span className="text-sm text-gray-400">Sangiza:</span>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap justify-end">
                   <span className="min-w-[36px] px-2 py-1 rounded-full bg-[#0b0e11] border border-[#2b2f36] text-[#fcd535] text-sm font-semibold text-center">
                     {shareCount}
                   </span>
+                  {canUseNativeShare && (
+                    <button
+                      onClick={handleNativeShare}
+                      className="w-8 h-8 rounded-full bg-[#fcd535] flex items-center justify-center hover:opacity-80 transition-opacity"
+                      title="Share using your phone apps"
+                    >
+                      <Share2 className="w-4 h-4 text-[#0b0e11]" />
+                    </button>
+                  )}
                   <button 
                     onClick={() => handleShare('facebook')}
                     className="w-8 h-8 rounded-full bg-[#1877f2] flex items-center justify-center hover:opacity-80 transition-opacity"

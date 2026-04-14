@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Mail, Send, CheckCircle, Bell, Newspaper, TrendingUp, Clock, Eye, ChevronRight } from 'lucide-react';
-import { apiClient, Post, Category } from '../services/api';
+import { apiClient, Post, Category, resolveAssetUrl, extractFirstImageFromHtml } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
 const getServerBaseUrl = () => {
@@ -31,7 +31,12 @@ const Newsletter = () => {
     try {
       const postsResponse = await apiClient.getPosts({ status: 'PUBLISHED', limit: 10 });
       if (postsResponse?.data) {
-        setPosts(postsResponse.data);
+        setPosts(
+          postsResponse.data.map((post) => ({
+            ...post,
+            featuredImage: post.featuredImage || extractFirstImageFromHtml(post.content) || undefined
+          }))
+        );
       }
       const categoriesResponse = await apiClient.getCategories({ includeInactive: false });
       if (categoriesResponse) {
@@ -58,9 +63,7 @@ const Newsletter = () => {
   };
 
   const getImageUrl = (url?: string) => {
-    if (!url) return 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=400&h=300&fit=crop';
-    if (url.startsWith('http')) return url;
-    return `${getServerBaseUrl()}${url}`;
+    return resolveAssetUrl(url) || 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=400&h=300&fit=crop';
   };
 
   const trendingPosts = [...posts].sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0)).slice(0, 5);

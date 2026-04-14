@@ -25,7 +25,8 @@ import {
   BookOpen,
   Crown,
   Shield,
-  MoreHorizontal
+  MoreHorizontal,
+  Share2
 } from 'lucide-react';
 import { apiClient } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -42,6 +43,8 @@ interface DashboardStats {
     views: number;
   }>;
   totalLikes: number;
+  totalShares: number;
+  sharePlatforms: Record<string, number>;
 }
 
 interface RecentPost {
@@ -88,7 +91,9 @@ const AdminDashboard = () => {
     totalViews: 0,
     todayViews: 0,
     dailyViews: [],
-    totalLikes: 0
+    totalLikes: 0,
+    totalShares: 0,
+    sharePlatforms: {}
   });
 
   const [recentPosts, setRecentPosts] = useState<RecentPost[]>([]);
@@ -132,6 +137,13 @@ const AdminDashboard = () => {
         const totalViews = postsData.reduce((sum: number, post: any) => sum + (post.viewCount || 0), 0);
         const totalLikes = postsData.reduce((sum: number, post: any) => sum + (post.likeCount || 0), 0);
         const totalComments = postsData.reduce((sum: number, post: any) => sum + (post.commentCount || post._count?.comments || 0), 0);
+        const totalShares = postsData.reduce((sum: number, post: any) => sum + (post.shareCount || 0), 0);
+        const sharePlatforms = postsData.reduce((acc: Record<string, number>, post: any) => {
+          Object.entries(post.shareBreakdown || {}).forEach(([platform, count]) => {
+            acc[platform] = Number(acc[platform] || 0) + Number(count || 0);
+          });
+          return acc;
+        }, {});
         const categoriesCount = new Set(postsData.map((post: any) => post.category?.id).filter(Boolean)).size;
 
         setStats({
@@ -142,7 +154,9 @@ const AdminDashboard = () => {
           totalViews,
           todayViews: 0,
           dailyViews: [],
-          totalLikes
+          totalLikes,
+          totalShares,
+          sharePlatforms
         });
 
         setRecentPosts(
@@ -182,7 +196,9 @@ const AdminDashboard = () => {
         totalViews: dashboardResponse?.totalViews || 0,
         todayViews: dashboardResponse?.todayViews || 0,
         dailyViews: dashboardResponse?.dailyViews || [],
-        totalLikes: dashboardResponse?.totalLikes || 0
+        totalLikes: dashboardResponse?.totalLikes || 0,
+        totalShares: dashboardResponse?.totalShares || 0,
+        sharePlatforms: dashboardResponse?.sharePlatforms || {}
       });
 
       // Get posts from dashboard response OR direct posts API
@@ -254,7 +270,9 @@ const AdminDashboard = () => {
         totalViews: 0,
         todayViews: 0,
         dailyViews: [],
-        totalLikes: 0
+        totalLikes: 0,
+        totalShares: 0,
+        sharePlatforms: {}
       });
       setRecentPosts([]);
       setRecentUsers([]);
@@ -330,6 +348,18 @@ const AdminDashboard = () => {
   const activeViews = activeIndex >= 0 ? normalizedDailyViews[activeIndex].views : 0;
   const previousViews = activeIndex > 0 ? normalizedDailyViews[activeIndex - 1].views : 0;
   const dailyDelta = activeViews - previousViews;
+  const platformLabels: Record<string, string> = {
+    facebook: 'Facebook',
+    whatsapp: 'WhatsApp',
+    twitter: 'X / Twitter',
+    linkedin: 'LinkedIn',
+    copy: 'Copied Link',
+    native: 'Native Share',
+    other: 'Other'
+  };
+  const sharePlatformEntries = Object.entries(stats.sharePlatforms || {})
+    .filter(([, count]) => Number(count) > 0)
+    .sort((a, b) => Number(b[1]) - Number(a[1]));
 
   const saveMaintenance = async () => {
     try {
@@ -440,7 +470,7 @@ const AdminDashboard = () => {
         </button>
       </div>}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6 mb-8">
         {/* Total Users */}
         {!isAuthorOnly && <div 
           onClick={() => navigate('/admin/users')}
@@ -540,7 +570,23 @@ const AdminDashboard = () => {
             </div>
             </div>
           </div>
+
+        {/* Total Shares */}
+        <div className="group relative bg-[#181a20] rounded-2xl border border-[#2b2f36] overflow-hidden hover:border-cyan-500/50 transition-all duration-300">
+          <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+          <div className="p-6 relative">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 bg-cyan-500/10 rounded-xl group-hover:bg-cyan-500/20 transition-colors">
+                <Share2 className="w-6 h-6 text-cyan-400" />
+              </div>
+            </div>
+            <div>
+              <p className="text-3xl font-bold text-white mb-1">{formatNumber(stats.totalShares)}</p>
+              <p className="text-sm text-gray-500 group-hover:text-gray-400">{isAuthorOnly ? 'Shares on Your Posts' : 'Total Shares'}</p>
+            </div>
+          </div>
         </div>
+      </div>
 
         {!isAuthorOnly && <div className="mb-8 bg-[#181a20] rounded-2xl border border-[#2b2f36] p-6">
           <h3 className="text-lg font-semibold text-white mb-4">Reading Trend (Last 7 Days)</h3>
@@ -776,6 +822,41 @@ const AdminDashboard = () => {
                 </button>
               </div>
             </div>}
+
+            {/* Share Sources */}
+          <div className="bg-[#181a20] rounded-2xl border border-[#2b2f36] overflow-hidden">
+            <div className="px-6 py-5 border-b border-[#2b2f36]">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-cyan-500/10 rounded-lg">
+                  <Share2 className="w-5 h-5 text-cyan-400" />
+                </div>
+                <h3 className="text-lg font-semibold text-white">Share Sources</h3>
+              </div>
+            </div>
+
+            <div className="p-4 space-y-3">
+              {sharePlatformEntries.length > 0 ? (
+                sharePlatformEntries.map(([platform, count]) => {
+                  const percent = stats.totalShares > 0 ? Math.round((Number(count) / stats.totalShares) * 100) : 0;
+
+                  return (
+                    <div key={platform} className="p-3 bg-[#1e2329] rounded-xl">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium text-gray-200">{platformLabels[platform] || platform}</span>
+                        <span className="text-sm font-semibold text-cyan-300">{formatNumber(Number(count))}</span>
+                      </div>
+                      <div className="h-2 rounded-full bg-[#2b2f36] overflow-hidden mb-1">
+                        <div className="h-2 rounded-full bg-gradient-to-r from-cyan-400 to-blue-500" style={{ width: `${Math.max(percent, 6)}%` }} />
+                      </div>
+                      <p className="text-[11px] text-gray-500">{percent}% of total shares</p>
+                    </div>
+                  );
+                })
+              ) : (
+                <p className="text-sm text-gray-500">No share platform data yet.</p>
+              )}
+            </div>
+          </div>
 
             {/* System Status */}
           <div className="bg-[#181a20] rounded-2xl border border-[#2b2f36] overflow-hidden">

@@ -24,6 +24,15 @@ const defaultAdsSettings: AdsBannersState = {
       size: '728x250',
       label: "Ahantu h'Ubucuruzi Banner"
     },
+    homeStory600x100: {
+      enabled: false,
+      adCode: '',
+      imageUrl: '',
+      targetUrl: '',
+      altText: 'Homepage Story Banner (560x80)',
+      size: '560x80',
+      label: 'Homepage Story Banner (560x80)'
+    },
     sidebar300x250: {
       enabled: false,
       adCode: '',
@@ -211,6 +220,7 @@ const AdsManagement = () => {
   const slotOrder: Array<{ key: SlotKey; place: string }> = [
     { key: 'leaderboardTop970x120', place: 'Top Leaderboard' },
     { key: 'business728x250', place: "Ahantu h'Ubucuruzi" },
+    { key: 'homeStory600x100', place: 'Homepage under the small story below main headline • exact fit 560x80' },
     { key: 'sidebar300x250', place: 'Sidebar Banner' },
     { key: 'adminSidebar240x320', place: 'Admin Left Sidebar (Lower Area)' },
     { key: 'square300x300', place: 'Sidebar Square' },

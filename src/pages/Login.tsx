@@ -33,7 +33,7 @@ const Login = () => {
     setIsLoading(true);
     
     try {
-      const success = await login(formData.email, formData.password);
+      const success = await login(formData.email.trim(), formData.password);
       
       if (success) {
         // Route authenticated users by role so one login form works for all accounts.
