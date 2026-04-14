@@ -35,15 +35,25 @@ declare global {
 }
 
 const getServerBaseUrl = () => {
-  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-  return apiUrl.replace('/api', '');
+  const configuredApiUrl = (import.meta.env.VITE_API_URL || '').trim();
+  if (configuredApiUrl) {
+    return configuredApiUrl.replace('/api', '');
+  }
+  if (typeof window !== 'undefined') {
+    return window.location.origin;
+  }
+  return 'https://umunsi.com';
 };
 
 const resolveArticleImageSrc = (src: string) => {
   if (!src) return src;
-  if (src.startsWith('http://') || src.startsWith('https://') || src.startsWith('data:')) return src;
-  if (src.startsWith('/')) return `${getServerBaseUrl()}${src}`;
-  return `${getServerBaseUrl()}/uploads/${src}`;
+  const normalized = String(src).trim();
+  if (!normalized) return normalized;
+  if (normalized.startsWith('http://') || normalized.startsWith('https://') || normalized.startsWith('data:')) return normalized;
+  if (normalized.startsWith('//')) return `https:${normalized}`;
+  if (normalized.startsWith('/')) return `${getServerBaseUrl()}${normalized}`;
+  if (normalized.startsWith('uploads/') || normalized.startsWith('images/')) return `${getServerBaseUrl()}/${normalized}`;
+  return `${getServerBaseUrl()}/uploads/${normalized.replace(/^\.?\//, '')}`;
 };
 
 const extractFirstImageFromHtml = (html?: string) => {
@@ -201,7 +211,7 @@ const ADSENSE_AFTER_CONTENT_SLOT = '4412538868';
 
 const SUPPORT_WHATSAPP = '250791859465';
 const SUPPORT_CALL = '0791859465';
-const AUTHOR_APP_BADGE_IMAGE = 'https://umunsi.com/uploads/media/thumbnails/thumb_files-1775580260927-532416125.jpg';
+const AUTHOR_APP_BADGE_IMAGE = 'https://umunsi.com/uploads/media/thumbnails/thumb_files-1776124536301-469177017.jpg';
 const DEFAULT_AUTHOR_ACCOUNT_URL = 'https://www.umunsimedia.com/';
 const SPECIAL_ADMIN_NAME = 'kwizera jean de dieu';
 const SPECIAL_ADMIN_USERNAME = 'kwizerajeandedieu250';
@@ -674,14 +684,12 @@ const PostPage = () => {
 
   const getImageUrl = (url?: string) => {
     if (!url) return 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=800&h=400&fit=crop';
-    if (url.startsWith('http')) return url;
-    return `${getServerBaseUrl()}${url}`;
+    return resolveArticleImageSrc(url);
   };
 
   const getAuthorAvatarUrl = (avatar?: string) => {
     if (!avatar) return '';
-    if (avatar.startsWith('http')) return avatar;
-    return `${getServerBaseUrl()}${avatar}`;
+    return resolveArticleImageSrc(avatar);
   };
 
   if (hasResolvedInitialFetch && (error || !post)) {
@@ -791,8 +799,8 @@ const PostPage = () => {
                           >
                             <img
                               src={AUTHOR_APP_BADGE_IMAGE}
-                              alt="Umunsi Media App"
-                                className="h-5 w-auto max-w-10 object-contain bg-[#0b0e11]"
+                              alt="UmunsiMedia"
+                              className="h-5 w-5 rounded-full object-cover bg-[#0b0e11]"
                             />
                           </a>
                         )}
@@ -1192,8 +1200,8 @@ const PostPage = () => {
                     >
                       <img
                         src={AUTHOR_APP_BADGE_IMAGE}
-                        alt="Umunsi Media App"
-                        className="h-5 w-auto max-w-10 object-contain bg-[#0b0e11]"
+                        alt="UmunsiMedia"
+                        className="h-5 w-5 rounded-full object-cover bg-[#0b0e11]"
                       />
                     </a>
                   )}

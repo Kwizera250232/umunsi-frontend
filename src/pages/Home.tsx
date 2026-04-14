@@ -152,8 +152,19 @@ const Home = () => {
 
   const getImageUrl = (url?: string) => {
     if (!url) return 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=600&h=400&fit=crop';
-    if (url.startsWith('http')) return url;
-    return `${getServerBaseUrl()}${url}`;
+
+    const normalized = String(url).trim();
+    if (!normalized) return 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=600&h=400&fit=crop';
+    if (normalized.startsWith('http://') || normalized.startsWith('https://')) return normalized;
+    if (normalized.startsWith('//')) return `https:${normalized}`;
+
+    const fallbackBase = typeof window !== 'undefined' ? window.location.origin : 'https://umunsi.com';
+    const base = getServerBaseUrl() || fallbackBase;
+
+    if (normalized.startsWith('/')) return `${base}${normalized}`;
+    if (normalized.startsWith('uploads/') || normalized.startsWith('images/')) return `${base}/${normalized}`;
+
+    return `${base}/uploads/${normalized.replace(/^\.?\//, '')}`;
   };
 
   const getBannerImageUrl = (url?: string) => {
