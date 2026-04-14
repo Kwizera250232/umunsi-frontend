@@ -126,14 +126,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
       setIsLoading(true);
-      const response = await apiClient.login({ email, password });
+      const normalizedEmail = email.trim().toLowerCase();
+      const response = await apiClient.login({ email: normalizedEmail, password });
       
       if (response && response.success && response.user) {
         setUser(response.user);
         
-        // Store user data in localStorage for persistence
-        localStorage.setItem('umunsi_user', JSON.stringify(response.user));
-        localStorage.setItem('umunsi_token', response.token);
+        // Store user data for persistence
+        try {
+          localStorage.setItem('umunsi_user', JSON.stringify(response.user));
+          localStorage.setItem('umunsi_token', response.token);
+          sessionStorage.setItem('umunsi_user', JSON.stringify(response.user));
+          sessionStorage.setItem('umunsi_token', response.token);
+        } catch {
+          // Ignore storage write failures.
+        }
         
         // Set token in API client
         apiClient.setToken(response.token);
@@ -151,23 +158,37 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Logout function
   const logout = () => {
       setUser(null);
-    localStorage.removeItem('umunsi_user');
-    localStorage.removeItem('umunsi_token');
+    try {
+      localStorage.removeItem('umunsi_user');
+      localStorage.removeItem('umunsi_token');
+      sessionStorage.removeItem('umunsi_user');
+      sessionStorage.removeItem('umunsi_token');
+    } catch {
+      // Ignore storage removal failures.
+    }
     apiClient.clearToken();
   };
 
   // Refresh user data
   const refreshUser = async () => {
     try {
-      const token = localStorage.getItem('umunsi_token');
+      const token = localStorage.getItem('umunsi_token') || sessionStorage.getItem('umunsi_token');
       if (token) {
         apiClient.setToken(token);
-        // You can add an API endpoint to refresh user data if needed
-        // For now, we'll use the stored user data
-      } else {
-          // Ensure API client has no token
-          apiClient.clearToken();
+        const profile = await apiClient.getProfile();
+
+        if (profile?.user) {
+          setUser(profile.user);
+          try {
+            localStorage.setItem('umunsi_user', JSON.stringify(profile.user));
+            sessionStorage.setItem('umunsi_user', JSON.stringify(profile.user));
+          } catch {
+            // Ignore storage write failures.
+          }
         }
+      } else {
+        apiClient.clearToken();
+      }
     } catch (error) {
       console.error('Error refreshing user:', error);
       logout();
@@ -176,15 +197,29 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Initialize auth state on app load
   useEffect(() => {
-    const initializeAuth = () => {
+    const initializeAuth = async () => {
       try {
-        const storedUser = localStorage.getItem('umunsi_user');
-        const storedToken = localStorage.getItem('umunsi_token');
-        
-        if (storedUser && storedToken) {
-          const userData = JSON.parse(storedUser);
-          setUser(userData);
+        const storedUser = localStorage.getItem('umunsi_user') || sessionStorage.getItem('umunsi_user');
+        const storedToken = localStorage.getItem('umunsi_token') || sessionStorage.getItem('umunsi_token');
+
+        if (storedToken) {
           apiClient.setToken(storedToken);
+
+          if (storedUser) {
+            const userData = JSON.parse(storedUser);
+            setUser(userData);
+          } else {
+            const profile = await apiClient.getProfile();
+            if (profile?.user) {
+              setUser(profile.user);
+              try {
+                localStorage.setItem('umunsi_user', JSON.stringify(profile.user));
+                sessionStorage.setItem('umunsi_user', JSON.stringify(profile.user));
+              } catch {
+                // Ignore storage write failures.
+              }
+            }
+          }
         }
       } catch (error) {
         logout();
@@ -246,8 +281,8 @@ export const withAuth = <P extends object>(
     const { isAuthenticated, hasPermission, hasRole, isLoading, user } = useAuth();
 
     // Check localStorage as fallback
-    const storedUser = localStorage.getItem('umunsi_user');
-    const storedToken = localStorage.getItem('umunsi_token');
+    const storedUser = localStorage.getItem('umunsi_user') || sessionStorage.getItem('umunsi_user');
+    const storedToken = localStorage.getItem('umunsi_token') || sessionStorage.getItem('umunsi_token');
     const hasStoredAuth = !!(storedUser && storedToken);
     
     // Determine effective authentication status

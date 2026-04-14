@@ -487,6 +487,7 @@ export interface AdsBannersState {
   slots: {
     leaderboardTop970x120: AdBannerSlot;
     business728x250: AdBannerSlot;
+    homeStory600x100: AdBannerSlot;
     sidebar300x250: AdBannerSlot;
     adminSidebar240x320: AdBannerSlot;
     square300x300: AdBannerSlot;
@@ -541,6 +542,14 @@ export interface ClassifiedDispatchResult {
   }>;
 }
 
+const AUTH_FREE_ENDPOINTS = [
+  '/auth/login',
+  '/auth/register',
+  '/auth/forgot-password',
+  '/auth/reset-password',
+  '/auth/change-password-with-email'
+];
+
 // API Client Class
 class ApiClient {
   private baseURL: string;
@@ -548,7 +557,13 @@ class ApiClient {
 
   constructor(baseURL: string) {
     this.baseURL = baseURL;
-    this.token = localStorage.getItem('umunsi_token');
+    this.token = null;
+
+    try {
+      this.token = localStorage.getItem('umunsi_token') || sessionStorage.getItem('umunsi_token');
+    } catch {
+      this.token = null;
+    }
   }
 
   private async request<T>(
@@ -557,6 +572,15 @@ class ApiClient {
     retryCount = 0
   ): Promise<T> {
     const url = `${this.baseURL}${endpoint}`;
+    const shouldSkipAuthRedirect = AUTH_FREE_ENDPOINTS.some((path) => endpoint.startsWith(path));
+
+    if (!this.token) {
+      try {
+        this.token = localStorage.getItem('umunsi_token') || sessionStorage.getItem('umunsi_token');
+      } catch {
+        this.token = null;
+      }
+    }
     
     const headers: HeadersInit = {};
 
@@ -580,10 +604,10 @@ class ApiClient {
         headers,
       });
 
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
 
       // Handle token expiration
-      if (response.status === 401 && retryCount === 0 && this.token) {
+      if (response.status === 401 && retryCount === 0 && this.token && !shouldSkipAuthRedirect) {
         try {
           // Try to refresh the token
           await this.refreshToken();
@@ -592,18 +616,23 @@ class ApiClient {
         } catch (refreshError) {
           // If refresh fails, clear token and redirect to login
           this.token = null;
-          localStorage.removeItem('umunsi_token');
+          try {
+            localStorage.removeItem('umunsi_token');
+            sessionStorage.removeItem('umunsi_token');
+          } catch {
+            // Ignore storage removal failures.
+          }
           window.location.href = '/login';
           throw new Error('Session expired. Please login again.');
         }
-      } else if (response.status === 401 && !this.token) {
+      } else if (response.status === 401 && !this.token && !shouldSkipAuthRedirect) {
         // No token available, redirect to login
         window.location.href = '/login';
         throw new Error('Authentication required. Please login.');
       }
 
       if (!response.ok) {
-        throw new Error(data.error || data.message || 'API request failed');
+        throw new Error(data.error || data.message || data.details || 'API request failed');
       }
 
       return data;
@@ -621,7 +650,12 @@ class ApiClient {
     
     if (response.success && response.token) {
       this.token = response.token;
-      localStorage.setItem('umunsi_token', response.token);
+      try {
+        localStorage.setItem('umunsi_token', response.token);
+        sessionStorage.setItem('umunsi_token', response.token);
+      } catch {
+        // Ignore storage write failures.
+      }
     }
     
     return response;
@@ -635,7 +669,12 @@ class ApiClient {
     
     if (response.success && response.token) {
       this.token = response.token;
-      localStorage.setItem('umunsi_token', response.token);
+      try {
+        localStorage.setItem('umunsi_token', response.token);
+        sessionStorage.setItem('umunsi_token', response.token);
+      } catch {
+        // Ignore storage write failures.
+      }
     }
     
     return response;
@@ -669,7 +708,12 @@ class ApiClient {
       console.error('Logout error:', error);
     } finally {
       this.token = null;
-      localStorage.removeItem('umunsi_token');
+      try {
+        localStorage.removeItem('umunsi_token');
+        sessionStorage.removeItem('umunsi_token');
+      } catch {
+        // Ignore storage removal failures.
+      }
     }
   }
 
@@ -759,12 +803,22 @@ class ApiClient {
   // Token management methods
   setToken(token: string): void {
     this.token = token;
-    localStorage.setItem('umunsi_token', token);
+    try {
+      localStorage.setItem('umunsi_token', token);
+      sessionStorage.setItem('umunsi_token', token);
+    } catch {
+      // Ignore storage write failures.
+    }
   }
 
   clearToken(): void {
     this.token = null;
-    localStorage.removeItem('umunsi_token');
+    try {
+      localStorage.removeItem('umunsi_token');
+      sessionStorage.removeItem('umunsi_token');
+    } catch {
+      // Ignore storage removal failures.
+    }
   }
 
   // Health check method

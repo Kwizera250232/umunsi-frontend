@@ -11,10 +11,27 @@ import {
 } from '../services/api';
 
 const CLASSIFIED_PRICING = [
-  { durationDays: 1, label: 'Umunsi umwe', priceRwf: 15000 },
+  { durationDays: 1, label: 'Umunsi umwe', priceRwf: 1500 },
   { durationDays: 30, label: 'Iminsi 30', priceRwf: 5000 },
   { durationDays: 180, label: 'Amezi 6', priceRwf: 50000 }
 ] as const;
+
+const buildStructuredDescription = ({
+  description,
+  listingType,
+  location,
+  qualification
+}: {
+  description: string;
+  listingType?: string;
+  location?: string;
+  qualification?: string;
+}) => [
+  listingType ? `Ubwoko bw'itangazo / akazi: ${listingType}` : null,
+  location ? `Aho bikorwa cyangwa biherereye: ${location}` : null,
+  qualification ? `Ibisabwa / qualification: ${qualification}` : null,
+  `Ibisobanuro: ${description}`
+].filter(Boolean).join('\n');
 
 const CLASSIFIED_CATEGORY_LABELS: Record<ClassifiedCategory, string> = {
   cyamunara: 'Cyamunara',
@@ -35,10 +52,13 @@ const ClassifiedAds = () => {
   const [form, setForm] = useState({
     category: selectedCategory || 'cyamunara',
     title: '',
+    listingType: '',
+    location: '',
+    qualification: '',
     description: '',
     phone: '',
     email: user?.email || '',
-    durationDays: 30,
+    durationDays: 1,
     attachmentUrl: '',
     attachmentName: ''
   });
@@ -51,7 +71,15 @@ const ClassifiedAds = () => {
   const [allAds, setAllAds] = useState<ClassifiedAd[]>([]);
   const [broadcasts, setBroadcasts] = useState<ClassifiedBroadcast[]>([]);
 
-  const selectedPricing = CLASSIFIED_PRICING.find((p) => p.durationDays === Number(form.durationDays)) || CLASSIFIED_PRICING[1];
+  const selectedPricing = CLASSIFIED_PRICING.find((p) => p.durationDays === Number(form.durationDays)) || CLASSIFIED_PRICING[0];
+
+  useEffect(() => {
+    setForm((prev) => ({
+      ...prev,
+      category: selectedCategory || prev.category,
+      email: user?.email || prev.email
+    }));
+  }, [selectedCategory, user?.email]);
 
   const loadData = async () => {
     try {
@@ -89,13 +117,21 @@ const ClassifiedAds = () => {
 
   const submitAd = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+    if (!user || user.role !== 'USER') {
+      alert('Kwamamaza rikorwa n\'abafatabuguzi gusa. Injira muri konti ya Subscriber mbere yo kohereza itangazo.');
+      return;
+    }
 
     try {
       await apiClient.submitClassifiedAd({
         category: form.category as ClassifiedCategory,
         title: form.title,
-        description: form.description,
+        description: buildStructuredDescription({
+          description: form.description,
+          listingType: form.listingType,
+          location: form.location,
+          qualification: form.qualification
+        }),
         phone: form.phone,
         email: form.email,
         attachmentName: form.attachmentName || undefined,
@@ -104,9 +140,19 @@ const ClassifiedAds = () => {
         priceRwf: selectedPricing.priceRwf
       });
 
-      setForm((prev) => ({ ...prev, title: '', description: '', attachmentName: '', attachmentUrl: '' }));
+      setForm((prev) => ({
+        ...prev,
+        title: '',
+        listingType: '',
+        location: '',
+        qualification: '',
+        description: '',
+        attachmentName: '',
+        attachmentUrl: '',
+        durationDays: 1
+      }));
       await loadData();
-      alert('Itangazo ryawe ryoherejwe. Rizabanza kugenzurwa (Pending).');
+      alert('Itangazo ryawe ryoherejwe. Rigaragara muri konti yawe nka Pending, ariko ntirijya kuri public kugeza rimejwe.');
     } catch (error) {
       alert('Ntibyashobotse kohereza itangazo. Ongera ugerageze nyuma gato.');
     }
@@ -135,7 +181,7 @@ const ClassifiedAds = () => {
         }));
       }
     } catch (error) {
-      alert('Ntibyashobotse kohereza ifoto ivuye muri device.');
+      alert('Ntibyashobotse kohereza dosiye ivuye muri device. Gerageza PDF, Word, ifoto cyangwa indi document yemerewe.');
     } finally {
       setUploadingAttachment(false);
     }
@@ -214,7 +260,7 @@ const ClassifiedAds = () => {
 
         <div className="bg-[#181a20] border border-[#2b2f36] rounded-xl p-4">
           <h2 className="text-white font-semibold mb-2">Ibiciro (RWF)</h2>
-          <p className="text-gray-400 text-sm mb-3">Igihe itangazo rimara kigendana n'amafaranga.</p>
+          <p className="text-gray-400 text-sm mb-3">Kwamamaza cyangwa akazi bishyirwaho n'abafatabuguzi, bikabanza kugenzurwa mbere yo kujya kuri public.</p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
             {CLASSIFIED_PRICING.map((p) => (
               <div key={p.durationDays} className="bg-[#0b0e11] border border-[#2b2f36] rounded-lg p-3 text-gray-300">
@@ -223,12 +269,19 @@ const ClassifiedAds = () => {
               </div>
             ))}
           </div>
-          <p className="text-xs text-gray-500 mt-2">Yishyura nyuma yo kugenzurwa, uzahamagarwa.</p>
+          <p className="text-xs text-gray-500 mt-2">Kwamamaza rikishyurwa nyuma yo kugenzurwa. Nirimezwa kandi wishyure, turanarishyira no ku mbuga nkoranyambaga zacu.</p>
         </div>
 
-        {isAuthenticated && user ? (
+        {isAuthenticated && user.role === 'USER' ? (
           <div className="bg-[#181a20] border border-[#2b2f36] rounded-xl p-4">
-            <h2 className="text-white font-semibold mb-3">Ohereza Itangazo</h2>
+            <div className="mb-4 rounded-2xl border border-[#fcd535]/30 bg-gradient-to-r from-[#161a22] to-[#10141b] p-4">
+              <p className="text-[11px] uppercase tracking-[0.25em] text-[#fcd535]">Kwamamaza rya Subscriber</p>
+              <h2 className="text-white font-black text-xl md:text-2xl mt-1">SHYIRAMO ITANGAZO RYAWE HANO</h2>
+              <p className="text-sm text-gray-300 mt-2">
+                Uzuza amakuru y'akazi cyangwa itangazo ryawe, ushyireho PDF, Word, Doc, ifoto cyangwa indi document. Rigaragara mbere muri konti yawe nka Pending; kuri public rijya hanze ari uko rimejwe.
+              </p>
+            </div>
+
             <form onSubmit={submitAd} className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <select className="bg-[#0b0e11] border border-[#2b2f36] rounded-lg px-3 py-2 text-white" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value as ClassifiedCategory })}>
                 {categories.map((cat) => <option key={cat} value={cat}>{CLASSIFIED_CATEGORY_LABELS[cat]}</option>)}
@@ -237,28 +290,42 @@ const ClassifiedAds = () => {
                 {CLASSIFIED_PRICING.map((p) => <option key={p.durationDays} value={p.durationDays}>{p.label} - {p.priceRwf.toLocaleString()} RWF</option>)}
               </select>
 
-              <input className="bg-[#0b0e11] border border-[#2b2f36] rounded-lg px-3 py-2 text-white" placeholder="Umutwe w'itangazo" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
-              <input className="bg-[#0b0e11] border border-[#2b2f36] rounded-lg px-3 py-2 text-white" placeholder="Telefone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} required />
+              <input className="bg-[#0b0e11] border border-[#2b2f36] rounded-lg px-3 py-2 text-white" placeholder="Umutwe w'itangazo cyangwa akazi" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
+              <input className="bg-[#0b0e11] border border-[#2b2f36] rounded-lg px-3 py-2 text-white" placeholder="Ubwoko bw'akazi / itangazo" value={form.listingType} onChange={(e) => setForm({ ...form, listingType: e.target.value })} />
 
+              <input className="bg-[#0b0e11] border border-[#2b2f36] rounded-lg px-3 py-2 text-white" placeholder="Aho biherereye / place" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} />
+              <input className="bg-[#0b0e11] border border-[#2b2f36] rounded-lg px-3 py-2 text-white" placeholder="Ibisabwa / qualification" value={form.qualification} onChange={(e) => setForm({ ...form, qualification: e.target.value })} />
+
+              <input className="bg-[#0b0e11] border border-[#2b2f36] rounded-lg px-3 py-2 text-white" placeholder="Telefone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} required />
               <input className="bg-[#0b0e11] border border-[#2b2f36] rounded-lg px-3 py-2 text-white" placeholder="Email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
-              <input className="bg-[#0b0e11] border border-[#2b2f36] rounded-lg px-3 py-2 text-white" placeholder="Izina rya file (Ifoto/PDF/Doc)" value={form.attachmentName} onChange={(e) => setForm({ ...form, attachmentName: e.target.value })} />
+
+              <input className="md:col-span-2 bg-[#0b0e11] border border-[#2b2f36] rounded-lg px-3 py-2 text-white" placeholder="Izina rya dosiye (Ifoto / PDF / Word / Doc)" value={form.attachmentName} onChange={(e) => setForm({ ...form, attachmentName: e.target.value })} />
 
               <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-2">
-                <label className="bg-[#0b0e11] border border-[#2b2f36] rounded-lg px-3 py-2 text-white text-sm flex items-center justify-between">
-                  <span>Shyiraho ifoto ivuye muri Device</span>
-                  <input type="file" accept="image/*" onChange={(e) => onUploadFromDevice(e.target.files?.[0])} className="text-xs" />
+                <label className="bg-[#0b0e11] border border-[#2b2f36] rounded-lg px-3 py-2 text-white text-sm flex items-center justify-between gap-3">
+                  <span>Shyiraho document cyangwa ifoto ivuye muri Device</span>
+                  <input type="file" accept="image/*,.pdf,.doc,.docx,.txt,.xls,.xlsx,.ppt,.pptx" onChange={(e) => onUploadFromDevice(e.target.files?.[0])} className="text-xs" />
                 </label>
                 <button type="button" onClick={() => setShowMediaLibrary(true)} className="bg-[#0b0e11] border border-[#2b2f36] rounded-lg px-3 py-2 text-white text-sm text-left hover:border-[#fcd535]/60">
-                  Hitamo ifoto ivuye muri Library
+                  Hitamo media cyangwa document muri Library
                 </button>
               </div>
 
-              <input className="md:col-span-2 bg-[#0b0e11] border border-[#2b2f36] rounded-lg px-3 py-2 text-white" placeholder="Link ya file (optional)" value={form.attachmentUrl} onChange={(e) => setForm({ ...form, attachmentUrl: e.target.value })} />
-              <textarea className="md:col-span-2 bg-[#0b0e11] border border-[#2b2f36] rounded-lg px-3 py-2 text-white" rows={4} placeholder="Umwanya wo kwandikamo itangazo" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} required />
+              {form.attachmentName && (
+                <div className="md:col-span-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300">
+                  Dosiye yatoranyijwe: {form.attachmentName}
+                </div>
+              )}
 
-              <div className="md:col-span-2 flex justify-between items-center">
-                <p className="text-sm text-gray-400">Igiciro cyatoranyijwe: <span className="text-[#fcd535] font-semibold">{selectedPricing.priceRwf.toLocaleString()} RWF</span></p>
-                <button type="submit" className="px-4 py-2 rounded-lg bg-[#fcd535] text-[#0b0e11] font-semibold">{uploadingAttachment ? 'Turimo kohereza ifoto...' : 'Ohereza Gusuzumwa'}</button>
+              <input className="md:col-span-2 bg-[#0b0e11] border border-[#2b2f36] rounded-lg px-3 py-2 text-white" placeholder="Link ya dosiye (optional)" value={form.attachmentUrl} onChange={(e) => setForm({ ...form, attachmentUrl: e.target.value })} />
+              <textarea className="md:col-span-2 bg-[#0b0e11] border border-[#2b2f36] rounded-lg px-3 py-2 text-white" rows={5} placeholder="Andikamo ibisobanuro birambuye by'itangazo cyangwa akazi" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} required />
+
+              <div className="md:col-span-2 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                <div>
+                  <p className="text-sm text-gray-400">Igiciro cyatoranyijwe: <span className="text-[#fcd535] font-semibold">{selectedPricing.priceRwf.toLocaleString()} RWF</span></p>
+                  <p className="text-xs text-gray-500 mt-1">Kwamamaza rikorwa nyuma yo kugenzurwa; nirimezwa kandi wishyure turanakumenyekanisha no ku mbuga nkoranyambaga zacu.</p>
+                </div>
+                <button type="submit" className="px-4 py-2 rounded-lg bg-[#fcd535] text-[#0b0e11] font-semibold">{uploadingAttachment ? 'Turimo kohereza dosiye...' : 'Ohereza Gusuzumwa'}</button>
               </div>
             </form>
           </div>
@@ -267,11 +334,16 @@ const ClassifiedAds = () => {
         <div className="bg-[#181a20] border border-[#2b2f36] rounded-xl p-4">
           <h2 className="text-white font-semibold mb-3">Amatangazo Yemejwe</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {ads.length === 0 ? <p className="text-gray-400 text-sm">Nta matangazo yemejwe arimo.</p> : ads.map((ad) => (
+            {ads.length === 0 ? <p className="text-gray-400 text-sm">Nta matangazo yemejwe arimo ubu.</p> : ads.map((ad) => (
               <div key={ad.id} className="bg-[#0b0e11] border border-[#2b2f36] rounded-lg p-3">
                 <p className="text-white font-semibold">{ad.title}</p>
-                <p className="text-sm text-gray-300 mt-1">{ad.description}</p>
-                <p className="text-xs text-gray-500 mt-2">{CLASSIFIED_CATEGORY_LABELS[ad.category]} • {ad.phone}</p>
+                <p className="text-sm text-gray-300 mt-1 whitespace-pre-line">{ad.description}</p>
+                <p className="text-xs text-gray-500 mt-2">{CLASSIFIED_CATEGORY_LABELS[ad.category]} • {ad.phone} • {ad.priceRwf.toLocaleString()} RWF</p>
+                {ad.attachmentUrl && (
+                  <a href={ad.attachmentUrl} target="_blank" rel="noreferrer" className="inline-block mt-2 text-xs text-[#fcd535] hover:underline">
+                    Fungura dosiye
+                  </a>
+                )}
               </div>
             ))}
           </div>
@@ -282,10 +354,16 @@ const ClassifiedAds = () => {
             <h2 className="text-white font-semibold mb-3">Amatangazo Yanjye</h2>
             <div className="space-y-2">
               {myAds.length === 0 ? <p className="text-gray-400 text-sm">Nta matangazo wohereje.</p> : myAds.map((ad) => (
-                <div key={ad.id} className="bg-[#0b0e11] border border-[#2b2f36] rounded-lg p-3 flex items-center justify-between">
+                <div key={ad.id} className="bg-[#0b0e11] border border-[#2b2f36] rounded-lg p-3 flex items-start justify-between gap-3">
                   <div>
                     <p className="text-white">{ad.title}</p>
-                    <p className="text-xs text-gray-500">{CLASSIFIED_CATEGORY_LABELS[ad.category]} • {new Date(ad.createdAt).toLocaleDateString('rw-RW')}</p>
+                    <p className="text-xs text-gray-500">{CLASSIFIED_CATEGORY_LABELS[ad.category]} • {new Date(ad.createdAt).toLocaleDateString('rw-RW')} • {ad.priceRwf.toLocaleString()} RWF</p>
+                    {ad.reviewNote && <p className="text-xs text-gray-400 mt-1">Note: {ad.reviewNote}</p>}
+                    {ad.attachmentUrl && (
+                      <a href={ad.attachmentUrl} target="_blank" rel="noreferrer" className="inline-block mt-1 text-xs text-[#fcd535] hover:underline">
+                        Reba dosiye washyizemo
+                      </a>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     <span className={`text-xs px-2 py-1 rounded ${ad.status === 'APPROVED' ? 'bg-emerald-500/20 text-emerald-400' : ad.status === 'REJECTED' ? 'bg-rose-500/20 text-rose-400' : 'bg-amber-500/20 text-amber-400'}`}>{ad.status}</span>
@@ -305,7 +383,12 @@ const ClassifiedAds = () => {
                 <div key={ad.id} className="bg-[#0b0e11] border border-[#2b2f36] rounded-lg p-3">
                   <p className="text-white font-semibold">{ad.title}</p>
                   <p className="text-xs text-gray-500 mb-2">{ad.userName} • {ad.phone} • {CLASSIFIED_CATEGORY_LABELS[ad.category]}</p>
-                  <p className="text-sm text-gray-300 mb-2">{ad.description}</p>
+                  <p className="text-sm text-gray-300 mb-2 whitespace-pre-line">{ad.description}</p>
+                  {ad.attachmentUrl && (
+                    <a href={ad.attachmentUrl} target="_blank" rel="noreferrer" className="inline-block mb-2 text-xs text-[#fcd535] hover:underline">
+                      Fungura dosiye yoherejwe
+                    </a>
+                  )}
                   <div className="flex gap-2 flex-wrap">
                     <button onClick={() => moderate(ad.id, 'APPROVED')} className="px-3 py-1 rounded bg-emerald-600 text-white text-xs">Approve</button>
                     <button onClick={() => moderate(ad.id, 'REJECTED')} className="px-3 py-1 rounded bg-rose-600 text-white text-xs">Reject</button>
@@ -351,9 +434,9 @@ const ClassifiedAds = () => {
         isOpen={showMediaLibrary}
         onClose={() => setShowMediaLibrary(false)}
         onSelect={onPickFromLibrary}
-        title="Hitamo ifoto"
+        title="Hitamo media cyangwa document"
         mode="select"
-        type="image"
+        type="all"
       />
     </div>
   );

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Clock, Eye, ChevronRight, Heart, TrendingUp, Zap, AlertCircle, Mail, Calendar, MapPin, CloudSun, Send, ThumbsUp } from 'lucide-react';
-import { apiClient, Post, Category, AdsBannersState, resolveAssetUrl } from '../services/api';
+import { apiClient, Post, Category, ClassifiedAd, AdsBannersState, resolveAssetUrl, extractFirstImageFromHtml } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
 type SpecialCategoryKey = 'cyamunara' | 'akazi' | 'guhinduza' | 'ibindi';
@@ -20,25 +20,64 @@ const normalizeText = (value: string) =>
     .toLowerCase()
     .trim();
 
+const HEALTH_KEYWORDS = ['ubuzima', 'health'];
+const LOVE_KEYWORDS = ['urukundo', 'love', 'relationship', 'dating', 'couple'];
+
+const matchesPostKeywords = (post: Post, keywords: string[]) => {
+  const values = [
+    post.title || '',
+    post.excerpt || '',
+    post.category?.name || '',
+    post.category?.slug || ''
+  ].map(normalizeText);
+
+  return keywords.some((keyword) => values.some((value) => value.includes(keyword)));
+};
+
 const ADSENSE_HOME_AFTER_PARAGRAPH_7_SLOT = '1353027611';
 const ADSENSE_HOME_TOP_LATEST_SLOT = '5829562310';
+const HOME_CACHE_KEY = 'umunsi_home_cache_v1';
+
+const getHomeCache = () => {
+  if (typeof window === 'undefined') return null;
+
+  try {
+    const raw = sessionStorage.getItem(HOME_CACHE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+};
+
+const saveHomeCache = (payload: { posts: Post[]; categories: Category[]; featuredPost: Post | null }) => {
+  if (typeof window === 'undefined') return;
+
+  try {
+    sessionStorage.setItem(HOME_CACHE_KEY, JSON.stringify(payload));
+  } catch {
+    // Ignore cache write failures.
+  }
+};
 
 const Home = () => {
   const { user } = useAuth();
   // Ads should remain visible even for admin accounts so placements can be verified after updates.
   const showAds = true;
   const canSeeViews = user?.role === 'ADMIN';
+  const cachedHome = getHomeCache();
 
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [featuredPost, setFeaturedPost] = useState<Post | null>(null);
+  const [posts, setPosts] = useState<Post[]>(cachedHome?.posts || []);
+  const [categories, setCategories] = useState<Category[]>(cachedHome?.categories || []);
+  const [featuredPost, setFeaturedPost] = useState<Post | null>(cachedHome?.featuredPost || null);
   const [activeTab, setActiveTab] = useState<string>('all');
   const [currentTime, setCurrentTime] = useState(new Date());
   const [email, setEmail] = useState('');
   const [adsBanners, setAdsBanners] = useState<AdsBannersState | null>(null);
+  const [classifiedAds, setClassifiedAds] = useState<ClassifiedAd[]>([]);
 
   useEffect(() => {
     fetchHomeData();
+    fetchApprovedClassifieds();
     const timer = setInterval(() => setCurrentTime(new Date()), 60000);
     return () => clearInterval(timer);
   }, []);
@@ -53,7 +92,7 @@ const Home = () => {
       }
     };
 
-    const timer = window.setTimeout(loadAdsBanners, 200);
+    const timer = window.setTimeout(loadAdsBanners, 0);
     return () => window.clearTimeout(timer);
   }, []);
 
@@ -69,12 +108,12 @@ const Home = () => {
 
       const queue = (window as Window & { adsbygoogle?: Array<Record<string, unknown>> }).adsbygoogle;
       if (!queue) {
-        if (attempts++ < maxAttempts) window.setTimeout(initHomeAds, 250);
+        if (attempts++ < maxAttempts) window.setTimeout(initHomeAds, 120);
         return;
       }
 
       const slots = Array.from(
-        document.querySelectorAll('.home-top-latest-ad ins.adsbygoogle, .home-after-paragraph-7-ad ins.adsbygoogle')
+        document.querySelectorAll('.home-top-latest-ad ins.adsbygoogle, .home-after-paragraph-7-ad ins.adsbygoogle, .home-managed-story-ad ins.adsbygoogle')
       ) as HTMLElement[];
 
       const pending = slots.filter((slot) => slot.dataset.adInitialized !== '1' && !slot.getAttribute('data-ad-status'));
@@ -86,13 +125,13 @@ const Home = () => {
           slot.dataset.adInitialized = '1';
           window.setTimeout(() => {
             if (slot.getAttribute('data-ad-status') === 'unfilled') {
-              const wrapper = slot.closest('.home-top-latest-ad, .home-after-paragraph-7-ad') as HTMLElement | null;
+              const wrapper = slot.closest('.home-top-latest-ad, .home-after-paragraph-7-ad, .home-managed-story-ad') as HTMLElement | null;
               if (wrapper) wrapper.style.display = 'none';
             }
           }, 1800);
         });
       } catch {
-        if (attempts++ < maxAttempts) window.setTimeout(initHomeAds, 400);
+        if (attempts++ < maxAttempts) window.setTimeout(initHomeAds, 180);
       }
     };
 
@@ -114,9 +153,20 @@ const Home = () => {
       ]);
 
       if (postsResult.status === 'fulfilled' && postsResult.value?.data) {
-        setPosts(postsResult.value.data);
-        const featured = postsResult.value.data.find((p) => p.isFeatured) || null;
+        const preparedPosts = postsResult.value.data.map((post) => ({
+          ...post,
+          featuredImage: post.featuredImage || extractFirstImageFromHtml(post.content) || undefined
+        }));
+
+        setPosts(preparedPosts);
+        const featured = preparedPosts.find((p) => p.isFeatured) || null;
         setFeaturedPost(featured);
+
+        const resolvedCategories = categoriesResult.status === 'fulfilled' && categoriesResult.value
+          ? categoriesResult.value
+          : (cachedHome?.categories || []);
+        setCategories(resolvedCategories);
+        saveHomeCache({ posts: preparedPosts, categories: resolvedCategories, featuredPost: featured });
       }
 
       if (categoriesResult.status === 'fulfilled' && categoriesResult.value) {
@@ -126,6 +176,15 @@ const Home = () => {
       console.error('Error fetching home data:', error);
     } finally {
       // Keep rendering existing UI immediately; no blocking loading state.
+    }
+  };
+
+  const fetchApprovedClassifieds = async () => {
+    try {
+      const approvedAds = await apiClient.getClassifiedAds();
+      setClassifiedAds(approvedAds.slice(0, 12));
+    } catch (error) {
+      console.error('Error fetching classifieds:', error);
     }
   };
 
@@ -196,39 +255,26 @@ const Home = () => {
     ...newsCategoryTabs.filter((tab) => !pinnedTabIds.has(tab.id))
   ];
 
-  const getSpecialCategory = (key: SpecialCategoryKey) => {
-    const bySlug = categories.find((cat) => normalizeText(cat.slug || '') === key);
-    if (bySlug) return bySlug;
-    const targetLabel = SPECIAL_CATEGORIES.find((item) => item.key === key)?.label || key;
-    return categories.find((cat) => normalizeText(cat.name) === normalizeText(targetLabel));
-  };
+  const getSpecialCategoryPath = (key: SpecialCategoryKey) => `/amatangazo/${key}`;
 
-  const getSpecialCategoryPath = (key: SpecialCategoryKey) => {
-    const matched = getSpecialCategory(key);
-    return matched ? `/category/${matched.slug}` : `/amatangazo/${key}`;
-  };
+  const allSpecialPath = '/amatangazo';
+  const classifiedPreview = classifiedAds.slice(0, 6);
 
-  const allSpecialPath =
-    categories.find((cat) => normalizeText(cat.slug || '') === 'amatangazo' || normalizeText(cat.name) === 'amatangazo')
-      ? `/category/${categories.find((cat) => normalizeText(cat.slug || '') === 'amatangazo' || normalizeText(cat.name) === 'amatangazo')?.slug}`
-      : getSpecialCategoryPath('cyamunara');
+  const quickCategoryTabs = [
+    { id: '__featured', label: 'Inkuru Nyamukuru' },
+    { id: '__ubuzima', label: 'Ubuzima' },
+    { id: '__urukundo', label: "Inkuru z'Urukundo" }
+  ];
 
-  const specialCategoryPosts = posts
-    .filter((post) => {
-      if (!post.category) return false;
-      const normalizedCategoryName = normalizeText(post.category.name);
-      const normalizedCategorySlug = normalizeText(post.category.slug || '');
-      return SPECIAL_CATEGORIES.some(({ key, label }) => {
-        const matchedCategory = getSpecialCategory(key);
-        if (matchedCategory?.id && post.category?.id === matchedCategory.id) return true;
-        return normalizedCategorySlug === key || normalizedCategoryName === normalizeText(label);
-      });
-    })
-    .slice(0, 6);
-
-  const filteredPosts = activeTab === 'all' 
-    ? posts 
-    : posts.filter(p => p.category?.id === activeTab);
+  const filteredPosts = activeTab === 'all'
+    ? posts
+    : activeTab === '__featured'
+      ? posts.filter((p) => p.isFeatured)
+      : activeTab === '__ubuzima'
+        ? posts.filter((p) => matchesPostKeywords(p, HEALTH_KEYWORDS))
+        : activeTab === '__urukundo'
+          ? posts.filter((p) => matchesPostKeywords(p, LOVE_KEYWORDS))
+          : posts.filter((p) => p.category?.id === activeTab);
 
   const imyidagaduroPosts = posts
     .filter((post) => {
@@ -474,16 +520,29 @@ const Home = () => {
               )}
 
               {middleBottom && (
-                <Link to={`/post/${middleBottom.slug}`} className="flex gap-2 bg-[#0b0e11] p-2 rounded group">
-                  <img
-                    src={getImageUrl(middleBottom.featuredImage)}
-                    alt={middleBottom.title}
-                    className="w-24 h-16 object-cover flex-shrink-0"
-                  />
-                  <h4 className="text-gray-300 text-sm line-clamp-2 group-hover:text-[#fcd535] transition-colors">
-                    {middleBottom.title}
-                  </h4>
-                </Link>
+                <>
+                  <Link to={`/post/${middleBottom.slug}`} className="flex gap-2 bg-[#0b0e11] p-2 rounded group">
+                    <img
+                      src={getImageUrl(middleBottom.featuredImage)}
+                      alt={middleBottom.title}
+                      className="w-24 h-16 object-cover flex-shrink-0"
+                    />
+                    <h4 className="text-gray-300 text-sm line-clamp-2 group-hover:text-[#fcd535] transition-colors">
+                      {middleBottom.title}
+                    </h4>
+                  </Link>
+
+                  {showAds && hasBannerContent('homeStory600x100') && (
+                    <div className="home-managed-story-ad w-full overflow-hidden rounded-lg bg-[#181a20] border border-[#2b2f36]">
+                      <div className="p-2 border-b border-[#2b2f36]">
+                        <p className="text-gray-500 text-[10px] text-center uppercase tracking-wider">Kwamamaza</p>
+                      </div>
+                      <div className="p-3 flex justify-center">
+                        {renderBannerSlot('homeStory600x100', null, 'w-full max-w-[560px] aspect-[7/1] rounded-lg overflow-hidden bg-[#0b0e11]')}
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
 
@@ -501,6 +560,31 @@ const Home = () => {
                 </Link>
               ))}
             </div>
+          </div>
+        </div>
+
+        <div className="mb-6 bg-[#181a20] rounded-lg overflow-hidden border border-[#2b2f36]">
+          <div className="p-4 border-b border-[#2b2f36] flex items-center justify-between gap-2 flex-wrap">
+            <h2 className="text-lg font-bold text-white flex items-center gap-2">
+              <span className="w-1 h-6 bg-[#fcd535] rounded"></span>
+              Ibyiciro byagarutse
+            </h2>
+            <p className="text-xs text-gray-400">Inkuru Nyamukuru • Ubuzima • Inkuru z'Urukundo</p>
+          </div>
+          <div className="p-4 flex flex-wrap gap-2">
+            {quickCategoryTabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                  activeTab === tab.id
+                    ? 'bg-[#fcd535] text-[#0b0e11]'
+                    : 'bg-[#0b0e11] text-gray-300 border border-[#2b2f36] hover:bg-[#1e2329] hover:text-white'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -689,7 +773,15 @@ const Home = () => {
               <div className="p-4 border-b border-[#2b2f36] flex items-center justify-between">
                 <h2 className="text-lg font-bold text-white flex items-center gap-2">
                   <span className="w-1 h-6 bg-[#fcd535] rounded"></span>
-                  {activeTab === 'all' ? 'Amakuru Mashya' : orderedNewsCategoryTabs.find(c => c.id === activeTab)?.name || 'Amakuru'}
+                  {activeTab === 'all'
+                    ? 'Amakuru Mashya'
+                    : activeTab === '__featured'
+                      ? 'Inkuru Nyamukuru'
+                      : activeTab === '__ubuzima'
+                        ? 'Ubuzima'
+                        : activeTab === '__urukundo'
+                          ? "Inkuru z'Urukundo"
+                          : orderedNewsCategoryTabs.find(c => c.id === activeTab)?.name || 'Amakuru'}
                 </h2>
                 <Link to="/news" className="text-[#fcd535] text-sm hover:underline flex items-center gap-1">
                   Reba Yose <ChevronRight className="w-4 h-4" />
@@ -708,6 +800,19 @@ const Home = () => {
                   >
                     Byose
                   </button>
+                  {quickCategoryTabs.map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
+                        activeTab === tab.id
+                          ? 'bg-[#fcd535] text-[#0b0e11]'
+                          : 'bg-[#0b0e11] text-gray-400 hover:bg-[#1e2329] hover:text-white'
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
                   {orderedNewsCategoryTabs.map((cat) => (
                     <button
                       key={cat.id}
@@ -977,20 +1082,22 @@ const Home = () => {
             </Link>
           </div>
 
-          {/* Special category posts only */}
           <div className="border-t border-[#2b2f36] p-4">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {specialCategoryPosts.length === 0 ? (
-                <p className="text-sm text-gray-400">Nta nkuru ziri muri izi categories ubu.</p>
+              {classifiedPreview.length === 0 ? (
+                <p className="text-sm text-gray-400">Nta matangazo yemejwe ari kuri izi categories ubu.</p>
               ) : (
-                specialCategoryPosts.map((post, index) => (
+                classifiedPreview.map((ad, index) => (
                   <Link
-                    key={post.id}
-                    to={`/post/${post.slug}`}
+                    key={ad.id}
+                    to={`/amatangazo/${ad.category}`}
                     className={`p-3 bg-[#0b0e11] rounded-lg border border-[#2b2f36] hover:border-[#fcd535]/30 transition-colors ${index === 2 ? 'hidden lg:block' : ''}`}
                   >
-                    <p className="text-white text-sm font-medium line-clamp-1">{post.title}</p>
-                    <p className="text-gray-500 text-xs mt-1">{post.category?.name} • {formatDate(post.publishedAt || post.createdAt)}</p>
+                    <p className="text-white text-sm font-medium line-clamp-1">{ad.title}</p>
+                    <p className="text-gray-400 text-xs mt-1 line-clamp-2 whitespace-pre-line">{ad.description}</p>
+                    <p className="text-gray-500 text-xs mt-2">
+                      {SPECIAL_CATEGORIES.find((item) => item.key === ad.category)?.label || ad.category} • {formatDate(ad.updatedAt || ad.createdAt)}
+                    </p>
                   </Link>
                 ))
               )}

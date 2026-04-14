@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Clock, Eye, Heart, ChevronRight, ArrowLeft, Loader2, TrendingUp, Calendar, User } from 'lucide-react';
-import { apiClient, Post, Category } from '../services/api';
+import { apiClient, Post, Category, resolveAssetUrl, extractFirstImageFromHtml } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
 const normalizeText = (value: string) =>
@@ -55,7 +55,12 @@ const CategoryPage = () => {
             limit: 50
           });
           if (postsResponse?.data) {
-            setPosts(postsResponse.data);
+            setPosts(
+              postsResponse.data.map((post) => ({
+                ...post,
+                featuredImage: post.featuredImage || extractFirstImageFromHtml(post.content) || undefined
+              }))
+            );
           }
         }
       }
@@ -81,9 +86,7 @@ const CategoryPage = () => {
   };
 
   const getImageUrl = (url?: string) => {
-    if (!url) return 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=600&h=400&fit=crop';
-    if (url.startsWith('http')) return url;
-    return `${getServerBaseUrl()}${url}`;
+    return resolveAssetUrl(url) || 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=600&h=400&fit=crop';
   };
 
   if (loading) {

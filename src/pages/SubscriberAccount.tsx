@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { Crown, HeartHandshake, Lock, Mail, PhoneCall, MessageCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { apiClient, PremiumDashboardPost, ClassifiedAd } from '../services/api';
+import { apiClient, PremiumDashboardPost, ClassifiedAd, resolveAssetUrl } from '../services/api';
 
 interface PremiumRequestArticle {
   id: string;
@@ -10,9 +10,11 @@ interface PremiumRequestArticle {
   slug?: string;
   url: string;
   requestedAt: string;
+  featuredImage?: string;
 }
 
 const SUPPORT_WHATSAPP = '250791859465';
+const DEFAULT_THUMBNAIL = 'https://images.unsplash.com/photo-1495020689067-958852a7765e?w=300&h=180&fit=crop';
 const SUPPORT_CALL = '0791859465';
 const CLASSIFIED_CATEGORY_LABELS = {
   cyamunara: 'Cyamunara',
@@ -124,6 +126,21 @@ const SubscriberAccount = () => {
   const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username;
   const whatsappLink = buildWhatsAppLink(fullName, user.email);
   const shouldShowOnboardingPayment = searchParams.get('onboardPayment') === '1';
+  const pendingClassifiedAds = myClassifiedAds.filter((ad) => ad.status === 'PENDING');
+  const approvedClassifiedAds = myClassifiedAds.filter((ad) => ad.status === 'APPROVED');
+  const premiumStoryBySlug = useMemo(() => {
+    return new Map(premiumStories.map((story) => [story.slug, story]));
+  }, [premiumStories]);
+
+  const getThumbnailUrl = (featuredImage?: string | null) => resolveAssetUrl(featuredImage) || DEFAULT_THUMBNAIL;
+
+  const getRequestedArticleThumbnail = (story: PremiumRequestArticle) => {
+    const slugFromUrl = story.slug || story.url.split('/post/')[1]?.split(/[?#]/)[0];
+    const matchedStory = (slugFromUrl ? premiumStoryBySlug.get(slugFromUrl) : undefined)
+      || premiumStories.find((item) => item.id === story.id || item.title === story.title);
+
+    return getThumbnailUrl(story.featuredImage || matchedStory?.featuredImage);
+  };
 
   const refreshProfile = async () => {
     const profile = await apiClient.getPaymentsProfile();
@@ -230,27 +247,36 @@ const SubscriberAccount = () => {
           </div>
 
           <div className="subscriber-dark-card mt-6 rounded-xl border border-[#2b2f36] bg-[#0f1115] p-4">
-            <h4 className="text-white font-semibold mb-3">Saved Premium Articles</h4>
+            <h4 className="text-white font-semibold mb-3">Inkuru za Premium wabitse</h4>
             {requestedPremiumArticles.length === 0 ? (
               <p className="text-sm text-gray-400">Nta nkuru urasaba. Kanda Bookmark ku nkuru ya Premium kugira ngo igaragare hano.</p>
             ) : (
-              <div className="space-y-2">
+              <div className="grid grid-cols-1 gap-3">
                 {requestedPremiumArticles.slice(0, 10).map((story) => (
-                  <div key={story.id} className="subscriber-dark-card border border-[#2b2f36] rounded-lg p-3 bg-[#12161c]">
-                    <div className="flex items-center gap-2 text-gray-300">
-                      <Lock className="w-4 h-4 text-[#fcd535]" />
-                      <p className="font-medium text-white">{story.title}</p>
+                  <a key={story.id} href={story.url} className="subscriber-dark-card border border-[#2b2f36] rounded-lg p-3 bg-[#12161c] hover:border-[#fcd535]/40 transition-colors">
+                    <div className="flex gap-3 items-start">
+                      <img
+                        src={getRequestedArticleThumbnail(story)}
+                        alt={story.title}
+                        className="w-20 h-14 rounded-lg object-cover flex-shrink-0 bg-[#0b0e11]"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 text-gray-300">
+                          <Lock className="w-4 h-4 text-[#fcd535] flex-shrink-0" />
+                          <p className="font-medium text-white line-clamp-2">{story.title}</p>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">Iyi nkuru iri muri Premium. Uzayisoma nyuma yo kwemererwa cyangwa kwishyura.</p>
+                        <span className="text-xs text-[#fcd535] mt-2 inline-block">Fungura iyi nkuru</span>
+                      </div>
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">Iyi nkuru iri muri Premium. Ntisomeka kugeza wishyuye, watwandikiye, hanyuma admin akagufungurira access.</p>
-                    <a href={story.url} className="text-xs text-[#fcd535] hover:underline mt-2 inline-block">Fungura iyi nkuru</a>
-                  </div>
+                  </a>
                 ))}
               </div>
             )}
           </div>
 
           <div className="subscriber-dark-card mt-6 rounded-xl border border-[#2b2f36] bg-[#0f1115] p-4">
-            <h4 className="text-white font-semibold mb-3">Premium Stories Dashboard</h4>
+            <h4 className="text-white font-semibold mb-3">Inkuru za Premium</h4>
             {loadingStories ? (
               <p className="text-sm text-gray-400">Turimo kuzana premium stories...</p>
             ) : premiumStories.length === 0 ? (
@@ -259,17 +285,35 @@ const SubscriberAccount = () => {
               <div className="grid grid-cols-1 gap-3">
                 {premiumStories.slice(0, 8).map((story) => (
                   story.hasAccess ? (
-                    <Link key={story.id} to={`/post/${story.slug}`} className="border border-[#2b2f36] rounded-lg p-3 hover:border-[#fcd535]/40 transition-colors">
-                      <p className="text-white font-medium">{story.title}</p>
-                      <p className="text-xs text-gray-500 mt-1">Kanda usome inkuru</p>
+                    <Link key={story.id} to={`/post/${story.slug}`} className="border border-[#2b2f36] rounded-lg p-3 hover:border-[#fcd535]/40 transition-colors bg-[#12161c]">
+                      <div className="flex gap-3 items-start">
+                        <img
+                          src={getThumbnailUrl(story.featuredImage)}
+                          alt={story.title}
+                          className="w-20 h-14 rounded-lg object-cover flex-shrink-0 bg-[#0b0e11]"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-white font-medium line-clamp-2">{story.title}</p>
+                          <p className="text-xs text-gray-500 mt-1">Kanda usome inkuru</p>
+                        </div>
+                      </div>
                     </Link>
                   ) : (
                     <div key={story.id} className="subscriber-dark-card border border-[#2b2f36] rounded-lg p-3 bg-[#12161c]">
-                      <div className="flex items-center gap-2 text-gray-300">
-                        <Lock className="w-4 h-4 text-[#fcd535]" />
-                        <p className="font-medium">Premium Story (Locked)</p>
+                      <div className="flex gap-3 items-start">
+                        <img
+                          src={getThumbnailUrl(story.featuredImage)}
+                          alt={story.title}
+                          className="w-20 h-14 rounded-lg object-cover flex-shrink-0 bg-[#0b0e11] opacity-80"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 text-gray-300">
+                            <Lock className="w-4 h-4 text-[#fcd535] flex-shrink-0" />
+                            <p className="font-medium line-clamp-2 text-white">{story.title}</p>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1">Iyi nkuru ifunguye nyuma yo kwemererwa na admin.</p>
+                        </div>
                       </div>
-                      <p className="text-xs text-gray-500 mt-1">Uru rubuga ruzafunguka nyuma yo kwemererwa na admin.</p>
                     </div>
                   )
                 ))}
@@ -277,10 +321,26 @@ const SubscriberAccount = () => {
             )}
           </div>
 
+          <div className="subscriber-dark-card mt-6 rounded-xl border border-[#fcd535]/30 bg-[#0f1115] p-4">
+            <p className="text-[11px] uppercase tracking-[0.25em] text-[#fcd535]">Kwamamaza / Akazi</p>
+            <h4 className="text-white font-black text-xl mt-1">SHYIRAMO ITANGAZO RYAWE HANO</h4>
+            <p className="text-sm text-gray-300 mt-2">
+              Uhereye muri konti yawe ya Subscriber ushobora gushyiramo akazi, itangazo cyangwa indi serivisi. Rigaragara hano mbere nka Pending; kuri public rijya hanze nyuma yo kugenzurwa. Iyo ryishyuwe kandi ryemejwe, turanarishyira no ku mbuga nkoranyambaga zacu.
+            </p>
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+              <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-amber-300">Pending: {pendingClassifiedAds.length}</div>
+              <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-emerald-300">Approved: {approvedClassifiedAds.length}</div>
+            </div>
+            <div className="mt-4 flex gap-3 flex-wrap">
+              <Link to="/amatangazo" className="px-4 py-2 rounded-lg bg-[#fcd535] text-[#0b0e11] font-semibold hover:bg-[#f0b90b]">Ohereza itangazo</Link>
+              <Link to="/amatangazo/akazi" className="px-4 py-2 rounded-lg bg-[#2b2f36] text-white hover:bg-[#363a45]">Shyiramo akazi</Link>
+            </div>
+          </div>
+
           <div className="subscriber-dark-card mt-6 rounded-xl border border-[#2b2f36] bg-[#0f1115] p-4">
             <div className="flex items-center justify-between gap-2 mb-3">
               <h4 className="text-white font-semibold">Amatangazo Yanjye</h4>
-              <Link to="/amatangazo" className="text-sm text-[#fcd535] hover:underline">Ohereza itangazo</Link>
+              <Link to="/amatangazo" className="text-sm text-[#fcd535] hover:underline">Shyiramo rishya</Link>
             </div>
             {myClassifiedAds.length === 0 ? (
               <p className="text-sm text-gray-400">Nta matangazo wohereje. Kanda kuri "Ohereza itangazo".</p>
