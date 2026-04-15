@@ -23,7 +23,7 @@ import {
   BadgeCheck,
   X
 } from 'lucide-react';
-import { apiClient, Post } from '../services/api';
+import { apiClient, Post, resolveAssetUrl } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
 declare global {
@@ -34,27 +34,8 @@ declare global {
   }
 }
 
-const getServerBaseUrl = () => {
-  const configuredApiUrl = (import.meta.env.VITE_API_URL || '').trim();
-  if (configuredApiUrl) {
-    return configuredApiUrl.replace('/api', '');
-  }
-  if (typeof window !== 'undefined') {
-    return window.location.origin;
-  }
-  return 'https://umunsi.com';
-};
+const resolveArticleImageSrc = (src: string) => resolveAssetUrl(src) || src;
 
-const resolveArticleImageSrc = (src: string) => {
-  if (!src) return src;
-  const normalized = String(src).trim();
-  if (!normalized) return normalized;
-  if (normalized.startsWith('http://') || normalized.startsWith('https://') || normalized.startsWith('data:')) return normalized;
-  if (normalized.startsWith('//')) return `https:${normalized}`;
-  if (normalized.startsWith('/')) return `${getServerBaseUrl()}${normalized}`;
-  if (normalized.startsWith('uploads/') || normalized.startsWith('images/')) return `${getServerBaseUrl()}/${normalized}`;
-  return `${getServerBaseUrl()}/uploads/${normalized.replace(/^\.?\//, '')}`;
-};
 
 const extractFirstImageFromHtml = (html?: string) => {
   if (!html) return null;
@@ -195,23 +176,25 @@ const normalizeArticleHtml = (content?: string) => {
   );
 };
 
-const ADSENSE_ARTICLE_BLOCK = `
-  <div class="article-inline-ad not-prose my-8">
+const createArticleAdBlock = (slot: string, marker: string) => `
+  <div class="article-inline-ad not-prose my-8" data-ad-marker="${marker}">
     <ins class="adsbygoogle"
       style="display:block"
       data-ad-client="ca-pub-3584259871242471"
-      data-ad-slot="2693936589"
+      data-ad-slot="${slot}"
       data-ad-format="auto"
       data-full-width-responsive="true"></ins>
   </div>
 `;
 
-const ADSENSE_BEFORE_CONTENT_SLOT = '5789865998';
-const ADSENSE_AFTER_CONTENT_SLOT = '4412538868';
+const ADSENSE_BEFORE_CONTENT_SLOT = '8081945273';
+const ADSENSE_AFTER_PARAGRAPH_3_SLOT = '6489436663';
+const ADSENSE_AFTER_PARAGRAPH_5_SLOT = '6849820312';
+const ADSENSE_AFTER_PARAGRAPH_7_SLOT = '6385720225';
 
 const SUPPORT_WHATSAPP = '250791859465';
 const SUPPORT_CALL = '0791859465';
-const AUTHOR_APP_BADGE_IMAGE = 'https://umunsi.com/uploads/media/thumbnails/thumb_files-1776124536301-469177017.jpg';
+const AUTHOR_APP_BADGE_IMAGE = 'https://www.umunsi.com/uploads/media/thumbnails/thumb_files-1776124536301-469177017.jpg';
 const DEFAULT_AUTHOR_ACCOUNT_URL = 'https://www.umunsimedia.com/';
 const SPECIAL_ADMIN_NAME = 'kwizera jean de dieu';
 const SPECIAL_ADMIN_USERNAME = 'kwizerajeandedieu250';
@@ -253,7 +236,7 @@ const cachePost = (value: Post) => {
   }
 };
 
-const injectAdAfterSecondParagraph = (html: string) => {
+const injectAdsAfterRequestedParagraphs = (html: string) => {
   if (!html) return '';
 
   if (typeof window === 'undefined') {
@@ -268,27 +251,37 @@ const injectAdAfterSecondParagraph = (html: string) => {
     return html;
   }
 
-  const existingAd = root.querySelector('ins.adsbygoogle[data-ad-slot="2693936589"]');
-  if (existingAd) {
+  const requestedSlots = [
+    ADSENSE_AFTER_PARAGRAPH_3_SLOT,
+    ADSENSE_AFTER_PARAGRAPH_5_SLOT,
+    ADSENSE_AFTER_PARAGRAPH_7_SLOT
+  ];
+
+  const hasExistingRequestedAds = requestedSlots.some((slot) =>
+    root.querySelector(`ins.adsbygoogle[data-ad-slot="${slot}"]`)
+  );
+
+  if (hasExistingRequestedAds) {
     return root.innerHTML;
   }
 
-  const contentBlocks = Array.from(
-    root.querySelectorAll('p, div, blockquote, li')
-  ).filter((element) => {
-    // Skip containers and empty wrappers so ad placement follows actual written text blocks.
+  const contentBlocks = Array.from(root.querySelectorAll('p, div, blockquote, li')).filter((element) => {
     if (element.querySelector('img, video, iframe, table, ul, ol')) {
       return false;
     }
     return (element.textContent || '').trim().length > 25;
   });
 
-  if (contentBlocks.length < 2) {
-    return root.innerHTML;
-  }
-
-  const secondBlock = contentBlocks[1];
-  secondBlock.insertAdjacentHTML('afterend', ADSENSE_ARTICLE_BLOCK);
+  [
+    { afterParagraph: 7, slot: ADSENSE_AFTER_PARAGRAPH_7_SLOT, marker: 'paragraph-7' },
+    { afterParagraph: 5, slot: ADSENSE_AFTER_PARAGRAPH_5_SLOT, marker: 'paragraph-5' },
+    { afterParagraph: 3, slot: ADSENSE_AFTER_PARAGRAPH_3_SLOT, marker: 'paragraph-3' }
+  ].forEach(({ afterParagraph, slot, marker }) => {
+    const targetBlock = contentBlocks[afterParagraph - 1];
+    if (targetBlock) {
+      targetBlock.insertAdjacentHTML('afterend', createArticleAdBlock(slot, marker));
+    }
+  });
 
   return root.innerHTML;
 };
@@ -340,7 +333,7 @@ const PostPage = () => {
   const fallbackFeaturedImage = useMemo(() => extractFirstImageFromHtml(normalizedContent), [normalizedContent]);
   const effectiveFeaturedImage = post?.featuredImage || fallbackFeaturedImage || '';
   const contentWithInlineAd = useMemo(
-    () => injectAdAfterSecondParagraph(normalizedContent),
+    () => injectAdsAfterRequestedParagraphs(normalizedContent),
     [normalizedContent]
   );
 
@@ -409,7 +402,7 @@ const PostPage = () => {
       if (cancelled) return;
 
       const adElements = Array.from(
-        document.querySelectorAll('.article-before-content-ad ins.adsbygoogle, .article-inline-ad ins.adsbygoogle, .article-after-content-ad ins.adsbygoogle')
+        document.querySelectorAll('.article-before-content-ad ins.adsbygoogle, .article-inline-ad ins.adsbygoogle')
       ) as HTMLElement[];
 
       if (adElements.length === 0) {
@@ -1029,25 +1022,11 @@ const PostPage = () => {
                     )}
                   </div>
                 ) : (
-                  <>
-                    <div 
-                      className="article-content-readable prose prose-invert prose-lg max-w-none text-gray-300"
-                      style={{ wordBreak: 'break-word' }}
-                      dangerouslySetInnerHTML={{ __html: contentWithInlineAd }}
-                    />
-
-                    {showAds && (
-                      <div className="article-after-content-ad not-prose mt-8 mb-2">
-                        <ins
-                          className="adsbygoogle"
-                          style={{ display: 'block' }}
-                          data-ad-format="autorelaxed"
-                          data-ad-client="ca-pub-3584259871242471"
-                          data-ad-slot={ADSENSE_AFTER_CONTENT_SLOT}
-                        ></ins>
-                      </div>
-                    )}
-                  </>
+                  <div 
+                    className="article-content-readable prose prose-invert prose-lg max-w-none text-gray-300"
+                    style={{ wordBreak: 'break-word' }}
+                    dangerouslySetInnerHTML={{ __html: contentWithInlineAd }}
+                  />
                 )}
 
                 {/* Tags */}
