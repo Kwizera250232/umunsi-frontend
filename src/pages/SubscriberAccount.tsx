@@ -17,7 +17,7 @@ const SUPPORT_WHATSAPP = '250791859465';
 const DEFAULT_THUMBNAIL = 'https://images.unsplash.com/photo-1495020689067-958852a7765e?w=300&h=180&fit=crop';
 const SUPPORT_CALL = '0791859465';
 const CLASSIFIED_CATEGORY_LABELS = {
-  cyamunara: 'Cyamunara',
+  cyamunara: 'Amatangazo',
   akazi: 'Akazi',
   guhinduza: 'Guhinduza amakuru',
   ibindi: 'Andi matangazo'
@@ -40,6 +40,16 @@ const SubscriberAccount = () => {
   const [premiumStories, setPremiumStories] = useState<PremiumDashboardPost[]>([]);
   const [myClassifiedAds, setMyClassifiedAds] = useState<ClassifiedAd[]>([]);
   const [requestedPremiumArticles, setRequestedPremiumArticles] = useState<PremiumRequestArticle[]>([]);
+  const [classifiedForm, setClassifiedForm] = useState({
+    title: '',
+    imageName: '',
+    imageUrl: '',
+    documentName: '',
+    documentUrl: ''
+  });
+  const [submittingClassified, setSubmittingClassified] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadingDocument, setUploadingDocument] = useState(false);
 
   if (!user) return null;
 
@@ -140,6 +150,115 @@ const SubscriberAccount = () => {
       || premiumStories.find((item) => item.id === story.id || item.title === story.title);
 
     return getThumbnailUrl(story.featuredImage || matchedStory?.featuredImage);
+  };
+
+  const parseSubmissionAttachments = (ad: ClassifiedAd) => {
+    const bundle = {
+      imageName: '',
+      imageUrl: '',
+      documentName: '',
+      documentUrl: ''
+    };
+
+    if (ad.attachmentName) {
+      try {
+        const parsedNames = JSON.parse(ad.attachmentName);
+        if (parsedNames && typeof parsedNames === 'object') {
+          bundle.imageName = parsedNames.imageName || '';
+          bundle.documentName = parsedNames.documentName || '';
+        }
+      } catch {
+        bundle.documentName = ad.attachmentName;
+      }
+    }
+
+    if (ad.attachmentUrl) {
+      try {
+        const parsedUrls = JSON.parse(ad.attachmentUrl);
+        if (parsedUrls && typeof parsedUrls === 'object') {
+          bundle.imageUrl = parsedUrls.imageUrl || '';
+          bundle.documentUrl = parsedUrls.documentUrl || '';
+        }
+      } catch {
+        bundle.documentUrl = ad.attachmentUrl;
+      }
+    }
+
+    return bundle;
+  };
+
+  const handleSubscriberFileUpload = async (file: File | undefined, kind: 'image' | 'document') => {
+    if (!file) return;
+
+    kind === 'image' ? setUploadingImage(true) : setUploadingDocument(true);
+    try {
+      const payload = new FormData();
+      payload.append('files', file);
+      const uploaded = await apiClient.uploadMediaFiles(payload);
+      const first = uploaded?.[0];
+      if (!first?.url) {
+        throw new Error('Upload failed');
+      }
+
+      setClassifiedForm((prev) => ({
+        ...prev,
+        ...(kind === 'image'
+          ? {
+              imageName: first.originalName || first.filename,
+              imageUrl: first.url
+            }
+          : {
+              documentName: first.originalName || first.filename,
+              documentUrl: first.url
+            })
+      }));
+    } catch (error) {
+      alert(kind === 'image' ? 'Ifoto ntiyoherejwe neza.' : 'Document ntiyoherejwe neza.');
+    } finally {
+      kind === 'image' ? setUploadingImage(false) : setUploadingDocument(false);
+    }
+  };
+
+  const handleSubscriberSubmission = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!classifiedForm.title.trim()) {
+      alert('Shyiramo umutwe mbere yo kohereza.');
+      return;
+    }
+
+    try {
+      setSubmittingClassified(true);
+      const subscriberPhone = typeof (user as any).phone === 'string' && (user as any).phone.trim().length >= 6
+        ? (user as any).phone.trim()
+        : '000000';
+
+      await apiClient.submitClassifiedAd({
+        category: 'cyamunara',
+        title: classifiedForm.title.trim(),
+        description: 'Kwamamaza cyoherejwe na subscriber. Gitegereje admin ngo agitunganye; ntikijya kuri public ako kanya.',
+        phone: subscriberPhone,
+        email: user.email,
+        attachmentName: JSON.stringify({
+          imageName: classifiedForm.imageName || '',
+          documentName: classifiedForm.documentName || ''
+        }),
+        attachmentUrl: JSON.stringify({
+          imageUrl: classifiedForm.imageUrl || '',
+          documentUrl: classifiedForm.documentUrl || ''
+        }),
+        durationDays: 30,
+        priceRwf: 0
+      });
+
+      const refreshed = await apiClient.getMyClassifiedAds();
+      setMyClassifiedAds(refreshed);
+      setClassifiedForm({ title: '', imageName: '', imageUrl: '', documentName: '', documentUrl: '' });
+      alert('Byoherejwe neza. Admin ni we uzabibona gusa kandi ntibijya kuri public ako kanya.');
+    } catch (error) {
+      alert('Ntibyashobotse kohereza. Ongera ugerageze.');
+    } finally {
+      setSubmittingClassified(false);
+    }
   };
 
   const refreshProfile = async () => {
@@ -322,41 +441,71 @@ const SubscriberAccount = () => {
           </div>
 
           <div className="subscriber-dark-card mt-6 rounded-xl border border-[#fcd535]/30 bg-[#0f1115] p-4">
-            <p className="text-[11px] uppercase tracking-[0.25em] text-[#fcd535]">Kwamamaza / Akazi</p>
-            <h4 className="text-white font-black text-xl mt-1">SHYIRAMO ITANGAZO RYAWE HANO</h4>
+            <p className="text-[11px] uppercase tracking-[0.25em] text-[#fcd535]">Ohereza itangazo cyangwa icyamamaza</p>
+            <h4 className="text-white font-black text-xl mt-1">Ohereza umutwe, ifoto na document gusa</h4>
             <p className="text-sm text-gray-300 mt-2">
-              Uhereye muri konti yawe ya Subscriber ushobora gushyiramo akazi, itangazo cyangwa indi serivisi. Rigaragara hano mbere nka Pending; kuri public rijya hanze nyuma yo kugenzurwa. Iyo ryishyuwe kandi ryemejwe, turanarishyira no ku mbuga nkoranyambaga zacu.
+              Ibyo wohereje bijya kuri admin gusa nk'ibitegereje gusuzumwa. Ntibijya kuri public kugeza admin abimaze kugenzura, kubitunganya no kubyemeza.
             </p>
             <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
               <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-amber-300">Pending: {pendingClassifiedAds.length}</div>
-              <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-emerald-300">Approved: {approvedClassifiedAds.length}</div>
+              <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-emerald-300">Reviewed: {approvedClassifiedAds.length}</div>
             </div>
-            <div className="mt-4 flex gap-3 flex-wrap">
-              <Link to="/amatangazo" className="px-4 py-2 rounded-lg bg-[#fcd535] text-[#0b0e11] font-semibold hover:bg-[#f0b90b]">Ohereza itangazo</Link>
-              <Link to="/amatangazo/akazi" className="px-4 py-2 rounded-lg bg-[#2b2f36] text-white hover:bg-[#363a45]">Shyiramo akazi</Link>
-            </div>
+
+            <form onSubmit={handleSubscriberSubmission} className="mt-4 grid grid-cols-1 gap-3">
+              <input
+                className="bg-[#0b0e11] border border-[#2b2f36] rounded-lg px-3 py-2 text-white"
+                placeholder="Umutwe"
+                value={classifiedForm.title}
+                onChange={(e) => setClassifiedForm((prev) => ({ ...prev, title: e.target.value }))}
+                required
+              />
+
+              <label className="bg-[#0b0e11] border border-[#2b2f36] rounded-lg px-3 py-2 text-white text-sm flex items-center justify-between gap-3">
+                <span>{uploadingImage ? 'Turimo kohereza ifoto...' : classifiedForm.imageName || 'Ohereza ifoto'}</span>
+                <input type="file" accept="image/*" onChange={(e) => handleSubscriberFileUpload(e.target.files?.[0], 'image')} className="text-xs" />
+              </label>
+
+              <label className="bg-[#0b0e11] border border-[#2b2f36] rounded-lg px-3 py-2 text-white text-sm flex items-center justify-between gap-3">
+                <span>{uploadingDocument ? 'Turimo kohereza document...' : classifiedForm.documentName || 'Ohereza document'}</span>
+                <input type="file" accept=".pdf,.doc,.docx,.txt,.xls,.xlsx,.ppt,.pptx,image/*" onChange={(e) => handleSubscriberFileUpload(e.target.files?.[0], 'document')} className="text-xs" />
+              </label>
+
+              <button type="submit" disabled={submittingClassified} className="px-4 py-2 rounded-lg bg-[#fcd535] text-[#0b0e11] font-semibold hover:bg-[#f0b90b] disabled:opacity-60">
+                {submittingClassified ? 'Kohereza...' : 'Ohereza kuri Admin'}
+              </button>
+            </form>
           </div>
 
           <div className="subscriber-dark-card mt-6 rounded-xl border border-[#2b2f36] bg-[#0f1115] p-4">
             <div className="flex items-center justify-between gap-2 mb-3">
-              <h4 className="text-white font-semibold">Amatangazo Yanjye</h4>
-              <Link to="/amatangazo" className="text-sm text-[#fcd535] hover:underline">Shyiramo rishya</Link>
+              <h4 className="text-white font-semibold">Ibyo wohereje</h4>
             </div>
             {myClassifiedAds.length === 0 ? (
-              <p className="text-sm text-gray-400">Nta matangazo wohereje. Kanda kuri "Ohereza itangazo".</p>
+              <p className="text-sm text-gray-400">Nta byo wohereje birimo. Uzuza umutwe hanyuma wohereze ifoto cyangwa document.</p>
             ) : (
               <div className="space-y-2">
-                {myClassifiedAds.slice(0, 8).map((ad) => (
-                  <div key={ad.id} className="border border-[#2b2f36] rounded-lg p-3 bg-[#12161c] flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-sm text-white font-medium">{ad.title}</p>
-                      <p className="text-xs text-gray-500 mt-1">{CLASSIFIED_CATEGORY_LABELS[ad.category]} • {new Date(ad.createdAt).toLocaleDateString('rw-RW')}</p>
+                {myClassifiedAds.slice(0, 8).map((ad) => {
+                  const attachments = parseSubmissionAttachments(ad);
+                  return (
+                    <div key={ad.id} className="border border-[#2b2f36] rounded-lg p-3 bg-[#12161c] flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm text-white font-medium">{ad.title}</p>
+                        <p className="text-xs text-gray-500 mt-1">{CLASSIFIED_CATEGORY_LABELS[ad.category]} • {new Date(ad.createdAt).toLocaleDateString('rw-RW')}</p>
+                        <div className="mt-2 flex flex-wrap gap-3 text-xs">
+                          {attachments.imageUrl && (
+                            <a href={attachments.imageUrl} target="_blank" rel="noreferrer" className="text-[#fcd535] hover:underline">Reba ifoto</a>
+                          )}
+                          {attachments.documentUrl && (
+                            <a href={attachments.documentUrl} target="_blank" rel="noreferrer" className="text-[#fcd535] hover:underline" download>Download document</a>
+                          )}
+                        </div>
+                      </div>
+                      <span className={`text-[11px] px-2 py-1 rounded ${ad.status === 'APPROVED' ? 'bg-emerald-500/20 text-emerald-400' : ad.status === 'REJECTED' ? 'bg-rose-500/20 text-rose-400' : 'bg-amber-500/20 text-amber-400'}`}>
+                        {ad.status}
+                      </span>
                     </div>
-                    <span className={`text-[11px] px-2 py-1 rounded ${ad.status === 'APPROVED' ? 'bg-emerald-500/20 text-emerald-400' : ad.status === 'REJECTED' ? 'bg-rose-500/20 text-rose-400' : 'bg-amber-500/20 text-amber-400'}`}>
-                      {ad.status}
-                    </span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

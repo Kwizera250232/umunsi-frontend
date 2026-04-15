@@ -4,13 +4,11 @@ import { Clock, Eye, ChevronRight, Heart, TrendingUp, Zap, AlertCircle, Mail, Ca
 import { apiClient, Post, Category, ClassifiedAd, AdsBannersState, resolveAssetUrl, extractFirstImageFromHtml } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
-type SpecialCategoryKey = 'cyamunara' | 'akazi' | 'guhinduza' | 'ibindi';
+type SpecialCategoryKey = 'cyamunara' | 'akazi';
 
 const SPECIAL_CATEGORIES: Array<{ key: SpecialCategoryKey; label: string }> = [
-  { key: 'cyamunara', label: 'Cyamunara' },
-  { key: 'akazi', label: 'Akazi' },
-  { key: 'guhinduza', label: 'Guhinduza amakuru' },
-  { key: 'ibindi', label: 'Andi matangazo' }
+  { key: 'cyamunara', label: 'Amatangazo' },
+  { key: 'akazi', label: 'Akazi' }
 ];
 
 const normalizeText = (value: string) =>
@@ -258,7 +256,9 @@ const Home = () => {
   const getSpecialCategoryPath = (key: SpecialCategoryKey) => `/amatangazo/${key}`;
 
   const allSpecialPath = '/amatangazo';
-  const classifiedPreview = classifiedAds.slice(0, 6);
+  const classifiedPreview = classifiedAds
+    .filter((ad) => ['cyamunara', 'akazi'].includes(ad.category))
+    .slice(0, 6);
 
   const quickCategoryTabs = [
     { id: '__featured', label: 'Inkuru Nyamukuru' },
@@ -1052,32 +1052,16 @@ const Home = () => {
             </Link>
           </div>
           
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-4">
-            {/* Cyamunara - Auctions */}
+          <div className="grid grid-cols-2 gap-3 p-4">
             <Link to={getSpecialCategoryPath('cyamunara')} className="group">
               <div className="bg-[#0b0e11] rounded-lg px-4 py-3 border border-[#2b2f36] hover:border-orange-500/50 hover:bg-[#1e2329] transition-all text-center">
-                <h3 className="text-white font-semibold text-sm group-hover:text-orange-400 transition-colors">Cyamunara</h3>
+                <h3 className="text-white font-semibold text-sm group-hover:text-orange-400 transition-colors">Amatangazo</h3>
               </div>
             </Link>
 
-            {/* Akazi - Jobs */}
             <Link to={getSpecialCategoryPath('akazi')} className="group">
               <div className="bg-[#0b0e11] rounded-lg px-4 py-3 border border-[#2b2f36] hover:border-blue-500/50 hover:bg-[#1e2329] transition-all text-center">
                 <h3 className="text-white font-semibold text-sm group-hover:text-blue-400 transition-colors">Akazi</h3>
-              </div>
-            </Link>
-
-            {/* Guhinduza amakuru - Change Info */}
-            <Link to={getSpecialCategoryPath('guhinduza')} className="group">
-              <div className="bg-[#0b0e11] rounded-lg px-4 py-3 border border-[#2b2f36] hover:border-emerald-500/50 hover:bg-[#1e2329] transition-all text-center">
-                <h3 className="text-white font-semibold text-sm group-hover:text-emerald-400 transition-colors">Guhinduza amakuru</h3>
-              </div>
-            </Link>
-
-            {/* Andi matangazo - Others */}
-            <Link to={getSpecialCategoryPath('ibindi')} className="group">
-              <div className="bg-[#0b0e11] rounded-lg px-4 py-3 border border-[#2b2f36] hover:border-purple-500/50 hover:bg-[#1e2329] transition-all text-center">
-                <h3 className="text-white font-semibold text-sm group-hover:text-purple-400 transition-colors">Andi matangazo</h3>
               </div>
             </Link>
           </div>

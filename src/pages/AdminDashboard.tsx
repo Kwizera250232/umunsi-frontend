@@ -28,7 +28,7 @@ import {
   MoreHorizontal,
   Share2
 } from 'lucide-react';
-import { apiClient } from '../services/api';
+import { apiClient, ClassifiedAd } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
 interface DashboardStats {
@@ -109,6 +109,7 @@ const AdminDashboard = () => {
     message: 'Website iri gutunganywa iragaruka mu kanya'
   });
   const [savingMaintenance, setSavingMaintenance] = useState(false);
+  const [pendingClassifieds, setPendingClassifieds] = useState<ClassifiedAd[]>([]);
   const [selectedViewDate, setSelectedViewDate] = useState('');
 
   useEffect(() => {
@@ -173,15 +174,17 @@ const AdminDashboard = () => {
         );
 
         setRecentUsers([]);
+        setPendingClassifieds([]);
         setSystemStatus({ database: 'healthy', server: 'healthy' });
         return;
       }
       
       // Fetch dashboard stats and posts/users in parallel
-      const [dashboardResponse, postsResponse, usersResponse] = await Promise.all([
+      const [dashboardResponse, postsResponse, usersResponse, classifiedsResponse] = await Promise.all([
         apiClient.getDashboardStats().catch(() => null),
         apiClient.getPosts({ limit: 5 }).catch(() => null),
-        apiClient.getUsers({ limit: 5 }).catch(() => null)
+        apiClient.getUsers({ limit: 5 }).catch(() => null),
+        apiClient.getAllClassifiedAds().catch(() => [])
       ]);
       
       // Set stats from dashboard response or calculate from direct API responses
@@ -240,6 +243,10 @@ const AdminDashboard = () => {
         }));
         setRecentUsers(formattedUsers);
       }
+
+      setPendingClassifieds(
+        (Array.isArray(classifiedsResponse) ? classifiedsResponse : []).filter((ad) => ad.status === 'PENDING').slice(0, 6)
+      );
 
       // Check system health
       try {
@@ -433,6 +440,37 @@ const AdminDashboard = () => {
           </div>
         </div>
       </div>
+
+      {!isAuthorOnly && (
+        <div className="mb-8 rounded-2xl border border-[#2b2f36] bg-[#181a20] p-5">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.25em] text-[#fcd535]">Admin Notifications</p>
+              <h3 className="text-white font-bold text-lg mt-1">Subscriber submissions waiting for review</h3>
+              <p className="text-sm text-gray-400 mt-1">Ibi ni ibyo subscribers bohereje. Admin gusa ni we ubibona kandi ntibijya kuri public ako kanya.</p>
+            </div>
+            <button onClick={() => navigate('/admin/ads-management')} className="px-4 py-2 rounded-lg bg-[#fcd535] text-[#0b0e11] font-semibold">
+              Reba byose
+            </button>
+          </div>
+
+          <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+            {pendingClassifieds.length === 0 ? (
+              <div className="rounded-xl border border-[#2b2f36] bg-[#0f1115] px-4 py-3 text-sm text-gray-400">Nta pending submissions zihari ubu.</div>
+            ) : (
+              pendingClassifieds.map((item) => (
+                <div key={item.id} className="rounded-xl border border-amber-500/20 bg-[#0f1115] px-4 py-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-white font-medium line-clamp-1">{item.title}</p>
+                    <span className="text-[11px] px-2 py-1 rounded bg-amber-500/20 text-amber-300">Pending</span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">{item.userName} • {new Date(item.createdAt).toLocaleDateString('rw-RW')}</p>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Stats Cards */}
       {!isAuthorOnly && <div className="mb-8 bg-[#181a20] rounded-2xl border border-[#2b2f36] p-6">
