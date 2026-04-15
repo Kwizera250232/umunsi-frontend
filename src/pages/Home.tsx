@@ -21,20 +21,10 @@ const normalizeText = (value: string) =>
 const HEALTH_KEYWORDS = ['ubuzima', 'health'];
 const LOVE_KEYWORDS = ['urukundo', 'love', 'relationship', 'dating', 'couple'];
 
-const matchesPostKeywords = (post: Post, keywords: string[]) => {
-  const values = [
-    post.title || '',
-    post.excerpt || '',
-    post.category?.name || '',
-    post.category?.slug || ''
-  ].map(normalizeText);
-
-  return keywords.some((keyword) => values.some((value) => value.includes(keyword)));
-};
-
 const ADSENSE_HOME_AFTER_PARAGRAPH_7_SLOT = '1353027611';
-const ADSENSE_HOME_TOP_LATEST_SLOT = '5829562310';
+const ADSENSE_HOME_AFTER_CONTENT_SLOT = '5829562310';
 const HOME_CACHE_KEY = 'umunsi_home_cache_v1';
+const DEFAULT_POST_IMAGE = 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=1200&h=800&fit=crop';
 
 const getHomeCache = () => {
   if (typeof window === 'undefined') return null;
@@ -111,7 +101,7 @@ const Home = () => {
       }
 
       const slots = Array.from(
-        document.querySelectorAll('.home-top-latest-ad ins.adsbygoogle, .home-after-paragraph-7-ad ins.adsbygoogle, .home-managed-story-ad ins.adsbygoogle')
+        document.querySelectorAll('.home-after-content-ad ins.adsbygoogle, .home-after-paragraph-7-ad ins.adsbygoogle, .home-managed-story-ad ins.adsbygoogle')
       ) as HTMLElement[];
 
       const pending = slots.filter((slot) => slot.dataset.adInitialized !== '1' && !slot.getAttribute('data-ad-status'));
@@ -123,7 +113,7 @@ const Home = () => {
           slot.dataset.adInitialized = '1';
           window.setTimeout(() => {
             if (slot.getAttribute('data-ad-status') === 'unfilled') {
-              const wrapper = slot.closest('.home-top-latest-ad, .home-after-paragraph-7-ad, .home-managed-story-ad') as HTMLElement | null;
+              const wrapper = slot.closest('.home-after-content-ad, .home-after-paragraph-7-ad, .home-managed-story-ad') as HTMLElement | null;
               if (wrapper) wrapper.style.display = 'none';
             }
           }, 1800);
@@ -202,7 +192,14 @@ const Home = () => {
 
   const getImageUrl = (url?: string) => {
     const resolvedUrl = resolveAssetUrl(url);
-    return resolvedUrl || 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=600&h=400&fit=crop';
+    return resolvedUrl || DEFAULT_POST_IMAGE;
+  };
+
+  const handleImageError = (event: React.SyntheticEvent<HTMLImageElement>) => {
+    const image = event.currentTarget;
+    if (image.dataset.fallbackApplied === '1') return;
+    image.dataset.fallbackApplied = '1';
+    image.src = DEFAULT_POST_IMAGE;
   };
 
   const getBannerImageUrl = (url?: string) => {
@@ -260,21 +257,9 @@ const Home = () => {
     .filter((ad) => ['cyamunara', 'akazi'].includes(ad.category))
     .slice(0, 6);
 
-  const quickCategoryTabs = [
-    { id: '__featured', label: 'Inkuru Nyamukuru' },
-    { id: '__ubuzima', label: 'Ubuzima' },
-    { id: '__urukundo', label: "Inkuru z'Urukundo" }
-  ];
-
   const filteredPosts = activeTab === 'all'
     ? posts
-    : activeTab === '__featured'
-      ? posts.filter((p) => p.isFeatured)
-      : activeTab === '__ubuzima'
-        ? posts.filter((p) => matchesPostKeywords(p, HEALTH_KEYWORDS))
-        : activeTab === '__urukundo'
-          ? posts.filter((p) => matchesPostKeywords(p, LOVE_KEYWORDS))
-          : posts.filter((p) => p.category?.id === activeTab);
+    : posts.filter((p) => p.category?.id === activeTab);
 
   const imyidagaduroPosts = posts
     .filter((post) => {
@@ -463,6 +448,7 @@ const Home = () => {
                     src={getImageUrl(leftPrimary.featuredImage)}
                     alt={leftPrimary.title}
                     className="w-full h-44 object-cover"
+                    onError={handleImageError}
                   />
                   <div className="p-2">
                     <h3 className="text-white font-semibold text-sm line-clamp-2 group-hover:text-[#fcd535] transition-colors">
@@ -478,6 +464,7 @@ const Home = () => {
                     src={getImageUrl(leftSecondary.featuredImage)}
                     alt={leftSecondary.title}
                     className="w-20 h-16 object-cover flex-shrink-0"
+                    onError={handleImageError}
                   />
                   <h4 className="text-gray-300 text-sm line-clamp-2 group-hover:text-[#fcd535] transition-colors">
                     {leftSecondary.title}
@@ -509,6 +496,7 @@ const Home = () => {
                       src={getImageUrl(mainHighlight.featuredImage)}
                       alt={mainHighlight.title}
                       className="w-full h-[260px] md:h-[340px] object-cover"
+                      onError={handleImageError}
                     />
                     <div className="home-image-overlay absolute inset-x-0 bottom-0 px-3 py-3">
                       <h2 className="home-image-overlay-title text-white text-lg md:text-2xl font-bold leading-tight line-clamp-2 group-hover:text-[#fcd535] transition-colors">
@@ -526,6 +514,7 @@ const Home = () => {
                       src={getImageUrl(middleBottom.featuredImage)}
                       alt={middleBottom.title}
                       className="w-24 h-16 object-cover flex-shrink-0"
+                      onError={handleImageError}
                     />
                     <h4 className="text-gray-300 text-sm line-clamp-2 group-hover:text-[#fcd535] transition-colors">
                       {middleBottom.title}
@@ -553,6 +542,7 @@ const Home = () => {
                     src={getImageUrl(post.featuredImage)}
                     alt={post.title}
                     className="w-24 h-16 object-cover flex-shrink-0"
+                    onError={handleImageError}
                   />
                   <h4 className="text-gray-300 text-sm line-clamp-3 group-hover:text-[#fcd535] transition-colors">
                     {post.title}
@@ -560,31 +550,6 @@ const Home = () => {
                 </Link>
               ))}
             </div>
-          </div>
-        </div>
-
-        <div className="mb-6 bg-[#181a20] rounded-lg overflow-hidden border border-[#2b2f36]">
-          <div className="p-4 border-b border-[#2b2f36] flex items-center justify-between gap-2 flex-wrap">
-            <h2 className="text-lg font-bold text-white flex items-center gap-2">
-              <span className="w-1 h-6 bg-[#fcd535] rounded"></span>
-              Ibyiciro byagarutse
-            </h2>
-            <p className="text-xs text-gray-400">Inkuru Nyamukuru • Ubuzima • Inkuru z'Urukundo</p>
-          </div>
-          <div className="p-4 flex flex-wrap gap-2">
-            {quickCategoryTabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                  activeTab === tab.id
-                    ? 'bg-[#fcd535] text-[#0b0e11]'
-                    : 'bg-[#0b0e11] text-gray-300 border border-[#2b2f36] hover:bg-[#1e2329] hover:text-white'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
           </div>
         </div>
 
@@ -616,6 +581,7 @@ const Home = () => {
                           src={getImageUrl(imyidagaduroPosts[0].featuredImage)}
                           alt={imyidagaduroPosts[0].title}
                           className="w-full h-[300px] md:h-[360px] object-cover"
+                          onError={handleImageError}
                         />
                         <span className="absolute top-3 right-3 bg-white/90 text-[#0b0e11] text-xs font-semibold px-3 py-1 rounded">
                           Imyidagaduro
@@ -689,6 +655,7 @@ const Home = () => {
                           src={getImageUrl(imikinoMain.featuredImage)}
                           alt={imikinoMain.title}
                           className="w-full h-[300px] md:h-[360px] object-cover"
+                          onError={handleImageError}
                         />
                         <span className="absolute top-3 right-3 bg-white/90 text-[#0b0e11] text-xs font-semibold px-3 py-1 rounded">
                           Imikino
@@ -749,25 +716,6 @@ const Home = () => {
               </div>
             )}
 
-            {showAds && (
-              <div className="home-top-latest-ad bg-[#181a20] rounded-lg overflow-hidden">
-                <div className="p-2 border-b border-[#2b2f36]">
-                  <p className="text-gray-500 text-[10px] text-center uppercase tracking-wider">Kwamamaza</p>
-                </div>
-                <div className="p-4">
-                  <ins
-                    className="adsbygoogle"
-                    style={{ display: 'block', minHeight: '120px' }}
-                    data-ad-client="ca-pub-3584259871242471"
-                    data-ad-slot={ADSENSE_HOME_TOP_LATEST_SLOT}
-                    data-ad-format="auto"
-                    data-full-width-responsive="true"
-                  ></ins>
-                  <p className="text-[11px] text-gray-500 mt-2 text-center">Kwamamaza</p>
-                </div>
-              </div>
-            )}
-
             {/* Latest News Section */}
             <div className="bg-[#181a20] rounded-lg overflow-hidden">
               <div className="p-4 border-b border-[#2b2f36] flex items-center justify-between">
@@ -775,13 +723,7 @@ const Home = () => {
                   <span className="w-1 h-6 bg-[#fcd535] rounded"></span>
                   {activeTab === 'all'
                     ? 'Amakuru Mashya'
-                    : activeTab === '__featured'
-                      ? 'Inkuru Nyamukuru'
-                      : activeTab === '__ubuzima'
-                        ? 'Ubuzima'
-                        : activeTab === '__urukundo'
-                          ? "Inkuru z'Urukundo"
-                          : orderedNewsCategoryTabs.find(c => c.id === activeTab)?.name || 'Amakuru'}
+                    : orderedNewsCategoryTabs.find(c => c.id === activeTab)?.name || 'Amakuru'}
                 </h2>
                 <Link to="/news" className="text-[#fcd535] text-sm hover:underline flex items-center gap-1">
                   Reba Yose <ChevronRight className="w-4 h-4" />
@@ -800,19 +742,6 @@ const Home = () => {
                   >
                     Byose
                   </button>
-                  {quickCategoryTabs.map((tab) => (
-                    <button
-                      key={tab.id}
-                      onClick={() => setActiveTab(tab.id)}
-                      className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
-                        activeTab === tab.id
-                          ? 'bg-[#fcd535] text-[#0b0e11]'
-                          : 'bg-[#0b0e11] text-gray-400 hover:bg-[#1e2329] hover:text-white'
-                      }`}
-                    >
-                      {tab.label}
-                    </button>
-                  ))}
                   {orderedNewsCategoryTabs.map((cat) => (
                     <button
                       key={cat.id}
@@ -840,6 +769,7 @@ const Home = () => {
                           src={getImageUrl(post.featuredImage)} 
                           alt={post.title}
                           className="w-28 h-20 md:w-36 md:h-24 object-cover rounded"
+                          onError={handleImageError}
                         />
                       </div>
                       <div className="flex-1 min-w-0">
@@ -885,6 +815,25 @@ const Home = () => {
                 ))}
               </div>
             </div>
+
+            {showAds && (
+              <div className="home-after-content-ad bg-[#181a20] rounded-lg overflow-hidden">
+                <div className="p-2 border-b border-[#2b2f36]">
+                  <p className="text-gray-500 text-[10px] text-center uppercase tracking-wider">Kwamamaza</p>
+                </div>
+                <div className="p-4">
+                  <ins
+                    className="adsbygoogle"
+                    style={{ display: 'block', minHeight: '120px' }}
+                    data-ad-client="ca-pub-3584259871242471"
+                    data-ad-slot={ADSENSE_HOME_AFTER_CONTENT_SLOT}
+                    data-ad-format="auto"
+                    data-full-width-responsive="true"
+                  ></ins>
+                  <p className="text-[11px] text-gray-500 mt-2 text-center">Kwamamaza</p>
+                </div>
+              </div>
+            )}
 
             {showAds && hasBannerContent('business728x250') && (
               <div className="bg-[#181a20] rounded-lg overflow-hidden">
