@@ -228,6 +228,72 @@ const AdsManagement = () => {
     { key: 'leaderboardBottom970x120', place: 'Bottom Leaderboard' }
   ];
 
+  const parseAttachmentBundle = (ad: ClassifiedAd) => {
+    const bundle = {
+      imageName: '',
+      imageUrl: '',
+      documentName: '',
+      documentUrl: ''
+    };
+
+    if (ad.attachmentName) {
+      try {
+        const parsedNames = JSON.parse(ad.attachmentName);
+        if (parsedNames && typeof parsedNames === 'object') {
+          bundle.imageName = parsedNames.imageName || '';
+          bundle.documentName = parsedNames.documentName || '';
+        }
+      } catch {
+        bundle.documentName = ad.attachmentName;
+      }
+    }
+
+    if (ad.attachmentUrl) {
+      try {
+        const parsedUrls = JSON.parse(ad.attachmentUrl);
+        if (parsedUrls && typeof parsedUrls === 'object') {
+          bundle.imageUrl = parsedUrls.imageUrl || '';
+          bundle.documentUrl = parsedUrls.documentUrl || '';
+        }
+      } catch {
+        bundle.documentUrl = ad.attachmentUrl;
+      }
+    }
+
+    return bundle;
+  };
+
+  const handleAdminAttachmentUpload = async (ad: ClassifiedAd, kind: 'image' | 'document', file?: File) => {
+    if (!file) return;
+
+    try {
+      const payload = new FormData();
+      payload.append('files', file);
+      const uploaded = await apiClient.uploadMediaFiles(payload);
+      const first = uploaded?.[0];
+      if (!first?.url) {
+        throw new Error('Upload failed');
+      }
+
+      const current = parseAttachmentBundle(ad);
+      await apiClient.updateClassifiedAd(ad.id, {
+        attachmentName: JSON.stringify({
+          imageName: kind === 'image' ? (first.originalName || first.filename) : current.imageName,
+          documentName: kind === 'document' ? (first.originalName || first.filename) : current.documentName
+        }),
+        attachmentUrl: JSON.stringify({
+          imageUrl: kind === 'image' ? first.url : current.imageUrl,
+          documentUrl: kind === 'document' ? first.url : current.documentUrl
+        })
+      });
+
+      await refreshClassifieds();
+      alert('Dosiye yavuguruwe neza.');
+    } catch (error) {
+      alert('Ntibyashobotse kohereza dosiye nshya.');
+    }
+  };
+
   const refreshClassifieds = async () => {
     try {
       const ads = await apiClient.getAllClassifiedAds();
@@ -467,39 +533,60 @@ const AdsManagement = () => {
 
       <div className="mt-8 bg-[#181a20] rounded-2xl border border-[#2b2f36] p-6">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-white">Amatangazo Moderation (Admin Dashboard)</h3>
-          <span className="text-xs text-gray-400">Total: {classifiedAds.length}</span>
+          <h3 className="text-lg font-semibold text-white">Amatangazo Moderation (Admin Dashboard Notifications)</h3>
+          <span className="text-xs text-gray-400">Total: {classifiedAds.length} • Pending: {classifiedAds.filter((ad) => ad.status === 'PENDING').length}</span>
         </div>
 
         <div className="space-y-3 mb-8">
           {classifiedAds.length === 0 ? (
             <p className="text-sm text-gray-400">Nta matangazo arimo.</p>
           ) : (
-            classifiedAds.map((ad) => (
-              <div key={ad.id} className="p-3 rounded-lg border border-[#2b2f36] bg-[#0f1115]">
-                <div className="flex items-start justify-between gap-3 flex-wrap">
-                  <div>
-                    <p className="text-white font-semibold">{ad.title}</p>
-                    <p className="text-xs text-gray-500 mt-1">{ad.userName} • {ad.phone} • {ad.email}</p>
-                    <p className="text-sm text-gray-300 mt-2">{ad.description}</p>
-                    {ad.attachmentUrl && (
-                      <a href={ad.attachmentUrl} target="_blank" rel="noreferrer" className="text-xs text-[#fcd535] hover:underline mt-1 inline-block">View Attachment</a>
-                    )}
+            classifiedAds.map((ad) => {
+              const attachments = parseAttachmentBundle(ad);
+              return (
+                <div key={ad.id} className="p-3 rounded-lg border border-[#2b2f36] bg-[#0f1115]">
+                  <div className="flex items-start justify-between gap-3 flex-wrap">
+                    <div>
+                      <p className="text-white font-semibold">{ad.title}</p>
+                      <p className="text-xs text-gray-500 mt-1">{ad.userName} • {ad.phone} • {ad.email}</p>
+                      <p className="text-sm text-gray-300 mt-2 whitespace-pre-line">{ad.description}</p>
+                      <div className="flex flex-wrap gap-3 mt-2 text-xs">
+                        {attachments.imageUrl && (
+                          <a href={attachments.imageUrl} target="_blank" rel="noreferrer" className="text-[#fcd535] hover:underline" download>
+                            Download image
+                          </a>
+                        )}
+                        {attachments.documentUrl && (
+                          <a href={attachments.documentUrl} target="_blank" rel="noreferrer" className="text-[#fcd535] hover:underline" download>
+                            Download document
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                    <span className={`text-xs px-2 py-1 rounded ${ad.status === 'APPROVED' ? 'bg-emerald-500/20 text-emerald-400' : ad.status === 'REJECTED' ? 'bg-rose-500/20 text-rose-400' : 'bg-amber-500/20 text-amber-400'}`}>
+                      {ad.status}
+                    </span>
                   </div>
-                  <span className={`text-xs px-2 py-1 rounded ${ad.status === 'APPROVED' ? 'bg-emerald-500/20 text-emerald-400' : ad.status === 'REJECTED' ? 'bg-rose-500/20 text-rose-400' : 'bg-amber-500/20 text-amber-400'}`}>
-                    {ad.status}
-                  </span>
-                </div>
 
-                <div className="flex gap-2 flex-wrap mt-3">
-                  <button onClick={() => moderate(ad.id, 'APPROVED')} className="px-3 py-1 rounded bg-emerald-600 text-white text-xs flex items-center gap-1"><CheckCircle2 className="w-3 h-3" />Approve</button>
-                  <button onClick={() => moderate(ad.id, 'REJECTED')} className="px-3 py-1 rounded bg-rose-600 text-white text-xs flex items-center gap-1"><XCircle className="w-3 h-3" />Reject</button>
-                  <button onClick={() => editClassified(ad)} className="px-3 py-1 rounded bg-[#2b2f36] text-white text-xs">Edit</button>
-                  <a href={`tel:${ad.phone}`} className="px-3 py-1 rounded bg-[#1f2937] text-gray-100 text-xs inline-flex items-center gap-1"><PhoneCall className="w-3 h-3" />Call</a>
-                  <a href={`mailto:${ad.email}`} className="px-3 py-1 rounded bg-[#1f2937] text-gray-100 text-xs inline-flex items-center gap-1"><Mail className="w-3 h-3" />Email</a>
+                  <div className="flex gap-2 flex-wrap mt-3">
+                    <button onClick={() => moderate(ad.id, 'APPROVED')} className="px-3 py-1 rounded bg-emerald-600 text-white text-xs flex items-center gap-1"><CheckCircle2 className="w-3 h-3" />Approve</button>
+                    <button onClick={() => moderate(ad.id, 'REJECTED')} className="px-3 py-1 rounded bg-rose-600 text-white text-xs flex items-center gap-1"><XCircle className="w-3 h-3" />Reject</button>
+                    <button onClick={() => editClassified(ad)} className="px-3 py-1 rounded bg-[#2b2f36] text-white text-xs">Edit</button>
+                    <button onClick={() => { window.location.href = '/admin/posts/add'; }} className="px-3 py-1 rounded bg-[#fcd535] text-[#0b0e11] text-xs font-semibold">Andikamo inkuru</button>
+                    <label className="px-3 py-1 rounded bg-[#1f2937] text-gray-100 text-xs cursor-pointer">
+                      Upload image
+                      <input type="file" accept="image/*" className="hidden" onChange={(e) => handleAdminAttachmentUpload(ad, 'image', e.target.files?.[0])} />
+                    </label>
+                    <label className="px-3 py-1 rounded bg-[#1f2937] text-gray-100 text-xs cursor-pointer">
+                      Upload document
+                      <input type="file" accept=".pdf,.doc,.docx,.txt,.xls,.xlsx,.ppt,.pptx,image/*" className="hidden" onChange={(e) => handleAdminAttachmentUpload(ad, 'document', e.target.files?.[0])} />
+                    </label>
+                    <a href={`tel:${ad.phone}`} className="px-3 py-1 rounded bg-[#1f2937] text-gray-100 text-xs inline-flex items-center gap-1"><PhoneCall className="w-3 h-3" />Call</a>
+                    <a href={`mailto:${ad.email}`} className="px-3 py-1 rounded bg-[#1f2937] text-gray-100 text-xs inline-flex items-center gap-1"><Mail className="w-3 h-3" />Email</a>
+                  </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
 
