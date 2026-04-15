@@ -1,11 +1,28 @@
 {
-  "buildCommand": "npm run build",
-  "outputDirectory": "dist",
-  "devCommand": "npm run dev",
-  "installCommand": "npm install",
+  "framework": "vite",
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/post/(.*)",
+      "destination": "/api/meta?slug=$1"
+    },
+    {
+      "source": "/article/(.*)",
+      "destination": "/api/meta?id=$1"
+    },
+    {
+      "source": "/api",
+      "destination": "/api/proxy"
+    },
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/proxy?path=$1"
+    },
+    {
+      "source": "/uploads/(.*)",
+      "destination": "/api/proxy?path=uploads/$1"
+    },
+    {
+      "source": "/((?!api|uploads|assets|images|.*\\..*).*)",
       "destination": "/index.html"
     }
   ]
