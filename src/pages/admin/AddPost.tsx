@@ -22,6 +22,12 @@ import {
   Sparkles
 } from 'lucide-react';
 import { apiClient, Category, MediaFile } from '../../services/api';
+
+const DEFAULT_EDITORIAL_CATEGORIES = [
+  { name: 'Inkuru Nyamukuru', description: 'Inkuru zatoranyijwe nk’izingenzi ku rubuga.' },
+  { name: 'Ubuzima', description: 'Inkuru zijyanye n’ubuzima n’imibereho myiza.' },
+  { name: "Inkuru z'Urukundo", description: 'Inkuru zijyanye n’urukundo n’imibanire.' }
+];
 import RichTextEditor from '../../components/RichTextEditor';
 import MediaLibraryModal from '../../components/MediaLibraryModal';
 import { useAuth } from '../../contexts/AuthContext';
@@ -55,12 +61,34 @@ const AddPost: React.FC = () => {
 
   useEffect(() => {
     fetchCategories();
-  }, []);
+  }, [user?.role]);
 
   const fetchCategories = async () => {
     try {
       const response = await apiClient.getCategories();
-      setCategories(response);
+      let resolvedCategories = response;
+
+      if (user?.role === 'ADMIN') {
+        const existingNames = new Set(response.map((category) => category.name.trim().toLowerCase()));
+        const missingCategories = DEFAULT_EDITORIAL_CATEGORIES.filter(
+          (category) => !existingNames.has(category.name.trim().toLowerCase())
+        );
+
+        if (missingCategories.length > 0) {
+          await Promise.all(
+            missingCategories.map((category) =>
+              apiClient.createCategory({
+                name: category.name,
+                description: category.description,
+                isActive: true,
+              }).catch(() => null)
+            )
+          );
+          resolvedCategories = await apiClient.getCategories();
+        }
+      }
+
+      setCategories(resolvedCategories);
     } catch (error) {
       console.error('Error fetching categories:', error);
     }

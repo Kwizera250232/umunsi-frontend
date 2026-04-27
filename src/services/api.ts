@@ -1,10 +1,41 @@
 // API Base Configuration
-const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? 'https://umunsi.com/api' : 'http://localhost:5000/api');
+const PRIMARY_PROD_API_URL = '/api';
+const FALLBACK_PROD_API_URL = 'https://api.umunsi.com/api';
+
+const normalizeApiBaseUrl = (configuredUrl?: string) => {
+  const fallbackUrl = import.meta.env.PROD ? PRIMARY_PROD_API_URL : 'http://localhost:5000/api';
+
+  if (import.meta.env.PROD) {
+    return PRIMARY_PROD_API_URL;
+  }
+
+  const candidate = (configuredUrl || fallbackUrl).trim();
+
+  if (!candidate) return fallbackUrl;
+
+  try {
+    const parsed = new URL(candidate);
+    if (parsed.hostname === 'www.umunsi.com') {
+      parsed.hostname = 'umunsi.com';
+    }
+
+    const normalized = parsed.toString().replace(/\/$/, '');
+    return normalized.endsWith('/api') ? normalized : `${normalized}/api`;
+  } catch {
+    const normalized = candidate
+      .replace(/^https:\/\/www\.umunsi\.com/i, 'https://umunsi.com')
+      .replace(/\/$/, '');
+
+    return normalized.endsWith('/api') ? normalized : `${normalized}/api`;
+  }
+};
+
+const API_BASE_URL = normalizeApiBaseUrl(import.meta.env.VITE_API_URL);
 
 export const getApiBaseUrl = () => API_BASE_URL;
 
 export const getServerBaseUrl = () =>
-  API_BASE_URL.replace(/\/api\/?$/, '') || (typeof window !== 'undefined' ? window.location.origin : 'https://umunsi.com');
+  API_BASE_URL.replace(/\/api\/?$/, '') || (typeof window !== 'undefined' ? window.location.origin : 'https://www.umunsi.com');
 
 export const resolveAssetUrl = (url?: string | null) => {
   if (!url) return '';
@@ -16,6 +47,12 @@ export const resolveAssetUrl = (url?: string | null) => {
   if (rawValue.startsWith('//')) return `https:${rawValue}`;
 
   const serverBaseUrl = getServerBaseUrl();
+  const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://www.umunsi.com';
+  const proxiedUploadsBase = `${currentOrigin}/api/uploads`;
+  const toProxiedUploadsUrl = (pathname: string, search = '', hash = '') => {
+    if (!pathname.startsWith('/uploads/')) return `${currentOrigin}${pathname}${search}${hash}`;
+    return `${proxiedUploadsBase}${pathname.replace(/^\/uploads/, '')}${search}${hash}`;
+  };
 
   try {
     const parsed = rawValue.startsWith('http://') || rawValue.startsWith('https://')
@@ -23,15 +60,24 @@ export const resolveAssetUrl = (url?: string | null) => {
       : new URL(rawValue.startsWith('/') ? rawValue : `/${rawValue.replace(/^\.?\//, '')}`, serverBaseUrl);
 
     const host = parsed.hostname.toLowerCase();
-    if (host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0') {
+    const isLocalHost = host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0';
+    const isUmunsiHost = host === 'umunsi.com' || host === 'www.umunsi.com';
+
+    if ((isLocalHost || isUmunsiHost) && parsed.pathname.startsWith('/uploads/')) {
+      return toProxiedUploadsUrl(parsed.pathname, parsed.search, parsed.hash);
+    }
+
+    if (isLocalHost) {
       return `${serverBaseUrl}${parsed.pathname}${parsed.search}${parsed.hash}`;
     }
 
     return parsed.toString();
   } catch {
-    if (rawValue.startsWith('/')) return `${serverBaseUrl}${rawValue}`;
-    if (rawValue.startsWith('uploads/') || rawValue.startsWith('images/')) return `${serverBaseUrl}/${rawValue}`;
-    return `${serverBaseUrl}/uploads/${rawValue.replace(/^\.?\//, '')}`;
+    if (rawValue.startsWith('/uploads/')) return toProxiedUploadsUrl(rawValue);
+    if (rawValue.startsWith('/')) return `${currentOrigin}${rawValue}`;
+    if (rawValue.startsWith('uploads/')) return `${proxiedUploadsBase}/${rawValue.replace(/^uploads\//, '')}`;
+    if (rawValue.startsWith('images/')) return `${currentOrigin}/${rawValue}`;
+    return `${proxiedUploadsBase}/${rawValue.replace(/^\.?\//, '')}`;
   }
 };
 
@@ -573,6 +619,9 @@ class ApiClient {
   ): Promise<T> {
     const url = `${this.baseURL}${endpoint}`;
     const shouldSkipAuthRedirect = AUTH_FREE_ENDPOINTS.some((path) => endpoint.startsWith(path));
+    const canUseProdFallback = import.meta.env.PROD
+      && this.baseURL !== FALLBACK_PROD_API_URL
+      && endpoint.startsWith('/');
 
     if (!this.token) {
       try {
@@ -637,6 +686,20 @@ class ApiClient {
 
       return data;
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error || '');
+      const isNetworkStyleError = /fetch|network|load failed|failed to fetch/i.test(errorMessage);
+
+      if (canUseProdFallback && isNetworkStyleError) {
+        const previousBaseUrl = this.baseURL;
+        this.baseURL = FALLBACK_PROD_API_URL;
+
+        try {
+          return await this.request<T>(endpoint, options, retryCount);
+        } finally {
+          this.baseURL = previousBaseUrl;
+        }
+      }
+
       throw error;
     }
   }
