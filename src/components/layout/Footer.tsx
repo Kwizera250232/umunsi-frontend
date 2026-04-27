@@ -95,7 +95,7 @@ const Footer = () => {
                       </span>
                       <ExternalLink size={11} className="text-gray-600 group-hover:text-[#fcd535] transition-colors shrink-0" />
                     </div>
-                    <p className="text-gray-500 text-xs truncate">{brand.description}</p>
+
                   </div>
                 </a>
               ))}

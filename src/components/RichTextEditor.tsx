@@ -298,7 +298,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
 
     const youtubeId = getYouTubeVideoId(url);
     if (youtubeId) {
-      const origin = typeof window !== 'undefined' ? window.location.origin : 'https://umunsi.com';
+      const origin = typeof window !== 'undefined' ? window.location.origin : 'https://www.umunsi.com';
       const params = `rel=0&modestbranding=1&playsinline=1&origin=${encodeURIComponent(origin)}`;
       return `
         <div class="not-prose my-6 overflow-hidden rounded-xl border border-[#2b2f36] bg-[#0b0e11]">
