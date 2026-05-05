@@ -383,7 +383,7 @@ const Home = () => {
     <div className="min-h-screen bg-[#0b0e11]">
       {/* Breaking News Ticker */}
       <div className="bg-gradient-to-r from-emerald-600 to-emerald-700 text-white py-2 overflow-hidden">
-        <div className="max-w-7xl mx-auto px-3 flex items-center gap-4">
+        <div className="w-full px-3 flex items-center gap-4">
           <div className="flex items-center gap-2 bg-white/20 px-3 py-1 rounded-full flex-shrink-0">
             <AlertCircle className="w-4 h-4 animate-pulse" />
             <span className="text-xs font-bold uppercase">Inkuru zigezweho</span>
@@ -409,7 +409,7 @@ const Home = () => {
 
       {/* Date & Weather Bar */}
       <div className="bg-[#181a20] border-b border-[#2b2f36] py-2">
-        <div className="max-w-7xl mx-auto px-3 flex flex-wrap items-center justify-between gap-2 text-sm">
+        <div className="w-full px-3 flex flex-wrap items-center justify-between gap-2 text-sm">
           <div className="flex items-center gap-4 text-gray-400">
             <span className="flex items-center gap-1">
               <Calendar className="w-4 h-4 text-[#fcd535]" />
@@ -433,7 +433,7 @@ const Home = () => {
               </div>
                       </div>
 
-      <div className="max-w-7xl mx-auto px-3 py-4">
+      <div className="w-full px-3 py-4">
         {/* First Section - Inkuru Nyamukuru */}
         <div className="mb-6 rounded-lg overflow-hidden border border-[#2b2f36] bg-[#181a20]">
           <div className="bg-emerald-700 text-white px-4 py-2">

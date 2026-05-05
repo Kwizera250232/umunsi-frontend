@@ -127,7 +127,7 @@ const AdminNavbar: React.FC<AdminNavbarProps> = ({ user: propUser }) => {
 
       {/* Navbar */}
       <nav className="bg-[#181a20]/95 backdrop-blur-xl border-b border-[#2b2f36] sticky top-0 z-30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             
             {/* Left side - Logo and Mobile menu */}

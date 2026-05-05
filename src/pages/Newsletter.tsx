@@ -72,7 +72,7 @@ const Newsletter = () => {
     <div className="min-h-screen bg-[#0b0e11]">
       {/* Header Banner */}
       <div className="bg-gradient-to-r from-[#181a20] via-[#1e2329] to-[#181a20] border-b border-[#2b2f36]">
-        <div className="max-w-7xl mx-auto px-3 py-8">
+        <div className="px-3 py-8">
           <div className="flex items-center gap-2 text-sm text-gray-400 mb-4">
             <Link to="/" className="hover:text-[#fcd535] transition-colors">Ahabanza</Link>
             <ChevronRight className="w-4 h-4" />
@@ -90,7 +90,7 @@ const Newsletter = () => {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-3 py-6">
+      <div className="px-3 py-6">
         {showAds && (
           <div className="mb-6 bg-[#181a20] rounded-lg overflow-hidden">
             <div className="p-2 border-b border-[#2b2f36]">

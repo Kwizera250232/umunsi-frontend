@@ -121,7 +121,7 @@ const CategoryPage = () => {
     <div className="min-h-screen bg-[#0b0e11]">
       {/* Category Header Banner */}
       <div className="bg-gradient-to-r from-[#181a20] via-[#1e2329] to-[#181a20] border-b border-[#2b2f36]">
-        <div className="max-w-7xl mx-auto px-3 py-6">
+        <div className="px-3 py-6">
           {/* Breadcrumb */}
           <div className="flex items-center gap-2 text-sm text-gray-400 mb-4">
             <Link to="/" className="hover:text-[#fcd535] transition-colors">Ahabanza</Link>
@@ -145,7 +145,7 @@ const CategoryPage = () => {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-3 py-6">
+      <div className="px-3 py-6">
         {posts.length > 0 ? (
           <>
             {/* Hero Section - Featured + Secondary */}
