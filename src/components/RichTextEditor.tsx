@@ -8,6 +8,7 @@ import {
   Quote, 
   Link, 
   Image as ImageIcon,
+  Upload,
   Type,
   AlignLeft,
   AlignCenter,
@@ -34,6 +35,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
   const editorRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isFocused, setIsFocused] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
   const [showMediaLibrary, setShowMediaLibrary] = useState(false);
   const [showImageSourceMenu, setShowImageSourceMenu] = useState(false);
   const [showUrlInsertMenu, setShowUrlInsertMenu] = useState(false);
@@ -156,9 +158,37 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     handleContentChange();
   };
 
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
+  const handleDroppedImage = async (file: File) => {
+    try {
+      const formData = new FormData();
+      formData.append('files', file);
+      const uploaded = await apiClient.uploadMediaFiles(formData);
+      const uploadedFile = uploaded[0];
+      if (!uploadedFile) {
+        alert('Upload failed. Please try again.');
+        return;
+      }
+      const imageUrl = normalizeImageUrl(uploadedFile.url);
+      insertImageBlock(imageUrl, uploadedFile.originalName || file.name);
+    } catch (error) {
+      console.error('Failed to upload dropped image:', error);
+      alert('Failed to upload image. Please try again.');
+    }
+  };
 
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    setIsDragOver(false);
+    // Handle image file drops first
+    if (e.dataTransfer.files.length > 0) {
+      const imageFile = Array.from(e.dataTransfer.files).find((f) => f.type.startsWith('image/'));
+      if (imageFile) {
+        e.preventDefault();
+        handleDroppedImage(imageFile);
+        return;
+      }
+    }
+
+    e.preventDefault();
     const html = e.dataTransfer.getData('text/html');
     const text = e.dataTransfer.getData('text/plain');
 
@@ -230,6 +260,20 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     fileInputRef.current?.click();
   };
 
+  // Also close image menu when clicking outside
+  useEffect(() => {
+    if (!showImageSourceMenu && !showUrlInsertMenu) return;
+    const handleOutsideClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('.rich-text-editor')) {
+        setShowImageSourceMenu(false);
+        setShowUrlInsertMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, [showImageSourceMenu, showUrlInsertMenu]);
+
   const handleMediaSelect = (media: MediaFile) => {
     const imageUrl = normalizeImageUrl(media.url);
     insertImageBlock(imageUrl, media.originalName || 'Inserted image');
@@ -264,6 +308,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
 
   const insertLink = () => {
     setShowUrlInsertMenu((prev) => !prev);
+    setShowImageSourceMenu(false);
   };
 
   const getYouTubeVideoId = (url: string) => {
@@ -813,16 +858,101 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
 
         {/* Insert */}
         <div className="flex items-center gap-1 border-r border-[#2b2f36] pr-2">
-          <ToolbarButton
-            onClick={insertLink}
-            icon={<Link className="w-4 h-4" />}
-            title="Insert Link"
-          />
-          <ToolbarButton
-            onClick={() => setShowImageSourceMenu((prev) => !prev)}
-            icon={<ImageIcon className="w-4 h-4" />}
-            title="Insert Image"
-          />
+          {/* Link button with relative dropdown */}
+          <div className="relative">
+            <ToolbarButton
+              onClick={insertLink}
+              icon={<Link className="w-4 h-4" />}
+              title="Insert Link / YouTube / Instagram"
+              isActive={showUrlInsertMenu}
+            />
+            {showUrlInsertMenu && (
+              <div className="absolute top-10 left-0 z-30 bg-[#0b0e11] border border-[#2b2f36] rounded-lg shadow-xl p-3 w-[340px] sm:w-[380px]">
+                <p className="text-xs text-gray-400 mb-2">Insert URL (YouTube, Instagram, X/Twitter or normal link)</p>
+                <input
+                  type="url"
+                  value={urlInputValue}
+                  onChange={(e) => {
+                    const nextValue = e.target.value;
+                    setUrlInputValue(nextValue);
+                    const nextPreview = buildEmbedHtmlFromUrl(nextValue);
+                    setUrlPreviewHtml(nextPreview || (nextValue.trim() ? '<p class="text-gray-400">Invalid URL</p>' : ''));
+                    setUrlPreviewValid(Boolean(nextPreview));
+                  }}
+                  placeholder="https://..."
+                  className="w-full px-3 py-2 rounded bg-[#11151b] border border-[#2b2f36] text-sm text-gray-100"
+                />
+                <div className="mt-2 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleGenerateUrlPreview}
+                    className="px-3 py-1.5 rounded bg-[#2b2f36] text-gray-200 text-xs"
+                  >
+                    Preview
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleInsertUrlEmbed}
+                    disabled={!urlPreviewValid}
+                    className="px-3 py-1.5 rounded bg-[#fcd535] text-[#0b0e11] font-semibold text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Insert in Article
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setShowUrlInsertMenu(false); setUrlInputValue(''); setUrlPreviewHtml(''); setUrlPreviewValid(false); }}
+                    className="px-3 py-1.5 rounded bg-[#2b2f36] text-gray-400 text-xs ml-auto"
+                  >
+                    ✕
+                  </button>
+                </div>
+                {urlPreviewHtml && (
+                  <div className="mt-3 border border-[#2b2f36] rounded p-2 max-h-52 overflow-auto">
+                    <div dangerouslySetInnerHTML={{ __html: urlPreviewHtml }} />
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Image button — prominent, with relative dropdown */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowImageSourceMenu((prev) => !prev)}
+              title="Insert Image (from library or computer)"
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                showImageSourceMenu
+                  ? 'bg-[#fcd535] text-[#0b0e11]'
+                  : 'bg-[#fcd535]/15 text-[#fcd535] hover:bg-[#fcd535]/25 border border-[#fcd535]/40'
+              }`}
+            >
+              <ImageIcon className="w-4 h-4" />
+              <span className="hidden sm:inline">Add Image</span>
+            </button>
+            {showImageSourceMenu && (
+              <div className="absolute top-10 left-0 z-20 bg-[#0b0e11] border border-[#2b2f36] rounded-lg shadow-xl p-2 min-w-[210px]">
+                <p className="text-[0.65rem] text-gray-500 uppercase tracking-wider px-3 py-1">Choose source</p>
+                <button
+                  type="button"
+                  onClick={chooseImageFromLibrary}
+                  className="w-full flex items-center gap-2 px-3 py-2.5 rounded text-sm text-gray-200 hover:bg-[#1e2329]"
+                >
+                  <ImageIcon className="w-4 h-4 text-[#fcd535]" />
+                  Media Library
+                </button>
+                <button
+                  type="button"
+                  onClick={chooseImageFromComputer}
+                  className="w-full flex items-center gap-2 px-3 py-2.5 rounded text-sm text-gray-200 hover:bg-[#1e2329]"
+                >
+                  <Upload className="w-4 h-4 text-blue-400" />
+                  Upload from Device
+                </button>
+              </div>
+            )}
+          </div>
+
           <ToolbarButton
             onClick={() => execCommand('formatBlock', 'blockquote')}
             icon={<Quote className="w-4 h-4" />}
@@ -843,66 +973,6 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
             title="Redo (Ctrl+Shift+Z)"
           />
         </div>
-
-        {showImageSourceMenu && (
-          <div className="absolute top-12 left-[285px] z-20 bg-[#0b0e11] border border-[#2b2f36] rounded-lg shadow-xl p-2 min-w-[240px]">
-            <button
-              type="button"
-              onClick={chooseImageFromLibrary}
-              className="w-full text-left px-3 py-2 rounded text-sm text-gray-200 hover:bg-[#1e2329]"
-            >
-              Library
-            </button>
-            <button
-              type="button"
-              onClick={chooseImageFromComputer}
-              className="w-full text-left px-3 py-2 rounded text-sm text-gray-200 hover:bg-[#1e2329]"
-            >
-              Desktop / Device
-            </button>
-          </div>
-        )}
-
-        {showUrlInsertMenu && (
-          <div className="absolute top-12 left-[220px] z-30 bg-[#0b0e11] border border-[#2b2f36] rounded-lg shadow-xl p-3 w-[380px]">
-            <p className="text-xs text-gray-400 mb-2">Insert URL (YouTube, Instagram, X/Twitter or normal link)</p>
-            <input
-              type="url"
-              value={urlInputValue}
-              onChange={(e) => {
-                const nextValue = e.target.value;
-                setUrlInputValue(nextValue);
-                const nextPreview = buildEmbedHtmlFromUrl(nextValue);
-                setUrlPreviewHtml(nextPreview || (nextValue.trim() ? '<p class="text-gray-400">Invalid URL</p>' : ''));
-                setUrlPreviewValid(Boolean(nextPreview));
-              }}
-              placeholder="https://..."
-              className="w-full px-3 py-2 rounded bg-[#11151b] border border-[#2b2f36] text-sm text-gray-100"
-            />
-            <div className="mt-2 flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handleGenerateUrlPreview}
-                className="px-3 py-1.5 rounded bg-[#2b2f36] text-gray-200 text-xs"
-              >
-                Preview
-              </button>
-              <button
-                type="button"
-                onClick={handleInsertUrlEmbed}
-                disabled={!urlPreviewValid}
-                className="px-3 py-1.5 rounded bg-[#fcd535] text-[#0b0e11] font-semibold text-xs disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Insert Preview in Article
-              </button>
-            </div>
-            {urlPreviewHtml && (
-              <div className="mt-3 border border-[#2b2f36] rounded p-2 max-h-52 overflow-auto">
-                <div dangerouslySetInnerHTML={{ __html: urlPreviewHtml }} />
-              </div>
-            )}
-          </div>
-        )}
       </div>
 
       {/* Editor */}
@@ -911,18 +981,48 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
         contentEditable
         onInput={handleContentChange}
         onPaste={handlePaste}
-        onDragOver={(e) => e.preventDefault()}
+        onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
+        onDragLeave={() => setIsDragOver(false)}
         onDrop={handleDrop}
         onKeyDown={handleKeyDown}
         onFocus={() => setIsFocused(true)}
         onBlur={() => setIsFocused(false)}
-        className={`min-h-[300px] p-4 focus:outline-none text-white bg-[#0b0e11] rounded-b-xl ${
-          isFocused ? 'ring-2 ring-[#fcd535]/50' : ''
+        className={`min-h-[300px] p-4 focus:outline-none text-white bg-[#0b0e11] transition-all ${
+          isDragOver
+            ? 'ring-2 ring-[#fcd535] bg-[#fcd535]/5'
+            : isFocused
+            ? 'ring-2 ring-[#fcd535]/50'
+            : ''
         }`}
         style={{ minHeight: '300px', color: 'white' }}
         data-placeholder={placeholder}
         suppressContentEditableWarning={true}
       />
+
+      {/* Drag & Drop hint / Quick image insert bar */}
+      <div className="flex items-center justify-between px-4 py-2 border-t border-[#2b2f36] bg-[#1e2329] rounded-b-xl">
+        <p className="text-xs text-gray-500">
+          {isDragOver ? '📸 Drop image here to upload!' : 'Drag & drop images directly into the editor, or use the '}
+          {!isDragOver && (
+            <button
+              type="button"
+              onClick={() => setShowMediaLibrary(true)}
+              className="text-[#fcd535] hover:underline"
+            >
+              Add Image
+            </button>
+          )}
+          {!isDragOver && ' button above'}
+        </p>
+        <button
+          type="button"
+          onClick={() => setShowMediaLibrary(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-[#fcd535] text-[#0b0e11] text-xs font-semibold rounded-lg hover:bg-[#f0b90b] transition-colors"
+        >
+          <ImageIcon className="w-3.5 h-3.5" />
+          Insert Image
+        </button>
+      </div>
 
       {/* Placeholder */}
       {!value && (

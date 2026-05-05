@@ -242,7 +242,16 @@ html.day-mode .admin-article-content * {
 .article-content-readable p,
 .admin-article-content p {
   margin: 0 0 1.05em !important;
-  line-height: 1.86 !important;
+  line-height: 1.88 !important;
+  font-size: 1.2rem !important;
+}
+
+@media (max-width: 640px) {
+  .article-content-readable p,
+  .admin-article-content p {
+    font-size: 1.07rem !important;
+    line-height: 1.82 !important;
+  }
 }
 
 .article-content-readable p + p,
