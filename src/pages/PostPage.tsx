@@ -763,7 +763,7 @@ const PostPage = () => {
     <div className="min-h-screen bg-[#0b0e11]">
       {/* Breadcrumb */}
       <div className="bg-[#181a20] border-b border-[#2b2f36]">
-        <div className="max-w-7xl mx-auto px-3 py-3">
+        <div className="max-w-7xl mx-auto px-3 py-2 sm:py-3">
           <div className="flex items-center gap-2 text-sm text-gray-400">
             <Link to="/" className="hover:text-[#fcd535]">Ahabanza</Link>
             <ChevronRight className="w-4 h-4" />
@@ -780,14 +780,14 @@ const PostPage = () => {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-3 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="max-w-7xl mx-auto px-0 sm:px-3 py-0 sm:py-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-0 sm:gap-6">
           {/* Main Content */}
           <div className="lg:col-span-8">
             {/* Article Header */}
-            <article className="bg-[#181a20] rounded-lg overflow-hidden">
+            <article className="bg-[#181a20] rounded-none sm:rounded-lg overflow-hidden">
               {/* Category & Date Header */}
-              <div className="p-4 pb-0">
+              <div className="p-3 sm:p-4 pb-0">
                 <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
                   {post.category && (
                     <Link 
@@ -810,7 +810,7 @@ const PostPage = () => {
                 </div>
 
                 {/* Title */}
-                <h1 className="text-2xl md:text-3xl font-bold text-white leading-tight mb-4">
+                <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white leading-tight mb-4">
                   {post.title}
                 </h1>
 
@@ -897,11 +897,11 @@ const PostPage = () => {
 
               {/* Featured Image */}
               {effectiveFeaturedImage && !isPremiumLocked && (
-                <div className="px-4 py-4">
+                <div className="px-0 sm:px-4 py-0 sm:py-4">
                   <img
                     src={getImageUrl(effectiveFeaturedImage)}
                     alt={post.title}
-                    className="w-full h-auto rounded-lg"
+                    className="w-full h-auto sm:rounded-lg"
                   />
                 </div>
               )}
@@ -953,7 +953,7 @@ const PostPage = () => {
               </div>
 
               {/* Article Content */}
-              <div className="p-4">
+              <div className="p-3 sm:p-5 md:p-6">
                 {showAds && !isPremiumLocked && (
                   <div key={`ad-before-${post?.id}`} className="article-before-content-ad not-prose mb-6" style={{ textAlign: 'center', overflow: 'visible' }}>
                     <p className="text-gray-500 text-[0.7rem] uppercase tracking-wide mb-1">Advertisement</p>
@@ -969,7 +969,7 @@ const PostPage = () => {
                 )}
 
                 {post.excerpt && !isPremiumLocked && (
-                  <p className="text-gray-200 text-xl leading-relaxed mb-6 font-medium border-l-4 border-[#fcd535] pl-4">
+                  <p className="text-gray-200 text-lg sm:text-xl md:text-2xl leading-relaxed mb-6 font-medium border-l-4 border-[#fcd535] pl-3 sm:pl-4">
                     {post.excerpt}
                   </p>
                 )}
@@ -1027,7 +1027,7 @@ const PostPage = () => {
                 ) : (
                   <div 
                     className="article-content-readable prose prose-invert prose-xl max-w-none text-gray-200"
-                    style={{ wordBreak: 'break-word', fontSize: '1.2rem' }}
+                    style={{ wordBreak: 'break-word', fontSize: 'clamp(1.08rem, 2.5vw, 1.3rem)' }}
                     dangerouslySetInnerHTML={{ __html: contentWithInlineAd }}
                   />
                 )}
@@ -1071,7 +1071,7 @@ const PostPage = () => {
 
             {/* Related Posts */}
             {relatedPosts.length > 0 && (
-              <div className="mt-6 bg-[#181a20] rounded-lg p-4">
+              <div className="mt-0 sm:mt-6 bg-[#181a20] rounded-none sm:rounded-lg p-4">
                 <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
                   <span className="w-1 h-6 bg-[#fcd535] rounded"></span>
                   Andi makuru ajyanye
@@ -1103,7 +1103,7 @@ const PostPage = () => {
             )}
 
             {/* Comments Section */}
-            <div className="mt-6 bg-[#181a20] rounded-lg p-4">
+            <div className="mt-0 sm:mt-6 bg-[#181a20] rounded-none sm:rounded-lg p-4">
               <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
                 <span className="w-1 h-6 bg-[#fcd535] rounded"></span>
                 Ibitekerezo ({comments.length})
@@ -1156,7 +1156,7 @@ const PostPage = () => {
           </div>
 
           {/* Sidebar */}
-          <div className="lg:col-span-4">
+          <div className="hidden lg:block lg:col-span-4">
             <div className="sticky top-4 space-y-4 max-h-[calc(100vh-2rem)] overflow-y-auto pb-4 scrollbar-hide">
             {/* Latest News */}
             <div className="bg-[#181a20] rounded-lg p-4">
