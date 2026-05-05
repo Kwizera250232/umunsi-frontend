@@ -398,7 +398,7 @@ const PostPage = () => {
 
     let cancelled = false;
     let attempts = 0;
-    const maxAttempts = 28;
+    const maxAttempts = 20;
 
     const tryRenderInlineAd = () => {
       if (cancelled) return;
@@ -408,7 +408,7 @@ const PostPage = () => {
       ) as HTMLElement[];
 
       if (adElements.length === 0) {
-        if (attempts++ < maxAttempts) setTimeout(tryRenderInlineAd, 250);
+        if (attempts++ < maxAttempts) setTimeout(tryRenderInlineAd, 100);
         return;
       }
 
@@ -421,25 +421,25 @@ const PostPage = () => {
       }
 
       if (!window.adsbygoogle) {
-        if (attempts++ < maxAttempts) setTimeout(tryRenderInlineAd, 250);
-        return;
+        window.adsbygoogle = [];
       }
 
       try {
         pendingAds.forEach((element) => {
-          window.adsbygoogle!.push({});
+          (window.adsbygoogle as unknown as Array<Record<string, unknown>>).push({});
           element.dataset.adInitialized = '1';
         });
       } catch (error) {
         if (attempts++ < maxAttempts) {
-          setTimeout(tryRenderInlineAd, 650);
+          setTimeout(tryRenderInlineAd, 200);
           return;
         }
         console.error('AdSense inline ad render failed:', error);
       }
     };
 
-    tryRenderInlineAd();
+    // Run immediately on next frame for fastest possible render
+    requestAnimationFrame(() => tryRenderInlineAd());
 
     return () => {
       cancelled = true;
