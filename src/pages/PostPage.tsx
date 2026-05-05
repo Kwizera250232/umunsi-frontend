@@ -177,9 +177,10 @@ const normalizeArticleHtml = (content?: string) => {
 };
 
 const createArticleAdBlock = (slot: string, marker: string) => `
-  <div class="article-inline-ad not-prose my-8" data-ad-marker="${marker}">
+  <div class="article-inline-ad not-prose my-8" data-ad-marker="${marker}" style="text-align:center;overflow:visible;">
+    <p style="font-size:0.7rem;color:#6b7280;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">Advertisement</p>
     <ins class="adsbygoogle"
-      style="display:block"
+      style="display:block;min-height:100px;"
       data-ad-client="ca-pub-3584259871242471"
       data-ad-slot="${slot}"
       data-ad-format="auto"
@@ -191,6 +192,7 @@ const ADSENSE_BEFORE_CONTENT_SLOT = '8081945273';
 const ADSENSE_AFTER_PARAGRAPH_3_SLOT = '6489436663';
 const ADSENSE_AFTER_PARAGRAPH_5_SLOT = '6849820312';
 const ADSENSE_AFTER_PARAGRAPH_7_SLOT = '6385720225';
+const ADSENSE_SIDEBAR_SLOT = '9267546505'; // Create a sidebar ad unit in your AdSense account and update this slot ID
 
 const SUPPORT_WHATSAPP = '250791859465';
 const SUPPORT_CALL = '0791859465';
@@ -402,7 +404,7 @@ const PostPage = () => {
       if (cancelled) return;
 
       const adElements = Array.from(
-        document.querySelectorAll('.article-before-content-ad ins.adsbygoogle, .article-inline-ad ins.adsbygoogle')
+        document.querySelectorAll('.article-before-content-ad ins.adsbygoogle, .article-inline-ad ins.adsbygoogle, .article-sidebar-ad ins.adsbygoogle')
       ) as HTMLElement[];
 
       if (adElements.length === 0) {
@@ -953,10 +955,11 @@ const PostPage = () => {
               {/* Article Content */}
               <div className="p-4">
                 {showAds && !isPremiumLocked && (
-                  <div className="article-before-content-ad not-prose mb-6">
+                  <div key={`ad-before-${post?.id}`} className="article-before-content-ad not-prose mb-6" style={{ textAlign: 'center', overflow: 'visible' }}>
+                    <p className="text-gray-500 text-[0.7rem] uppercase tracking-wide mb-1">Advertisement</p>
                     <ins
                       className="adsbygoogle"
-                      style={{ display: 'block' }}
+                      style={{ display: 'block', minHeight: '100px' }}
                       data-ad-client="ca-pub-3584259871242471"
                       data-ad-slot={ADSENSE_BEFORE_CONTENT_SLOT}
                       data-ad-format="auto"
@@ -966,7 +969,7 @@ const PostPage = () => {
                 )}
 
                 {post.excerpt && !isPremiumLocked && (
-                  <p className="text-gray-300 text-lg leading-relaxed mb-6 font-medium border-l-4 border-[#fcd535] pl-4">
+                  <p className="text-gray-200 text-xl leading-relaxed mb-6 font-medium border-l-4 border-[#fcd535] pl-4">
                     {post.excerpt}
                   </p>
                 )}
@@ -1023,8 +1026,8 @@ const PostPage = () => {
                   </div>
                 ) : (
                   <div 
-                    className="article-content-readable prose prose-invert prose-lg max-w-none text-gray-300"
-                    style={{ wordBreak: 'break-word' }}
+                    className="article-content-readable prose prose-invert prose-xl max-w-none text-gray-200"
+                    style={{ wordBreak: 'break-word', fontSize: '1.2rem' }}
                     dangerouslySetInnerHTML={{ __html: contentWithInlineAd }}
                   />
                 )}
@@ -1153,28 +1156,29 @@ const PostPage = () => {
           </div>
 
           {/* Sidebar */}
-          <div className="lg:col-span-4 space-y-6">
+          <div className="lg:col-span-4">
+            <div className="sticky top-4 space-y-4 max-h-[calc(100vh-2rem)] overflow-y-auto pb-4 scrollbar-hide">
             {/* Latest News */}
             <div className="bg-[#181a20] rounded-lg p-4">
-              <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                <span className="w-1 h-6 bg-[#fcd535] rounded"></span>
+              <h3 className="text-base font-bold text-white mb-3 flex items-center gap-2">
+                <span className="w-1 h-5 bg-[#fcd535] rounded"></span>
                 Amakuru Mashya
               </h3>
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {latestPosts.map((lPost, index) => (
                   <Link 
                     key={lPost.id}
                     to={`/post/${lPost.slug}`}
-                    className="flex gap-3 group"
+                    className="flex gap-2 group"
                   >
-                    <span className="w-8 h-8 bg-[#fcd535] text-[#0b0e11] rounded flex items-center justify-center font-bold text-sm flex-shrink-0">
+                    <span className="w-6 h-6 bg-[#fcd535] text-[#0b0e11] rounded flex items-center justify-center font-bold text-xs flex-shrink-0 mt-0.5">
                       {index + 1}
                     </span>
                     <div className="flex-1 min-w-0">
-                      <h4 className="text-gray-300 text-sm group-hover:text-[#fcd535] transition-colors line-clamp-2">
+                      <h4 className="text-gray-300 text-sm group-hover:text-[#fcd535] transition-colors line-clamp-2 leading-snug">
                         {lPost.title}
                       </h4>
-                      <p className="text-gray-500 text-xs mt-1">
+                      <p className="text-gray-500 text-xs mt-0.5">
                         {formatDate(lPost.publishedAt || lPost.createdAt)}
                       </p>
                     </div>
@@ -1183,12 +1187,18 @@ const PostPage = () => {
               </div>
             </div>
 
+            {/* Sidebar AdSense */}
             {showAds && (
-              <div className="bg-[#181a20] rounded-lg p-4 text-center">
-                <p className="text-gray-500 text-xs mb-2">ADVERTISEMENT</p>
-                <div className="bg-[#0b0e11] rounded-lg h-60 flex items-center justify-center border border-dashed border-[#2b2f36]">
-                  <span className="text-gray-600">Ad Space</span>
-                </div>
+              <div key={`sidebar-ad-${post?.id}`} className="article-sidebar-ad bg-[#181a20] rounded-lg p-3 text-center" style={{ overflow: 'visible' }}>
+                <p className="text-gray-500 text-[0.65rem] uppercase tracking-wider mb-2">Advertisement</p>
+                <ins
+                  className="adsbygoogle"
+                  style={{ display: 'block', minHeight: '250px' }}
+                  data-ad-client="ca-pub-3584259871242471"
+                  data-ad-slot={ADSENSE_SIDEBAR_SLOT}
+                  data-ad-format="auto"
+                  data-full-width-responsive="true"
+                ></ins>
               </div>
             )}
 
@@ -1197,7 +1207,7 @@ const PostPage = () => {
               {post.category && (
                 <Link 
                   to={`/category/${post.category.slug}`}
-                  className="flex items-center justify-between w-full p-3 bg-[#181a20] rounded-lg text-gray-300 hover:text-[#fcd535] transition-colors"
+                  className="flex items-center justify-between w-full p-3 bg-[#181a20] rounded-lg text-gray-300 hover:text-[#fcd535] transition-colors text-sm"
                 >
                   <span>Reba byose muri {post.category.name}</span>
                   <ChevronRight className="w-4 h-4" />
@@ -1205,11 +1215,12 @@ const PostPage = () => {
               )}
               <Link 
                 to="/"
-                className="flex items-center gap-2 w-full p-3 bg-[#181a20] rounded-lg text-gray-300 hover:text-[#fcd535] transition-colors"
+                className="flex items-center gap-2 w-full p-3 bg-[#181a20] rounded-lg text-gray-300 hover:text-[#fcd535] transition-colors text-sm"
               >
                 <ArrowLeft className="w-4 h-4" />
                 Subira Ahabanza
               </Link>
+            </div>
             </div>
           </div>
         </div>
