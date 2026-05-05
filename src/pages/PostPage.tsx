@@ -895,17 +895,6 @@ const PostPage = () => {
                 </div>
               </div>
 
-              {/* Featured Image */}
-              {effectiveFeaturedImage && !isPremiumLocked && (
-                <div className="px-0 sm:px-4 py-0 sm:py-4">
-                  <img
-                    src={getImageUrl(effectiveFeaturedImage)}
-                    alt={post.title}
-                    className="w-full h-auto sm:rounded-lg"
-                  />
-                </div>
-              )}
-
               {/* Social Share Bar */}
               <div className="px-4 py-3 border-b border-[#2b2f36] flex items-center justify-between">
                 <span className="text-sm text-gray-400">Sangiza:</span>
@@ -954,6 +943,17 @@ const PostPage = () => {
 
               {/* Article Content */}
               <div className="p-3 sm:p-5 md:p-6">
+                {/* Featured Image - above ad */}
+                {effectiveFeaturedImage && !isPremiumLocked && (
+                  <div className="mb-4">
+                    <img
+                      src={getImageUrl(effectiveFeaturedImage)}
+                      alt={post.title}
+                      className="w-full h-auto rounded-lg"
+                    />
+                  </div>
+                )}
+
                 {showAds && !isPremiumLocked && (
                   <div key={`ad-before-${post?.id}`} className="article-before-content-ad not-prose mb-6" style={{ textAlign: 'center', overflow: 'visible' }}>
                     <p className="text-gray-500 text-[0.7rem] uppercase tracking-wide mb-1">Advertisement</p>
