@@ -278,7 +278,7 @@ const ClassifiedAds = () => {
 
   return (
     <div className="min-h-screen bg-[#0b0e11] py-6">
-      <div className="max-w-7xl mx-auto px-3 space-y-5">
+      <div className="px-3 space-y-5">
         {loading && (
           <div className="bg-[#181a20] border border-[#2b2f36] rounded-xl p-4 text-sm text-gray-400">Turimo kuzana amatangazo...</div>
         )}

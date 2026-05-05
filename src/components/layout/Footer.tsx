@@ -35,7 +35,7 @@ const Footer = () => {
   return (
     <footer className="bg-[#0b0e11] border-t border-[#2b2f36]">
       {/* Main Footer Content */}
-      <div className="max-w-7xl mx-auto px-4 py-12">
+      <div className="w-full px-4 py-12">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12">
           {/* Brand Section */}
           <div className="sm:col-span-2 lg:col-span-1">
@@ -183,7 +183,7 @@ const Footer = () => {
 
       {/* Bottom Bar */}
       <div className="border-t border-[#2b2f36]">
-        <div className="max-w-7xl mx-auto px-4 py-4">
+        <div className="w-full px-4 py-4">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <p className="text-gray-500 text-xs flex items-center">
             © {currentYear} Umunsi 
