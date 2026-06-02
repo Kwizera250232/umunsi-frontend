@@ -1,3 +1,5 @@
+import { buildCacheKey, cachedRequest, invalidateCachePrefix } from '../lib/requestCache';
+
 // API Base Configuration
 const PRIMARY_PROD_API_URL = '/api';
 const FALLBACK_PROD_API_URL = 'https://api.umunsi.com/api';
@@ -680,8 +682,23 @@ class ApiClient {
         throw new Error('Authentication required. Please login.');
       }
 
+      if (response.status === 429) {
+        const rateMessage =
+          data.error || data.message || 'Too many requests. Please wait a moment and try again.';
+        if (retryCount < 3) {
+          const delay = Math.min(800 * 2 ** retryCount + Math.random() * 400, 6000);
+          await new Promise((resolve) => window.setTimeout(resolve, delay));
+          return this.request<T>(endpoint, options, retryCount + 1);
+        }
+        const rateError = new Error(rateMessage);
+        (rateError as Error & { status?: number }).status = 429;
+        throw rateError;
+      }
+
       if (!response.ok) {
-        throw new Error(data.error || data.message || data.details || 'API request failed');
+        const failError = new Error(data.error || data.message || data.details || 'API request failed');
+        (failError as Error & { status?: number }).status = response.status;
+        throw failError;
       }
 
       return data;
@@ -959,15 +976,24 @@ class ApiClient {
 
   // Categories Methods
   async getCategories(options?: { includeInactive?: boolean }): Promise<Category[]> {
-    const params = new URLSearchParams();
-    if (options?.includeInactive) {
-      params.append('includeInactive', 'true');
-    }
-    const queryString = params.toString();
-    const url = queryString ? `/categories?${queryString}` : '/categories';
-    const response = await this.request<{categories: Category[]}>(url);
-    // The API returns {success: true, categories: [...]}
-    return response.categories || [];
+    const includeInactive = Boolean(options?.includeInactive);
+    const cacheKey = buildCacheKey('categories', { includeInactive });
+    const persistKey = includeInactive ? 'umunsi_categories_all_v1' : 'umunsi_categories_v1';
+
+    return cachedRequest(
+      cacheKey,
+      async () => {
+        const params = new URLSearchParams();
+        if (includeInactive) {
+          params.append('includeInactive', 'true');
+        }
+        const queryString = params.toString();
+        const url = queryString ? `/categories?${queryString}` : '/categories';
+        const response = await this.request<{ categories: Category[] }>(url);
+        return response.categories || [];
+      },
+      { ttlMs: 5 * 60_000, persistKey },
+    );
   }
 
   async createCategory(categoryData: Partial<Category>): Promise<{ success: boolean; category: Category; message?: string }> {
@@ -975,6 +1001,7 @@ class ApiClient {
       method: 'POST',
       body: JSON.stringify(categoryData),
     });
+    invalidateCachePrefix('categories');
     return response;
   }
 
@@ -983,11 +1010,13 @@ class ApiClient {
       method: 'PUT',
       body: JSON.stringify(categoryData),
     });
+    invalidateCachePrefix('categories');
     return response;
   }
 
   async deleteCategory(id: string): Promise<void> {
     await this.request(`/categories/${id}`, { method: 'DELETE' });
+    invalidateCachePrefix('categories');
   }
 
   // Users Methods
@@ -1238,21 +1267,38 @@ class ApiClient {
     sortBy?: string;
     sortOrder?: 'asc' | 'desc';
   }): Promise<{ data: Post[]; pagination: any }> {
-    const queryParams = new URLSearchParams();
-    if (params) {
-      Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined) {
-          queryParams.append(key, value.toString());
+    const cacheKey = buildCacheKey('posts', params || {});
+    const persistKey = params?.category
+      ? `umunsi_posts_cat_${params.category}_${params.status || 'any'}_v1`
+      : undefined;
+
+    return cachedRequest(
+      cacheKey,
+      async () => {
+        const queryParams = new URLSearchParams();
+        if (params) {
+          Object.entries(params).forEach(([key, value]) => {
+            if (value !== undefined) {
+              queryParams.append(key, value.toString());
+            }
+          });
         }
-      });
-    }
-    const response = await this.request<{ data: Post[]; pagination: any }>(`/posts?${queryParams}`);
-    return response;
+        return this.request<{ data: Post[]; pagination: any }>(`/posts?${queryParams}`);
+      },
+      { ttlMs: 2 * 60_000, persistKey },
+    );
   }
 
   async getPost(id: string): Promise<Post> {
-    const response = await this.request<{ success: boolean; data: Post }>(`/posts/${id}`);
-    return response.data;
+    const cacheKey = buildCacheKey('post', { id });
+    return cachedRequest(
+      cacheKey,
+      async () => {
+        const response = await this.request<{ success: boolean; data: Post }>(`/posts/${id}`);
+        return response.data;
+      },
+      { ttlMs: 3 * 60_000, persistKey: `umunsi_post_${id}` },
+    );
   }
 
   async trackPostShare(id: string, platform: string): Promise<{ success: boolean; data: { postId: string; platform: string; shareCount: number; shareBreakdown?: Record<string, number> } }> {
@@ -1308,6 +1354,7 @@ class ApiClient {
       method: 'PUT',
       body: JSON.stringify(data),
     });
+    invalidateCachePrefix('posts');
     return response;
   }
 
@@ -1315,6 +1362,7 @@ class ApiClient {
     await this.request(`/posts/${id}`, {
       method: 'DELETE',
     });
+    invalidateCachePrefix('posts');
   }
 
   async deletePosts(ids: string[]): Promise<void> {
@@ -1322,6 +1370,7 @@ class ApiClient {
       method: 'DELETE',
       body: JSON.stringify({ ids }),
     });
+    invalidateCachePrefix('posts');
   }
 
   async getPostStats(): Promise<{
