@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
- 
+
     <meta charset="UTF-8" />
     <link rel="icon" type="image/jpeg" href="https://umunsi.com/uploads/media/thumbnails/thumb_files-1775474034682-900314784.jpg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -33,9 +33,35 @@
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3584259871242471" crossorigin="anonymous"></script>
     <script>window.adsbygoogle = window.adsbygoogle || [];</script>
     <title>Umunsi.com</title>
+    <style>
+      html, body { margin: 0; min-height: 100%; background: #f8f8f5; }
+      #umunsi-instant-shell { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+      @keyframes umunsi-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
+      .umunsi-shimmer { animation: umunsi-pulse 1.2s ease-in-out infinite; }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div id="umunsi-instant-shell" aria-live="polite" aria-busy="true">
+        <div style="background:#0b0e11;border-bottom:1px solid #2b2f36;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;">
+          <div style="height:40px;width:140px;background:#1e2329;border-radius:8px;" class="umunsi-shimmer"></div>
+          <div style="display:flex;gap:8px;">
+            <div style="height:32px;width:72px;background:#1e2329;border-radius:8px;" class="umunsi-shimmer"></div>
+            <div style="height:32px;width:88px;background:#fcd535;border-radius:8px;opacity:0.85;"></div>
+          </div>
+        </div>
+        <div style="background:#047857;color:#fff;padding:8px 16px;font-size:12px;font-weight:700;">INKURU ZIGEZWEHO</div>
+        <div style="padding:16px;max-width:1200px;margin:0 auto;">
+          <div style="height:28px;width:220px;background:#e0e0da;border-radius:6px;margin-bottom:16px;" class="umunsi-shimmer"></div>
+          <div style="height:280px;background:#e8e8e4;border-radius:12px;margin-bottom:16px;" class="umunsi-shimmer"></div>
+          <div style="display:grid;gap:12px;">
+            <div style="height:72px;background:#ecece8;border-radius:8px;" class="umunsi-shimmer"></div>
+            <div style="height:72px;background:#ecece8;border-radius:8px;" class="umunsi-shimmer"></div>
+            <div style="height:72px;background:#ecece8;border-radius:8px;" class="umunsi-shimmer"></div>
+          </div>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

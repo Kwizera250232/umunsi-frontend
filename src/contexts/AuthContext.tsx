@@ -52,9 +52,30 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
+const readStoredUser = (): User | null => {
+  try {
+    const storedUser = localStorage.getItem('umunsi_user') || sessionStorage.getItem('umunsi_user');
+    if (!storedUser) return null;
+    return JSON.parse(storedUser) as User;
+  } catch {
+    return null;
+  }
+};
+
+const readStoredToken = () => {
+  try {
+    return localStorage.getItem('umunsi_token') || sessionStorage.getItem('umunsi_token');
+  } catch {
+    return null;
+  }
+};
+
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(() => readStoredUser());
+  const [isLoading, setIsLoading] = useState(() => {
+    const token = readStoredToken();
+    return Boolean(token) && !readStoredUser();
+  });
 
   // Check if user is authenticated
   const isAuthenticated = !!user;
@@ -197,38 +218,44 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Initialize auth state on app load
   useEffect(() => {
+    const token = readStoredToken();
+    const storedUser = readStoredUser();
+
+    if (!token) {
+      setIsLoading(false);
+      return;
+    }
+
+    apiClient.setToken(token);
+
+    if (storedUser) {
+      setUser(storedUser);
+      setIsLoading(false);
+      void refreshUser().finally(() => undefined);
+      return;
+    }
+
     const initializeAuth = async () => {
       try {
-        const storedUser = localStorage.getItem('umunsi_user') || sessionStorage.getItem('umunsi_user');
-        const storedToken = localStorage.getItem('umunsi_token') || sessionStorage.getItem('umunsi_token');
-
-        if (storedToken) {
-          apiClient.setToken(storedToken);
-
-          if (storedUser) {
-            const userData = JSON.parse(storedUser);
-            setUser(userData);
-          } else {
-            const profile = await apiClient.getProfile();
-            if (profile?.user) {
-              setUser(profile.user);
-              try {
-                localStorage.setItem('umunsi_user', JSON.stringify(profile.user));
-                sessionStorage.setItem('umunsi_user', JSON.stringify(profile.user));
-              } catch {
-                // Ignore storage write failures.
-              }
-            }
+        const profile = await apiClient.getProfile();
+        if (profile?.user) {
+          setUser(profile.user);
+          try {
+            localStorage.setItem('umunsi_user', JSON.stringify(profile.user));
+            sessionStorage.setItem('umunsi_user', JSON.stringify(profile.user));
+          } catch {
+            // Ignore storage write failures.
           }
         }
       } catch (error) {
+        console.error('Error refreshing user:', error);
         logout();
       } finally {
         setIsLoading(false);
       }
     };
 
-    initializeAuth();
+    void initializeAuth();
   }, []);
 
   // Auto-refresh user data every 30 minutes

@@ -590,6 +590,34 @@ export interface ClassifiedDispatchResult {
   }>;
 }
 
+
+const parseCategoriesResponse = (payload: unknown): Category[] => {
+  if (!payload || typeof payload !== 'object') return [];
+  const body = payload as Record<string, unknown>;
+  if (Array.isArray(body.categories)) return body.categories as Category[];
+  if (Array.isArray(body.data)) return body.data as Category[];
+  const nested = body.data;
+  if (nested && typeof nested === 'object' && Array.isArray((nested as Record<string, unknown>).categories)) {
+    return (nested as Record<string, unknown>).categories as Category[];
+  }
+  return [];
+};
+
+const parsePostsListResponse = (payload: unknown): { data: Post[]; pagination: Record<string, unknown> } => {
+  if (!payload || typeof payload !== 'object') {
+    return { data: [], pagination: {} };
+  }
+  const body = payload as Record<string, unknown>;
+  const pagination = (body.pagination as Record<string, unknown>) || {};
+  if (Array.isArray(body.data)) {
+    return { data: body.data as Post[], pagination };
+  }
+  if (Array.isArray(body.posts)) {
+    return { data: body.posts as Post[], pagination };
+  }
+  return { data: [], pagination };
+};
+
 const AUTH_FREE_ENDPOINTS = [
   '/auth/login',
   '/auth/register',

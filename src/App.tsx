@@ -40,6 +40,7 @@ import Roles from './pages/admin/Roles';
 import AdsManagement from './pages/admin/AdsManagement';
 import { useAuth, withAuth, withAdmin, withEditor, withAuthor } from './contexts/AuthContext';
 import AdSenseManager from './components/common/AdSenseManager';
+import AppErrorBoundary from './components/common/AppErrorBoundary';
 
 const GA_MEASUREMENT_ID = 'G-Q5B9VWGY87';
 
@@ -99,7 +100,8 @@ function App() {
   const secretAdminLoginPath = '/portal-auth-umunsi-admin-2026';
 
   return (
-    <AuthProvider>
+    <AppErrorBoundary>
+      <AuthProvider>
       <Router>
         <RouteAnalyticsTracker />
         <AdSenseManager />
@@ -173,7 +175,8 @@ function App() {
           </Route>
         </Routes>
       </Router>
-    </AuthProvider>
+      </AuthProvider>
+    </AppErrorBoundary>
   );
 }
 

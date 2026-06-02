@@ -2,21 +2,33 @@ import "same-runtime";
 import { createRoot } from "react-dom/client";
 import "./index.css";
 import App from "./App.tsx";
+import { warmSiteData } from "./lib/siteBootstrap";
 
-if (localStorage.getItem('umunsi_theme_initialized_v3') !== '1') {
-  localStorage.setItem('umunsi_theme', 'day');
-  localStorage.setItem('umunsi_theme_initialized_v3', '1');
-}
+const applyThemeClass = () => {
+  try {
+    if (localStorage.getItem("umunsi_theme_initialized_v3") !== "1") {
+      localStorage.setItem("umunsi_theme", "day");
+      localStorage.setItem("umunsi_theme_initialized_v3", "1");
+    }
 
-if (localStorage.getItem('umunsi_theme') === 'day') {
-  document.documentElement.classList.add('day-mode');
-} else {
-  document.documentElement.classList.remove('day-mode');
-}
+    if (localStorage.getItem("umunsi_theme") === "day") {
+      document.documentElement.classList.add("day-mode");
+    } else {
+      document.documentElement.classList.remove("day-mode");
+    }
+  } catch {
+    document.documentElement.classList.add("day-mode");
+  }
+};
+
+applyThemeClass();
+warmSiteData();
 
 const rootElement = document.getElementById("root");
 if (!rootElement) {
   throw new Error("Failed to find root element");
 }
+
+document.getElementById("umunsi-instant-shell")?.remove();
 
 createRoot(rootElement).render(<App />);

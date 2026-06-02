@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Clock, Eye, ChevronRight, Heart, TrendingUp, Zap, AlertCircle, Mail, Calendar, MapPin, CloudSun, Send, ThumbsUp } from 'lucide-react';
 import { apiClient, Post, Category, ClassifiedAd, AdsBannersState, resolveAssetUrl, extractFirstImageFromHtml } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import HomeContentSkeleton from '../components/common/HomeContentSkeleton';
 import AdSenseUnit from '../components/ads/AdSenseUnit';
 import { ADSENSE_SLOTS } from '../constants/adsense';
 
@@ -62,6 +63,7 @@ const Home = () => {
   const [email, setEmail] = useState('');
   const [adsBanners, setAdsBanners] = useState<AdsBannersState | null>(null);
   const [classifiedAds, setClassifiedAds] = useState<ClassifiedAd[]>([]);
+  const [hasFetched, setHasFetched] = useState(Boolean(cachedHome?.posts?.length));
 
   useEffect(() => {
     fetchHomeData();
@@ -117,7 +119,7 @@ const Home = () => {
     } catch (error) {
       console.error('Error fetching home data:', error);
     } finally {
-      // Keep rendering existing UI immediately; no blocking loading state.
+      setHasFetched(true);
     }
   };
 
@@ -713,7 +715,9 @@ const Home = () => {
               </div>
               
               <div className="divide-y divide-[#2b2f36]">
-                {latestPosts.length === 0 ? (
+                {!hasFetched && latestPosts.length === 0 ? (
+                  <HomeContentSkeleton />
+                ) : latestPosts.length === 0 ? (
                   <div className="p-4 text-sm text-gray-400">Nta nkuru ziboneka muri iki cyiciro ubu.</div>
                 ) : latestPosts.map((post, index) => (
                   <div key={post.id}>
