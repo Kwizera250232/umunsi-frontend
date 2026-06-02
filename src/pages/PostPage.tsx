@@ -28,6 +28,7 @@ import { useAuth } from '../contexts/AuthContext';
 import AdSenseUnit from '../components/ads/AdSenseUnit';
 import { ADSENSE_CLIENT, ADSENSE_SLOTS } from '../constants/adsense';
 import { pushAdSenseSlots } from '../lib/adsense';
+import { isRateLimitError } from '../lib/categoryPageCache';
 
 declare global {
   interface Window {
@@ -510,7 +511,7 @@ const PostPage = () => {
 
       const foundPost = await apiClient.getPost(postIdentifier!);
 
-      if (!foundPost) {
+      if (!foundPost?.id || !foundPost?.title) {
         setPost(null);
         setError('Post not found');
         return;
@@ -520,8 +521,6 @@ const PostPage = () => {
       setLikeCount(foundPost.likeCount || 0);
       setShareCount(foundPost.shareCount || 0);
       cachePost(foundPost);
-      setHasResolvedInitialFetch(true);
-
       void loadSidebarPosts(foundPost);
     } catch (error: unknown) {
       console.error('Error fetching post:', error);
@@ -726,9 +725,34 @@ const PostPage = () => {
     return resolveArticleImageSrc(avatar);
   };
 
-  if (hasResolvedInitialFetch && (error || !post)) {
+  if (!hasResolvedInitialFetch) {
+    return (
+      <div className="min-h-screen bg-[#0b0e11] px-3 py-6">
+        <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div className="lg:col-span-8 space-y-4 animate-pulse">
+            <div className="h-6 w-2/3 bg-[#2b2f36] rounded" />
+            <div className="h-10 w-full bg-[#2b2f36] rounded" />
+            {showAds && (
+              <AdSenseUnit slot={ADSENSE_SLOTS.articleBeforeContent} minHeight={100} />
+            )}
+            <div className="h-64 w-full bg-[#2b2f36] rounded" />
+            <div className="space-y-3">
+              <div className="h-4 w-full bg-[#2b2f36] rounded" />
+              <div className="h-4 w-5/6 bg-[#2b2f36] rounded" />
+              <div className="h-4 w-4/6 bg-[#2b2f36] rounded" />
+            </div>
+          </div>
+          <div className="lg:col-span-4">
+            {showAds && <AdSenseUnit slot={ADSENSE_SLOTS.articleSidebar} minHeight={250} />}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !post) {
     const rateLimited = Boolean(error && isRateLimitError({ message: error }));
-  return (
+    return (
       <div className="min-h-screen bg-[#0b0e11] flex items-center justify-center px-4">
         <div className="text-center max-w-md">
           <AlertCircle className="w-16 h-16 text-red-400 mx-auto mb-4" />
@@ -761,30 +785,6 @@ const PostPage = () => {
     );
   }
 
-  if (!post) {
-    return (
-      <div className="min-h-screen bg-[#0b0e11] px-3 py-6">
-        <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <div className="lg:col-span-8 space-y-4 animate-pulse">
-            <div className="h-6 w-2/3 bg-[#2b2f36] rounded" />
-            <div className="h-10 w-full bg-[#2b2f36] rounded" />
-            {showAds && (
-              <AdSenseUnit slot={ADSENSE_SLOTS.articleBeforeContent} minHeight={100} />
-            )}
-            <div className="h-64 w-full bg-[#2b2f36] rounded" />
-            <div className="space-y-3">
-              <div className="h-4 w-full bg-[#2b2f36] rounded" />
-              <div className="h-4 w-5/6 bg-[#2b2f36] rounded" />
-              <div className="h-4 w-4/6 bg-[#2b2f36] rounded" />
-            </div>
-          </div>
-          <div className="lg:col-span-4">
-            {showAds && <AdSenseUnit slot={ADSENSE_SLOTS.articleSidebar} minHeight={250} />}
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-[#0b0e11]">
