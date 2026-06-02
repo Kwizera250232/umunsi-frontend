@@ -89,7 +89,7 @@ const Home = () => {
       const [postsResult, categoriesResult] = await Promise.allSettled([
         apiClient.getPosts({
           status: 'PUBLISHED',
-          limit: 100
+          limit: 60
         }),
         apiClient.getCategories({ includeInactive: false })
       ]);

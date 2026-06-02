@@ -1285,6 +1285,7 @@ class ApiClient {
       method: 'POST',
       body: JSON.stringify(data),
     });
+    invalidateCachePrefix('posts');
     return response;
   }
 
