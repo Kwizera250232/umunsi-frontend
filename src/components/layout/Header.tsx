@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { apiClient, Category } from '../../services/api';
 import { readPersistedCategories } from '../../lib/siteBootstrap';
-import NavCategorySkeleton from '../common/NavCategorySkeleton';
 import { useAuth } from '../../contexts/AuthContext';
 
 const Header = () => {
@@ -33,7 +32,7 @@ const Header = () => {
 
   const fetchCategories = async () => {
     try {
-      setLoading(true);
+      if (categories.length === 0) setLoading(true);
       // Fetch only active categories from database
       const response = await apiClient.getCategories({ includeInactive: false });
       if (response && Array.isArray(response)) {
@@ -43,7 +42,7 @@ const Header = () => {
       }
     } catch (error) {
       console.error('Error fetching categories:', error);
-      setCategories([]);
+      setCategories((prev) => (prev.length > 0 ? prev : []));
     } finally {
       setLoading(false);
       setCategoriesFetchDone(true);
@@ -197,9 +196,7 @@ const Header = () => {
 
           {/* Desktop Navigation - All active categories from database */}
           <nav className="hidden lg:flex items-center space-x-1">
-            {categories.length === 0 && (loading || !categoriesFetchDone) ? (
-              <NavCategorySkeleton />
-            ) : categories.length === 0 ? (
+            {categories.length === 0 ? (
               <div className="px-4 py-2 text-gray-500 text-sm">Categories zirakurura...</div>
             ) : (
               <>
@@ -316,13 +313,7 @@ const Header = () => {
         {isMenuOpen && (
           <div className="lg:hidden mt-4 pb-4">
             <nav className="space-y-1 max-h-[60vh] overflow-y-auto">
-              {categories.length === 0 && (loading || !categoriesFetchDone) ? (
-                <div className="space-y-2 px-4">
-                  {Array.from({ length: 6 }).map((_, index) => (
-                    <div key={index} className="h-10 bg-[#1e2329] rounded-lg animate-pulse" />
-                  ))}
-                </div>
-              ) : categories.length === 0 ? (
+              {categories.length === 0 ? (
                 <div className="text-center py-4 text-gray-500">Categories zirakurura...</div>
               ) : (
                 <>

@@ -149,17 +149,7 @@ const CategoryPage = () => {
   };
 
   if (loading && !category) {
-    return (
-      <div className="min-h-screen bg-[#0b0e11] px-3 py-6 animate-pulse">
-        <div className="h-8 w-48 bg-[#2b2f36] rounded mb-4" />
-        <div className="h-12 w-2/3 bg-[#2b2f36] rounded mb-6" />
-        {showAds && <div className="mb-6"><AdSenseUnit slot={ADSENSE_SLOTS.categoryLeaderboard} label="Kwamamaza" minHeight={90} /></div>}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-          <div className="lg:col-span-8 h-72 bg-[#2b2f36] rounded" />
-          <div className="lg:col-span-4 h-72 bg-[#2b2f36] rounded" />
-        </div>
-      </div>
-    );
+    return <div className="min-h-screen bg-[#0b0e11]" />;
   }
 
   if (!category) {

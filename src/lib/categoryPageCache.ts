@@ -63,7 +63,7 @@ export const readHomeCacheForCategory = (slug: string): CategoryPageBundle | nul
       savedAt?: number;
     };
 
-    if (parsed.savedAt && Date.now() - parsed.savedAt > 90_000) return null;
+    if (parsed.savedAt && Date.now() - parsed.savedAt > 5 * 60_000) return null;
 
     const allCategories = parsed.categories || [];
     const category = findCategoryBySlug(allCategories, slug);

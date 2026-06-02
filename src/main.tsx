@@ -31,6 +31,5 @@ if (!rootElement) {
   throw new Error("Failed to find root element");
 }
 
-document.getElementById("umunsi-instant-shell")?.remove();
 
 createRoot(rootElement).render(<App />);

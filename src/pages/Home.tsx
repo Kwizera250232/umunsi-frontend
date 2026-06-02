@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { Clock, Eye, ChevronRight, Heart, TrendingUp, Zap, AlertCircle, Mail, Calendar, MapPin, CloudSun, Send, ThumbsUp } from 'lucide-react';
 import { apiClient, Post, Category, ClassifiedAd, AdsBannersState, resolveAssetUrl, extractFirstImageFromHtml } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
-import HomeContentSkeleton from '../components/common/HomeContentSkeleton';
 import AdSenseUnit from '../components/ads/AdSenseUnit';
 import { ADSENSE_SLOTS } from '../constants/adsense';
 
@@ -25,7 +24,7 @@ const HEALTH_KEYWORDS = ['ubuzima', 'health'];
 const LOVE_KEYWORDS = ['urukundo', 'love', 'relationship', 'dating', 'couple'];
 
 const HOME_CACHE_KEY = 'umunsi_home_cache_v1';
-const HOME_CACHE_MAX_AGE_MS = 90_000;
+const HOME_CACHE_MAX_AGE_MS = 5 * 60_000;
 const DEFAULT_POST_IMAGE = 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=1200&h=800&fit=crop';
 
 const getHomeCache = () => {
@@ -70,25 +69,13 @@ const Home = () => {
   const [email, setEmail] = useState('');
   const [adsBanners, setAdsBanners] = useState<AdsBannersState | null>(null);
   const [classifiedAds, setClassifiedAds] = useState<ClassifiedAd[]>([]);
-  const [hasFetched, setHasFetched] = useState(Boolean(cachedHome?.posts?.length));
-
   useEffect(() => {
     fetchHomeData();
     fetchApprovedClassifieds();
     const timer = setInterval(() => setCurrentTime(new Date()), 60000);
 
-    const onVisible = () => {
-      if (document.visibilityState === 'visible') {
-        fetchHomeData();
-      }
-    };
-    document.addEventListener('visibilitychange', onVisible);
-    window.addEventListener('pageshow', onVisible);
-
     return () => {
       clearInterval(timer);
-      document.removeEventListener('visibilitychange', onVisible);
-      window.removeEventListener('pageshow', onVisible);
     };
   }, []);
 
@@ -151,7 +138,6 @@ const Home = () => {
     } catch (error) {
       console.error('Error fetching home data:', error);
     } finally {
-      setHasFetched(true);
     }
   };
 
@@ -747,9 +733,7 @@ const Home = () => {
               </div>
               
               <div className="divide-y divide-[#2b2f36]">
-                {!hasFetched && latestPosts.length === 0 ? (
-                  <HomeContentSkeleton />
-                ) : latestPosts.length === 0 ? (
+                {latestPosts.length === 0 ? (
                   <div className="p-4 text-sm text-gray-400">Nta nkuru ziboneka muri iki cyiciro ubu. Ongera ugerageze mu kanya gato cyangwa refresha urupapuro.</div>
                 ) : latestPosts.map((post, index) => (
                   <div key={post.id}>
