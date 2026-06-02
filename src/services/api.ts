@@ -603,6 +603,9 @@ const parseCategoriesResponse = (payload: unknown): Category[] => {
   return [];
 };
 
+const isValidPost = (value: Post | null | undefined): value is Post =>
+  Boolean(value?.id && value?.title);
+
 const parsePostResponse = (payload: unknown): Post | null => {
   if (!payload || typeof payload !== 'object') return null;
   const body = payload as Record<string, unknown>;
@@ -1362,7 +1365,7 @@ class ApiClient {
     );
   }
 
-    async getPost(id: string): Promise<Post> {
+  async getPost(id: string): Promise<Post> {
     const encodedId = encodeURIComponent(id);
     const cacheKey = buildCacheKey('post', { id });
     const persistKey = `umunsi_post_entry_${id}`;
@@ -1372,17 +1375,23 @@ class ApiClient {
         try {
           const response = await this.request<unknown>(`/posts/${encodedId}`);
           const parsed = parsePostResponse(response);
-          if (parsed) return parsed;
+          if (isValidPost(parsed)) return parsed;
         } catch (directError) {
           const status = (directError as { status?: number })?.status;
           if (status && status !== 404 && status !== 429) throw directError;
         }
 
         const list = await this.getPosts({ status: 'PUBLISHED', search: id, limit: 10 });
-        const match = list.data.find(
+        let match = list.data.find(
           (post) => post.slug === id || post.id === id || encodeURIComponent(post.slug || '') === encodedId,
         );
-        if (match) return match;
+        if (!match) {
+          const recent = await this.getPosts({ status: 'PUBLISHED', limit: 100 });
+          match = recent.data.find(
+            (post) => post.slug === id || post.id === id,
+          );
+        }
+        if (isValidPost(match)) return match;
 
         const notFound = new Error('Post not found');
         (notFound as Error & { status?: number }).status = 404;

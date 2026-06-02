@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { 
   Eye, 
@@ -25,10 +25,6 @@ import {
 } from 'lucide-react';
 import { apiClient, Post, resolveAssetUrl } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
-import AdSenseUnit from '../components/ads/AdSenseUnit';
-import { ADSENSE_CLIENT, ADSENSE_SLOTS } from '../constants/adsense';
-import { pushAdSenseSlots } from '../lib/adsense';
-import { isRateLimitError } from '../lib/categoryPageCache';
 
 declare global {
   interface Window {
@@ -185,12 +181,18 @@ const createArticleAdBlock = (slot: string, marker: string) => `
     <p style="font-size:0.7rem;color:#6b7280;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">Advertisement</p>
     <ins class="adsbygoogle"
       style="display:block;min-height:100px;"
-      data-ad-client="${ADSENSE_CLIENT}"
+      data-ad-client="ca-pub-3584259871242471"
       data-ad-slot="${slot}"
       data-ad-format="auto"
       data-full-width-responsive="true"></ins>
   </div>
 `;
+
+const ADSENSE_BEFORE_CONTENT_SLOT = '8081945273';
+const ADSENSE_AFTER_PARAGRAPH_3_SLOT = '6489436663';
+const ADSENSE_AFTER_PARAGRAPH_5_SLOT = '6849820312';
+const ADSENSE_AFTER_PARAGRAPH_7_SLOT = '6385720225';
+const ADSENSE_SIDEBAR_SLOT = '9267546505'; // Create a sidebar ad unit in your AdSense account and update this slot ID
 
 const SUPPORT_WHATSAPP = '250791859465';
 const SUPPORT_CALL = '0791859465';
@@ -212,33 +214,13 @@ const normalizeExternalUrl = (url?: string) => {
   return `https://${url}`;
 };
 
-const parseStoredPostCache = (raw: string | null): Post | null => {
-  if (!raw) return null;
-  try {
-    const parsed = JSON.parse(raw) as Post | { data?: Post; expires?: number };
-    if (parsed && typeof parsed === 'object' && 'data' in parsed && 'expires' in parsed) {
-      const entry = parsed as { data?: Post; expires?: number };
-      if (!entry.data) return null;
-      if (entry.expires && entry.expires <= Date.now()) return null;
-      return entry.data;
-    }
-    if (parsed && typeof parsed === 'object' && 'id' in parsed) {
-      return parsed as Post;
-    }
-    return null;
-  } catch {
-    return null;
-  }
-};
-
 const getCachedPost = (identifier?: string) => {
   if (!identifier || typeof window === 'undefined') return null;
   try {
-    const cachedRaw =
-      sessionStorage.getItem(`umunsi_post_entry_${identifier}`) ||
-      sessionStorage.getItem(`umunsi_post_${identifier}`);
+    const cachedRaw = sessionStorage.getItem(`umunsi_post_${identifier}`);
     if (!cachedRaw) return null;
-    return parseStoredPostCache(cachedRaw);
+    const cached = JSON.parse(cachedRaw) as Post;
+    return cached || null;
   } catch {
     return null;
   }
@@ -272,9 +254,9 @@ const injectAdsAfterRequestedParagraphs = (html: string) => {
   }
 
   const requestedSlots = [
-    ADSENSE_SLOTS.articleAfterParagraph3,
-    ADSENSE_SLOTS.articleAfterParagraph5,
-    ADSENSE_SLOTS.articleAfterParagraph7,
+    ADSENSE_AFTER_PARAGRAPH_3_SLOT,
+    ADSENSE_AFTER_PARAGRAPH_5_SLOT,
+    ADSENSE_AFTER_PARAGRAPH_7_SLOT
   ];
 
   const hasExistingRequestedAds = requestedSlots.some((slot) =>
@@ -293,9 +275,9 @@ const injectAdsAfterRequestedParagraphs = (html: string) => {
   });
 
   [
-    { afterParagraph: 7, slot: ADSENSE_SLOTS.articleAfterParagraph7, marker: 'paragraph-7' },
-    { afterParagraph: 5, slot: ADSENSE_SLOTS.articleAfterParagraph5, marker: 'paragraph-5' },
-    { afterParagraph: 3, slot: ADSENSE_SLOTS.articleAfterParagraph3, marker: 'paragraph-3' }
+    { afterParagraph: 7, slot: ADSENSE_AFTER_PARAGRAPH_7_SLOT, marker: 'paragraph-7' },
+    { afterParagraph: 5, slot: ADSENSE_AFTER_PARAGRAPH_5_SLOT, marker: 'paragraph-5' },
+    { afterParagraph: 3, slot: ADSENSE_AFTER_PARAGRAPH_3_SLOT, marker: 'paragraph-3' }
   ].forEach(({ afterParagraph, slot, marker }) => {
     const targetBlock = contentBlocks[afterParagraph - 1];
     if (targetBlock) {
@@ -352,10 +334,14 @@ const PostPage = () => {
   const normalizedContent = normalizeArticleHtml(post?.content);
   const fallbackFeaturedImage = useMemo(() => extractFirstImageFromHtml(normalizedContent), [normalizedContent]);
   const effectiveFeaturedImage = post?.featuredImage || fallbackFeaturedImage || '';
-  const contentWithInlineAd = useMemo(
-    () => injectAdsAfterRequestedParagraphs(normalizedContent),
-    [normalizedContent]
-  );
+  const contentWithInlineAd = useMemo(() => {
+    try {
+      return injectAdsAfterRequestedParagraphs(normalizedContent);
+    } catch (adInjectError) {
+      console.error('Article ad injection failed:', adInjectError);
+      return normalizedContent;
+    }
+  }, [normalizedContent]);
 
   const hasPremiumAccess = useMemo(() => {
     if (!user) return false;
@@ -409,18 +395,59 @@ const PostPage = () => {
     setAuthorAvatarLoadFailed(false);
   }, [post?.author?.avatar, post?.author?.id]);
 
-  useLayoutEffect(() => {
-    if (!showAds || !contentWithInlineAd || typeof window === 'undefined') return;
+  useEffect(() => {
+    if (!showAds || !contentWithInlineAd || typeof window === 'undefined') {
+      return;
+    }
 
-    const flush = () => {
-      const articleRoot = document.querySelector('.article-content-readable');
-      pushAdSenseSlots(articleRoot || document);
-      pushAdSenseSlots(document);
+    let cancelled = false;
+    let attempts = 0;
+    const maxAttempts = 20;
+
+    const tryRenderInlineAd = () => {
+      if (cancelled) return;
+
+      const adElements = Array.from(
+        document.querySelectorAll('.article-before-content-ad ins.adsbygoogle, .article-inline-ad ins.adsbygoogle, .article-sidebar-ad ins.adsbygoogle')
+      ) as HTMLElement[];
+
+      if (adElements.length === 0) {
+        if (attempts++ < maxAttempts) setTimeout(tryRenderInlineAd, 100);
+        return;
+      }
+
+      const pendingAds = adElements.filter(
+        (element) => element.dataset.adInitialized !== '1' && !element.getAttribute('data-ad-status')
+      );
+
+      if (pendingAds.length === 0) {
+        return;
+      }
+
+      if (!window.adsbygoogle) {
+        window.adsbygoogle = [];
+      }
+
+      try {
+        pendingAds.forEach((element) => {
+          (window.adsbygoogle as unknown as Array<Record<string, unknown>>).push({});
+          element.dataset.adInitialized = '1';
+        });
+      } catch (error) {
+        if (attempts++ < maxAttempts) {
+          setTimeout(tryRenderInlineAd, 200);
+          return;
+        }
+        console.error('AdSense inline ad render failed:', error);
+      }
     };
 
-    flush();
-    const timers = [0, 50, 150, 400].map((delay) => window.setTimeout(flush, delay));
-    return () => timers.forEach((timer) => window.clearTimeout(timer));
+    // Run immediately on next frame for fastest possible render
+    requestAnimationFrame(() => tryRenderInlineAd());
+
+    return () => {
+      cancelled = true;
+    };
   }, [contentWithInlineAd, showAds, post?.id]);
 
   useEffect(() => {
@@ -487,45 +514,47 @@ const PostPage = () => {
     };
   }, [isAuthorProfileOpen, post?.author?.id, post]);
 
-  const loadSidebarPosts = async (foundPost: Post) => {
-    try {
-      const postsResponse = await apiClient.getPosts({ limit: 20, status: 'PUBLISHED' });
-      if (!postsResponse?.data) return;
-
-      setLatestPosts(postsResponse.data.filter((p) => p.id !== foundPost.id).slice(0, 5));
-
-      if (foundPost.category) {
-        const related = postsResponse.data.filter(
-          (p) => p.category?.id === foundPost.category?.id && p.id !== foundPost.id
-        ).slice(0, 4);
-        setRelatedPosts(related);
-      }
-    } catch (sidebarError) {
-      console.error('Error fetching sidebar posts:', sidebarError);
-    }
-  };
-
   const fetchPost = async () => {
     try {
       setError(null);
-
+      
+      // Fetch post directly by ID or slug (backend supports both)
       const foundPost = await apiClient.getPost(postIdentifier!);
-
-      if (!foundPost?.id || !foundPost?.title) {
+      
+      if (foundPost) {
+        setPost(foundPost);
+        setLikeCount(foundPost.likeCount || 0);
+        setShareCount(foundPost.shareCount || 0);
+        cachePost(foundPost);
+        
+        // Fetch related posts and latest posts in parallel
+        const postsResponse = await apiClient.getPosts({ limit: 20, status: 'PUBLISHED' });
+        if (postsResponse?.data) {
+          // Get latest posts for sidebar
+          setLatestPosts(postsResponse.data.filter(p => p.id !== foundPost.id).slice(0, 5));
+          
+          // Get related posts from same category
+          if (foundPost.category) {
+            const related = postsResponse.data.filter(
+              p => p.category?.id === foundPost.category?.id && p.id !== foundPost.id
+            ).slice(0, 4);
+            setRelatedPosts(related);
+          }
+        }
+      } else {
         setPost(null);
         setError('Post not found');
-        return;
       }
-
-      setPost(foundPost);
-      setLikeCount(foundPost.likeCount || 0);
-      setShareCount(foundPost.shareCount || 0);
-      cachePost(foundPost);
-      void loadSidebarPosts(foundPost);
     } catch (error: unknown) {
       console.error('Error fetching post:', error);
-      setPost((prev) => prev);
-      if (!getCachedPost(postIdentifier)) {
+      const cached = getCachedPost(postIdentifier);
+      if (cached?.id && cached?.title) {
+        setPost(cached);
+        setLikeCount(cached.likeCount || 0);
+        setShareCount(cached.shareCount || 0);
+        setError(null);
+      } else {
+        setPost(null);
         setError('Failed to load article.');
       }
     } finally {
@@ -725,66 +754,22 @@ const PostPage = () => {
     return resolveArticleImageSrc(avatar);
   };
 
-  if (!hasResolvedInitialFetch) {
+  if (hasResolvedInitialFetch && (error || !post)) {
     return (
-      <div className="min-h-screen bg-[#0b0e11] px-3 py-6">
-        <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <div className="lg:col-span-8 space-y-4 animate-pulse">
-            <div className="h-6 w-2/3 bg-[#2b2f36] rounded" />
-            <div className="h-10 w-full bg-[#2b2f36] rounded" />
-            {showAds && (
-              <AdSenseUnit slot={ADSENSE_SLOTS.articleBeforeContent} minHeight={100} />
-            )}
-            <div className="h-64 w-full bg-[#2b2f36] rounded" />
-            <div className="space-y-3">
-              <div className="h-4 w-full bg-[#2b2f36] rounded" />
-              <div className="h-4 w-5/6 bg-[#2b2f36] rounded" />
-              <div className="h-4 w-4/6 bg-[#2b2f36] rounded" />
-            </div>
-          </div>
-          <div className="lg:col-span-4">
-            {showAds && <AdSenseUnit slot={ADSENSE_SLOTS.articleSidebar} minHeight={250} />}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error || !post) {
-    const rateLimited = Boolean(error && isRateLimitError({ message: error }));
-    return (
-      <div className="min-h-screen bg-[#0b0e11] flex items-center justify-center px-4">
-        <div className="text-center max-w-md">
+      <div className="min-h-screen bg-[#0b0e11] flex items-center justify-center">
+        <div className="text-center">
           <AlertCircle className="w-16 h-16 text-red-400 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-white mb-2">
-            {rateLimited ? 'Sisitemu irahagarara gato' : 'Article Not Found'}
-          </h2>
-          <p className="text-gray-400 mb-6">
-            {rateLimited
-              ? 'Too many requests. Ongera ugerageze mu masegonda make.'
-              : error || 'Failed to load article.'}
-          </p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <button
-              type="button"
-              onClick={() => {
-                setError(null);
-                setHasResolvedInitialFetch(false);
-                void fetchPost();
-              }}
-              className="px-6 py-3 bg-[#fcd535] text-[#0b0e11] font-bold rounded-lg"
-            >
-              Ongera ugerageze
-            </button>
-            <Link to="/" className="px-6 py-3 border border-[#2b2f36] text-gray-300 rounded-lg hover:text-[#fcd535]">
-              ← Back to Home
-            </Link>
-          </div>
+          <h2 className="text-xl font-bold text-white mb-2">Article Not Found</h2>
+          <p className="text-gray-400 mb-6">{error}</p>
+          <Link to="/" className="text-[#fcd535] hover:underline">← Back to Home</Link>
         </div>
       </div>
     );
   }
 
+  if (!post) {
+    return <div className="min-h-screen bg-[#0b0e11]" />;
+  }
 
   return (
     <div className="min-h-screen bg-[#0b0e11]">
@@ -982,8 +967,16 @@ const PostPage = () => {
                 )}
 
                 {showAds && !isPremiumLocked && (
-                  <div key={`ad-before-${post?.id}`} className="article-before-content-ad mb-6">
-                    <AdSenseUnit slot={ADSENSE_SLOTS.articleBeforeContent} minHeight={100} />
+                  <div key={`ad-before-${post?.id}`} className="article-before-content-ad not-prose mb-6" style={{ textAlign: 'center', overflow: 'visible' }}>
+                    <p className="text-gray-500 text-[0.7rem] uppercase tracking-wide mb-1">Advertisement</p>
+                    <ins
+                      className="adsbygoogle"
+                      style={{ display: 'block', minHeight: '100px' }}
+                      data-ad-client="ca-pub-3584259871242471"
+                      data-ad-slot={ADSENSE_BEFORE_CONTENT_SLOT}
+                      data-ad-format="auto"
+                      data-full-width-responsive="true"
+                    ></ins>
                   </div>
                 )}
 
@@ -1213,7 +1206,7 @@ const PostPage = () => {
                 <ins
                   className="adsbygoogle"
                   style={{ display: 'block', minHeight: '250px' }}
-                  data-ad-client="${ADSENSE_CLIENT}"
+                  data-ad-client="ca-pub-3584259871242471"
                   data-ad-slot={ADSENSE_SIDEBAR_SLOT}
                   data-ad-format="auto"
                   data-full-width-responsive="true"
