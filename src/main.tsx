@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import "./index.css";
 import App from "./App.tsx";
 import { warmSiteData } from "./lib/siteBootstrap";
+import { pruneEmptyContentCaches } from "./lib/requestCache";
 
 const applyThemeClass = () => {
   try {
@@ -22,6 +23,7 @@ const applyThemeClass = () => {
 };
 
 applyThemeClass();
+pruneEmptyContentCaches();
 warmSiteData();
 
 const rootElement = document.getElementById("root");

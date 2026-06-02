@@ -76,7 +76,20 @@ const Home = () => {
     fetchHomeData();
     fetchApprovedClassifieds();
     const timer = setInterval(() => setCurrentTime(new Date()), 60000);
-    return () => clearInterval(timer);
+
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        fetchHomeData();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('pageshow', onVisible);
+
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('pageshow', onVisible);
+    };
   }, []);
 
   useEffect(() => {
@@ -103,25 +116,37 @@ const Home = () => {
         apiClient.getCategories({ includeInactive: false })
       ]);
 
-      if (postsResult.status === 'fulfilled' && postsResult.value?.data) {
-        const preparedPosts = postsResult.value.data.map((post) => ({
-          ...post,
-          featuredImage: post.featuredImage || extractFirstImageFromHtml(post.content) || undefined
-        }));
-
-        setPosts(preparedPosts);
-        const featured = preparedPosts.find((p) => p.isFeatured) || null;
-        setFeaturedPost(featured);
-
-        const resolvedCategories = categoriesResult.status === 'fulfilled' && categoriesResult.value
-          ? categoriesResult.value
-          : (cachedHome?.categories || []);
-        setCategories(resolvedCategories);
-        saveHomeCache({ posts: preparedPosts, categories: resolvedCategories, featuredPost: featured });
+      if (categoriesResult.status === 'fulfilled' && categoriesResult.value?.length) {
+        setCategories(categoriesResult.value);
       }
 
-      if (categoriesResult.status === 'fulfilled' && categoriesResult.value) {
-        setCategories(categoriesResult.value);
+      if (postsResult.status === 'fulfilled' && Array.isArray(postsResult.value?.data)) {
+        const incoming = postsResult.value.data;
+        if (incoming.length > 0) {
+          const preparedPosts = incoming.map((post) => ({
+            ...post,
+            featuredImage: post.featuredImage || extractFirstImageFromHtml(post.content) || undefined
+          }));
+
+          setPosts(preparedPosts);
+          const featured = preparedPosts.find((p) => p.isFeatured) || null;
+          setFeaturedPost(featured);
+
+          setCategories((prev) =>
+            categoriesResult.status === 'fulfilled' && categoriesResult.value?.length
+              ? categoriesResult.value
+              : prev
+          );
+
+          saveHomeCache({
+            posts: preparedPosts,
+            categories:
+              categoriesResult.status === 'fulfilled' && categoriesResult.value?.length
+                ? categoriesResult.value
+                : cachedHome?.categories || [],
+            featuredPost: featured
+          });
+        }
       }
     } catch (error) {
       console.error('Error fetching home data:', error);
@@ -725,7 +750,7 @@ const Home = () => {
                 {!hasFetched && latestPosts.length === 0 ? (
                   <HomeContentSkeleton />
                 ) : latestPosts.length === 0 ? (
-                  <div className="p-4 text-sm text-gray-400">Nta nkuru ziboneka muri iki cyiciro ubu.</div>
+                  <div className="p-4 text-sm text-gray-400">Nta nkuru ziboneka muri iki cyiciro ubu. Ongera ugerageze mu kanya gato cyangwa refresha urupapuro.</div>
                 ) : latestPosts.map((post, index) => (
                   <div key={post.id}>
                     <Link to={`/post/${post.slug}`} className="flex gap-4 p-4 hover:bg-[#1e2329] transition-colors group">

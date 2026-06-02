@@ -40,30 +40,44 @@ export const buildCacheKey = (prefix: string, params?: Record<string, unknown>) 
   return `${prefix}?${sorted}`;
 };
 
+const isEmptyListPayload = (data: unknown) => {
+  if (Array.isArray(data)) return data.length === 0;
+  if (!data || typeof data !== 'object') return true;
+  const body = data as { data?: unknown; posts?: unknown; categories?: unknown };
+  if (Array.isArray(body.data)) return body.data.length === 0;
+  if (Array.isArray(body.posts)) return body.posts.length === 0;
+  if (Array.isArray(body.categories)) return body.categories.length === 0;
+  return false;
+};
+
+const shouldUseCachedValue = (key: string, data: unknown) => {
+  if (!key.startsWith('posts') && !key.startsWith('categories')) return true;
+  return !isEmptyListPayload(data);
+};
+
 /** Dedupe in-flight calls and serve fresh-enough cached responses. */
 export const cachedRequest = async <T>(
   key: string,
   fetcher: () => Promise<T>,
-  options?: { ttlMs?: number; persistKey?: string; revalidate?: boolean },
+  options?: { ttlMs?: number; persistKey?: string },
 ): Promise<T> => {
   const ttlMs = options?.ttlMs ?? 120_000;
   const now = Date.now();
 
   if (options?.persistKey) {
     const persisted = readPersisted<T>(options.persistKey);
-    if (persisted) {
+    if (persisted && shouldUseCachedValue(key, persisted.data)) {
       memoryCache.set(key, persisted);
-      if (!options.revalidate) {
-        return persisted.data;
-      }
+      return persisted.data;
+    }
+    if (persisted && !shouldUseCachedValue(key, persisted.data)) {
+      sessionStorage.removeItem(options.persistKey);
+      memoryCache.delete(key);
     }
   }
 
   const cached = memoryCache.get(key);
-  if (cached && cached.expires > now) {
-    if (options?.revalidate) {
-      void cachedRequest(key, fetcher, { ...options, revalidate: false }).catch(() => undefined);
-    }
+  if (cached && cached.expires > now && shouldUseCachedValue(key, cached.data)) {
     return cached.data as T;
   }
 
@@ -74,6 +88,9 @@ export const cachedRequest = async <T>(
 
   const promise = fetcher()
     .then((data) => {
+      if (!shouldUseCachedValue(key, data)) {
+        return data;
+      }
       const entry: CacheEntry<T> = { data, expires: Date.now() + ttlMs };
       memoryCache.set(key, entry);
       if (options?.persistKey) {
@@ -129,4 +146,23 @@ export const clearPublicContentCaches = () => {
   invalidateCachePrefix('post');
   invalidateCachePrefix('categories');
   clearSessionKeysMatching((key) => key.startsWith('umunsi_home_cache') || key.startsWith('umunsi_category_page_'));
+};
+
+/** Remove persisted empty list caches left from failed API responses. */
+export const pruneEmptyContentCaches = () => {
+  if (typeof sessionStorage === 'undefined') return;
+  for (let index = sessionStorage.length - 1; index >= 0; index -= 1) {
+    const key = sessionStorage.key(index);
+    if (!key || !key.startsWith('umunsi_')) continue;
+    try {
+      const raw = sessionStorage.getItem(key);
+      if (!raw) continue;
+      const parsed = JSON.parse(raw) as { data?: unknown; expires?: number };
+      if (parsed && 'data' in parsed && isEmptyListPayload(parsed.data)) {
+        sessionStorage.removeItem(key);
+      }
+    } catch {
+      sessionStorage.removeItem(key!);
+    }
+  }
 };

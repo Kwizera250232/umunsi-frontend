@@ -624,6 +624,16 @@ const parsePostsListResponse = (payload: unknown): { data: Post[]; pagination: R
   if (Array.isArray(body.posts)) {
     return { data: body.posts as Post[], pagination };
   }
+  const nested = body.data;
+  if (nested && typeof nested === 'object') {
+    const nestedBody = nested as Record<string, unknown>;
+    if (Array.isArray(nestedBody.data)) {
+      return { data: nestedBody.data as Post[], pagination: (nestedBody.pagination as Record<string, unknown>) || pagination };
+    }
+    if (Array.isArray(nestedBody.posts)) {
+      return { data: nestedBody.posts as Post[], pagination: (nestedBody.pagination as Record<string, unknown>) || pagination };
+    }
+  }
   return { data: [], pagination };
 };
 
@@ -1054,7 +1064,7 @@ class ApiClient {
         const response = await this.request<unknown>(url);
         return parseCategoriesResponse(response);
       },
-      { ttlMs: 90_000, persistKey, revalidate: true },
+      { ttlMs: 90_000, persistKey },
     );
   }
 
@@ -1348,27 +1358,37 @@ class ApiClient {
         const response = await this.request<unknown>(`/posts?${queryParams}`);
         return parsePostsListResponse(response);
       },
-      { ttlMs: 45_000, persistKey, revalidate: true },
+      { ttlMs: 45_000, persistKey },
     );
   }
 
-  async getPost(id: string): Promise<Post> {
+    async getPost(id: string): Promise<Post> {
     const encodedId = encodeURIComponent(id);
     const cacheKey = buildCacheKey('post', { id });
     const persistKey = `umunsi_post_entry_${id}`;
     return cachedRequest(
       cacheKey,
       async () => {
-        const response = await this.request<unknown>(`/posts/${encodedId}`);
-        const parsed = parsePostResponse(response);
-        if (!parsed) {
-          const notFound = new Error('Post not found');
-          (notFound as Error & { status?: number }).status = 404;
-          throw notFound;
+        try {
+          const response = await this.request<unknown>(`/posts/${encodedId}`);
+          const parsed = parsePostResponse(response);
+          if (parsed) return parsed;
+        } catch (directError) {
+          const status = (directError as { status?: number })?.status;
+          if (status && status !== 404 && status !== 429) throw directError;
         }
-        return parsed;
+
+        const list = await this.getPosts({ status: 'PUBLISHED', search: id, limit: 10 });
+        const match = list.data.find(
+          (post) => post.slug === id || post.id === id || encodeURIComponent(post.slug || '') === encodedId,
+        );
+        if (match) return match;
+
+        const notFound = new Error('Post not found');
+        (notFound as Error & { status?: number }).status = 404;
+        throw notFound;
       },
-      { ttlMs: 60_000, persistKey, revalidate: true },
+      { ttlMs: 60_000, persistKey },
     );
   }
 
