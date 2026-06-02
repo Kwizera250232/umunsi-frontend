@@ -29,8 +29,14 @@ export const readPersistedHomePosts = () => {
 
 let warmStarted = false;
 
+const isHomeRoute = () => {
+  if (typeof window === 'undefined') return false;
+  const path = window.location.pathname;
+  return path === '/' || path === '';
+};
+
 export const warmSiteData = () => {
-  if (typeof window === 'undefined' || warmStarted) return;
+  if (typeof window === 'undefined' || warmStarted || !isHomeRoute()) return;
   warmStarted = true;
   void apiClient.getCategories({ includeInactive: false }).catch(() => undefined);
   void apiClient.getPosts({ status: 'PUBLISHED', limit: 60 }).catch(() => undefined);

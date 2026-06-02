@@ -44,7 +44,7 @@ export const buildCacheKey = (prefix: string, params?: Record<string, unknown>) 
 export const cachedRequest = async <T>(
   key: string,
   fetcher: () => Promise<T>,
-  options?: { ttlMs?: number; persistKey?: string },
+  options?: { ttlMs?: number; persistKey?: string; revalidate?: boolean },
 ): Promise<T> => {
   const ttlMs = options?.ttlMs ?? 120_000;
   const now = Date.now();
@@ -53,12 +53,17 @@ export const cachedRequest = async <T>(
     const persisted = readPersisted<T>(options.persistKey);
     if (persisted) {
       memoryCache.set(key, persisted);
-      return persisted.data;
+      if (!options.revalidate) {
+        return persisted.data;
+      }
     }
   }
 
   const cached = memoryCache.get(key);
   if (cached && cached.expires > now) {
+    if (options?.revalidate) {
+      void cachedRequest(key, fetcher, { ...options, revalidate: false }).catch(() => undefined);
+    }
     return cached.data as T;
   }
 
@@ -89,6 +94,16 @@ export const invalidateCacheKey = (key: string) => {
   inflightRequests.delete(key);
 };
 
+const clearSessionKeysMatching = (matcher: (key: string) => boolean) => {
+  if (typeof sessionStorage === 'undefined') return;
+  for (let index = sessionStorage.length - 1; index >= 0; index -= 1) {
+    const key = sessionStorage.key(index);
+    if (key && matcher(key)) {
+      sessionStorage.removeItem(key);
+    }
+  }
+};
+
 export const invalidateCachePrefix = (prefix: string) => {
   for (const key of memoryCache.keys()) {
     if (key.startsWith(prefix)) {
@@ -96,4 +111,22 @@ export const invalidateCachePrefix = (prefix: string) => {
       inflightRequests.delete(key);
     }
   }
+
+  clearSessionKeysMatching(
+    (key) =>
+      key.startsWith(`umunsi_${prefix}`) ||
+      key.includes(`_${prefix}_`) ||
+      key.startsWith(`${prefix}_`) ||
+      (prefix === 'posts' && key.startsWith('umunsi_posts_')) ||
+      (prefix === 'categories' && key.startsWith('umunsi_categories')) ||
+      (prefix === 'post' && key.startsWith('umunsi_post_')),
+  );
+};
+
+/** Clear cached public content (use after publishing or when data looks stale). */
+export const clearPublicContentCaches = () => {
+  invalidateCachePrefix('posts');
+  invalidateCachePrefix('post');
+  invalidateCachePrefix('categories');
+  clearSessionKeysMatching((key) => key.startsWith('umunsi_home_cache') || key.startsWith('umunsi_category_page_'));
 };

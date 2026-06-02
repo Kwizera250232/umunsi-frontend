@@ -25,6 +25,7 @@ const HEALTH_KEYWORDS = ['ubuzima', 'health'];
 const LOVE_KEYWORDS = ['urukundo', 'love', 'relationship', 'dating', 'couple'];
 
 const HOME_CACHE_KEY = 'umunsi_home_cache_v1';
+const HOME_CACHE_MAX_AGE_MS = 90_000;
 const DEFAULT_POST_IMAGE = 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=1200&h=800&fit=crop';
 
 const getHomeCache = () => {
@@ -32,7 +33,13 @@ const getHomeCache = () => {
 
   try {
     const raw = sessionStorage.getItem(HOME_CACHE_KEY);
-    return raw ? JSON.parse(raw) : null;
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { savedAt?: number; posts?: Post[]; categories?: Category[]; featuredPost?: Post | null };
+    if (parsed.savedAt && Date.now() - parsed.savedAt > HOME_CACHE_MAX_AGE_MS) {
+      sessionStorage.removeItem(HOME_CACHE_KEY);
+      return null;
+    }
+    return parsed;
   } catch {
     return null;
   }
@@ -42,7 +49,7 @@ const saveHomeCache = (payload: { posts: Post[]; categories: Category[]; feature
   if (typeof window === 'undefined') return;
 
   try {
-    sessionStorage.setItem(HOME_CACHE_KEY, JSON.stringify(payload));
+    sessionStorage.setItem(HOME_CACHE_KEY, JSON.stringify({ ...payload, savedAt: Date.now() }));
   } catch {
     // Ignore cache write failures.
   }

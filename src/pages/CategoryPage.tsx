@@ -12,6 +12,7 @@ import {
   writeCategoryPageCache,
   type CategoryPageBundle,
 } from '../lib/categoryPageCache';
+import { clearPublicContentCaches } from '../lib/requestCache';
 
 const CategoryPage = () => {
   const { user } = useAuth();
@@ -190,6 +191,7 @@ const CategoryPage = () => {
               type="button"
               onClick={() => {
                 setFetchError(null);
+                clearPublicContentCaches();
                 setReloadKey((value) => value + 1);
               }}
               className="inline-flex items-center gap-1 px-3 py-1 rounded bg-[#181a20] border border-amber-500/40 text-amber-100 hover:text-white"

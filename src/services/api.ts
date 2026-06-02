@@ -603,6 +603,15 @@ const parseCategoriesResponse = (payload: unknown): Category[] => {
   return [];
 };
 
+const parsePostResponse = (payload: unknown): Post | null => {
+  if (!payload || typeof payload !== 'object') return null;
+  const body = payload as Record<string, unknown>;
+  if (body.data && typeof body.data === 'object') return body.data as Post;
+  if (body.post && typeof body.post === 'object') return body.post as Post;
+  if (typeof body.id === 'string' && typeof body.title === 'string') return body as Post;
+  return null;
+};
+
 const parsePostsListResponse = (payload: unknown): { data: Post[]; pagination: Record<string, unknown> } => {
   if (!payload || typeof payload !== 'object') {
     return { data: [], pagination: {} };
@@ -616,6 +625,16 @@ const parsePostsListResponse = (payload: unknown): { data: Post[]; pagination: R
     return { data: body.posts as Post[], pagination };
   }
   return { data: [], pagination };
+};
+
+const isPublicReadEndpoint = (endpoint: string, method = 'GET') => {
+  const verb = method.toUpperCase();
+  if (verb !== 'GET' && verb !== 'HEAD') return false;
+  return (
+    /^\/posts(\/|\?|$)/.test(endpoint) ||
+    /^\/categories(\/|\?|$)/.test(endpoint) ||
+    /^\/news(\/|\?|$)/.test(endpoint)
+  );
 };
 
 const AUTH_FREE_ENDPOINTS = [
@@ -685,15 +704,11 @@ class ApiClient {
 
       const data = await response.json().catch(() => ({}));
 
-      // Handle token expiration
-      if (response.status === 401 && retryCount === 0 && this.token && !shouldSkipAuthRedirect) {
-        try {
-          // Try to refresh the token
-          await this.refreshToken();
-          // Retry the original request
-          return this.request(endpoint, options, retryCount + 1);
-        } catch (refreshError) {
-          // If refresh fails, clear token and redirect to login
+      const isPublicRead = isPublicReadEndpoint(endpoint, options.method);
+
+      // Public reads must never redirect to login (expired editor tokens should not break the site).
+      if (response.status === 401 && isPublicRead) {
+        if (retryCount === 0 && this.token) {
           this.token = null;
           try {
             localStorage.removeItem('umunsi_token');
@@ -701,12 +716,31 @@ class ApiClient {
           } catch {
             // Ignore storage removal failures.
           }
-          window.location.href = '/login';
+          return this.request<T>(endpoint, options, retryCount + 1);
+        }
+        const authError = new Error(data.error || data.message || 'Unable to load content.');
+        (authError as Error & { status?: number }).status = 401;
+        throw authError;
+      }
+
+      // Handle token expiration for protected routes
+      if (response.status === 401 && retryCount === 0 && this.token && !shouldSkipAuthRedirect) {
+        try {
+          await this.refreshToken();
+          return this.request(endpoint, options, retryCount + 1);
+        } catch (refreshError) {
+          this.token = null;
+          try {
+            localStorage.removeItem('umunsi_token');
+            sessionStorage.removeItem('umunsi_token');
+          } catch {
+            // Ignore storage removal failures.
+          }
+          window.location.href = '/subscriber-login';
           throw new Error('Session expired. Please login again.');
         }
       } else if (response.status === 401 && !this.token && !shouldSkipAuthRedirect) {
-        // No token available, redirect to login
-        window.location.href = '/login';
+        window.location.href = '/subscriber-login';
         throw new Error('Authentication required. Please login.');
       }
 
@@ -1017,10 +1051,10 @@ class ApiClient {
         }
         const queryString = params.toString();
         const url = queryString ? `/categories?${queryString}` : '/categories';
-        const response = await this.request<{ categories: Category[] }>(url);
-        return response.categories || [];
+        const response = await this.request<unknown>(url);
+        return parseCategoriesResponse(response);
       },
-      { ttlMs: 5 * 60_000, persistKey },
+      { ttlMs: 90_000, persistKey, revalidate: true },
     );
   }
 
@@ -1311,21 +1345,30 @@ class ApiClient {
             }
           });
         }
-        return this.request<{ data: Post[]; pagination: any }>(`/posts?${queryParams}`);
+        const response = await this.request<unknown>(`/posts?${queryParams}`);
+        return parsePostsListResponse(response);
       },
-      { ttlMs: 2 * 60_000, persistKey },
+      { ttlMs: 45_000, persistKey, revalidate: true },
     );
   }
 
   async getPost(id: string): Promise<Post> {
+    const encodedId = encodeURIComponent(id);
     const cacheKey = buildCacheKey('post', { id });
+    const persistKey = `umunsi_post_entry_${id}`;
     return cachedRequest(
       cacheKey,
       async () => {
-        const response = await this.request<{ success: boolean; data: Post }>(`/posts/${id}`);
-        return response.data;
+        const response = await this.request<unknown>(`/posts/${encodedId}`);
+        const parsed = parsePostResponse(response);
+        if (!parsed) {
+          const notFound = new Error('Post not found');
+          (notFound as Error & { status?: number }).status = 404;
+          throw notFound;
+        }
+        return parsed;
       },
-      { ttlMs: 3 * 60_000, persistKey: `umunsi_post_${id}` },
+      { ttlMs: 60_000, persistKey, revalidate: true },
     );
   }
 

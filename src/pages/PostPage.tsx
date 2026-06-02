@@ -211,13 +211,33 @@ const normalizeExternalUrl = (url?: string) => {
   return `https://${url}`;
 };
 
+const parseStoredPostCache = (raw: string | null): Post | null => {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as Post | { data?: Post; expires?: number };
+    if (parsed && typeof parsed === 'object' && 'data' in parsed && 'expires' in parsed) {
+      const entry = parsed as { data?: Post; expires?: number };
+      if (!entry.data) return null;
+      if (entry.expires && entry.expires <= Date.now()) return null;
+      return entry.data;
+    }
+    if (parsed && typeof parsed === 'object' && 'id' in parsed) {
+      return parsed as Post;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+};
+
 const getCachedPost = (identifier?: string) => {
   if (!identifier || typeof window === 'undefined') return null;
   try {
-    const cachedRaw = sessionStorage.getItem(`umunsi_post_${identifier}`);
+    const cachedRaw =
+      sessionStorage.getItem(`umunsi_post_entry_${identifier}`) ||
+      sessionStorage.getItem(`umunsi_post_${identifier}`);
     if (!cachedRaw) return null;
-    const cached = JSON.parse(cachedRaw) as Post;
-    return cached || null;
+    return parseStoredPostCache(cachedRaw);
   } catch {
     return null;
   }
@@ -707,13 +727,35 @@ const PostPage = () => {
   };
 
   if (hasResolvedInitialFetch && (error || !post)) {
-    return (
-      <div className="min-h-screen bg-[#0b0e11] flex items-center justify-center">
-        <div className="text-center">
+    const rateLimited = Boolean(error && isRateLimitError({ message: error }));
+  return (
+      <div className="min-h-screen bg-[#0b0e11] flex items-center justify-center px-4">
+        <div className="text-center max-w-md">
           <AlertCircle className="w-16 h-16 text-red-400 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-white mb-2">Article Not Found</h2>
-          <p className="text-gray-400 mb-6">{error}</p>
-          <Link to="/" className="text-[#fcd535] hover:underline">← Back to Home</Link>
+          <h2 className="text-xl font-bold text-white mb-2">
+            {rateLimited ? 'Sisitemu irahagarara gato' : 'Article Not Found'}
+          </h2>
+          <p className="text-gray-400 mb-6">
+            {rateLimited
+              ? 'Too many requests. Ongera ugerageze mu masegonda make.'
+              : error || 'Failed to load article.'}
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <button
+              type="button"
+              onClick={() => {
+                setError(null);
+                setHasResolvedInitialFetch(false);
+                void fetchPost();
+              }}
+              className="px-6 py-3 bg-[#fcd535] text-[#0b0e11] font-bold rounded-lg"
+            >
+              Ongera ugerageze
+            </button>
+            <Link to="/" className="px-6 py-3 border border-[#2b2f36] text-gray-300 rounded-lg hover:text-[#fcd535]">
+              ← Back to Home
+            </Link>
+          </div>
         </div>
       </div>
     );
