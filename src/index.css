@@ -2,6 +2,19 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Keep AdSense slots visible and responsive (do not collapse unfilled units). */
+.umunsi-ad-slot {
+  width: 100%;
+  min-height: 90px;
+  overflow: visible;
+}
+
+.umunsi-ad-slot ins.adsbygoogle {
+  display: block;
+  width: 100%;
+  min-height: inherit;
+}
+
 /* Day mode theme overrides */
 html.day-mode {
   color-scheme: light;

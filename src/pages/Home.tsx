@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { Clock, Eye, ChevronRight, Heart, TrendingUp, Zap, AlertCircle, Mail, Calendar, MapPin, CloudSun, Send, ThumbsUp } from 'lucide-react';
 import { apiClient, Post, Category, ClassifiedAd, AdsBannersState, resolveAssetUrl, extractFirstImageFromHtml } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import AdSenseUnit from '../components/ads/AdSenseUnit';
+import { ADSENSE_SLOTS } from '../constants/adsense';
 
 type SpecialCategoryKey = 'cyamunara' | 'akazi';
 
@@ -21,8 +23,6 @@ const normalizeText = (value: string) =>
 const HEALTH_KEYWORDS = ['ubuzima', 'health'];
 const LOVE_KEYWORDS = ['urukundo', 'love', 'relationship', 'dating', 'couple'];
 
-const ADSENSE_HOME_AFTER_PARAGRAPH_7_SLOT = '1353027611';
-const ADSENSE_HOME_AFTER_CONTENT_SLOT = '5829562310';
 const HOME_CACHE_KEY = 'umunsi_home_cache_v1';
 const DEFAULT_POST_IMAGE = 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=1200&h=800&fit=crop';
 
@@ -83,52 +83,6 @@ const Home = () => {
     const timer = window.setTimeout(loadAdsBanners, 0);
     return () => window.clearTimeout(timer);
   }, []);
-
-  useEffect(() => {
-    if (!showAds || typeof window === 'undefined') return;
-
-    let cancelled = false;
-    let attempts = 0;
-    const maxAttempts = 28;
-
-    const initHomeAds = () => {
-      if (cancelled) return;
-
-      const queue = (window as Window & { adsbygoogle?: Array<Record<string, unknown>> }).adsbygoogle;
-      if (!queue) {
-        if (attempts++ < maxAttempts) window.setTimeout(initHomeAds, 120);
-        return;
-      }
-
-      const slots = Array.from(
-        document.querySelectorAll('.home-after-content-ad ins.adsbygoogle, .home-after-paragraph-7-ad ins.adsbygoogle, .home-managed-story-ad ins.adsbygoogle')
-      ) as HTMLElement[];
-
-      const pending = slots.filter((slot) => slot.dataset.adInitialized !== '1' && !slot.getAttribute('data-ad-status'));
-      if (pending.length === 0) return;
-
-      try {
-        pending.forEach((slot) => {
-          queue.push({});
-          slot.dataset.adInitialized = '1';
-          window.setTimeout(() => {
-            if (slot.getAttribute('data-ad-status') === 'unfilled') {
-              const wrapper = slot.closest('.home-after-content-ad, .home-after-paragraph-7-ad, .home-managed-story-ad') as HTMLElement | null;
-              if (wrapper) wrapper.style.display = 'none';
-            }
-          }, 1800);
-        });
-      } catch {
-        if (attempts++ < maxAttempts) window.setTimeout(initHomeAds, 180);
-      }
-    };
-
-    initHomeAds();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [showAds, posts.length, activeTab]);
 
   const fetchHomeData = async () => {
     try {
@@ -801,14 +755,7 @@ const Home = () => {
 
                     {showAds && index === 6 && (
                       <div className="home-after-paragraph-7-ad p-4 border-t border-[#2b2f36]">
-                        <ins
-                          className="adsbygoogle"
-                          style={{ display: 'block' }}
-                          data-ad-client="ca-pub-3584259871242471"
-                          data-ad-slot={ADSENSE_HOME_AFTER_PARAGRAPH_7_SLOT}
-                          data-ad-format="auto"
-                          data-full-width-responsive="true"
-                        ></ins>
+                        <AdSenseUnit slot={ADSENSE_SLOTS.homeAfterParagraph7} label="Kwamamaza" minHeight={100} />
                       </div>
                     )}
                   </div>
@@ -817,21 +764,8 @@ const Home = () => {
             </div>
 
             {showAds && (
-              <div className="home-after-content-ad bg-[#181a20] rounded-lg overflow-hidden">
-                <div className="p-2 border-b border-[#2b2f36]">
-                  <p className="text-gray-500 text-[10px] text-center uppercase tracking-wider">Kwamamaza</p>
-                </div>
-                <div className="p-4">
-                  <ins
-                    className="adsbygoogle"
-                    style={{ display: 'block', minHeight: '120px' }}
-                    data-ad-client="ca-pub-3584259871242471"
-                    data-ad-slot={ADSENSE_HOME_AFTER_CONTENT_SLOT}
-                    data-ad-format="auto"
-                    data-full-width-responsive="true"
-                  ></ins>
-                  <p className="text-[11px] text-gray-500 mt-2 text-center">Kwamamaza</p>
-                </div>
+              <div className="home-after-content-ad bg-[#181a20] rounded-lg overflow-hidden p-4">
+                <AdSenseUnit slot={ADSENSE_SLOTS.homeAfterContent} label="Kwamamaza" minHeight={120} />
               </div>
             )}
 

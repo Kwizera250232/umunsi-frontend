@@ -3,6 +3,8 @@ import { useParams, Link } from 'react-router-dom';
 import { Clock, Eye, Heart, ChevronRight, ArrowLeft, Loader2, TrendingUp, Calendar, User } from 'lucide-react';
 import { apiClient, Post, Category, resolveAssetUrl, extractFirstImageFromHtml } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import AdSenseUnit from '../components/ads/AdSenseUnit';
+import { ADSENSE_SLOTS } from '../constants/adsense';
 
 const normalizeText = (value: string) =>
   value
@@ -277,16 +279,8 @@ const CategoryPage = () => {
                 )}
 
                 {showAds && (
-                  <div className="bg-[#181a20] rounded-lg overflow-hidden">
-                    <div className="p-2 border-b border-[#2b2f36]">
-                      <p className="text-gray-500 text-[10px] text-center uppercase tracking-wider">Kwamamaza</p>
-                    </div>
-                    <div className="p-4">
-                      <div className="bg-[#0b0e11] rounded-lg border-2 border-dashed border-[#2b2f36] flex flex-col items-center justify-center h-[100px] hover:border-[#fcd535]/50 transition-colors">
-                        <p className="text-gray-400 text-sm font-medium">Banner Ad</p>
-                        <p className="text-[#fcd535] text-xs font-bold">728 x 90 px</p>
-                      </div>
-                    </div>
+                  <div className="bg-[#181a20] rounded-lg overflow-hidden p-4">
+                    <AdSenseUnit slot={ADSENSE_SLOTS.categoryLeaderboard} label="Kwamamaza" minHeight={90} />
                   </div>
                 )}
 
@@ -399,16 +393,8 @@ const CategoryPage = () => {
                 </div>
 
                 {showAds && (
-                  <div className="bg-[#181a20] rounded-lg overflow-hidden">
-                    <div className="p-2 border-b border-[#2b2f36]">
-                      <p className="text-gray-500 text-[10px] text-center uppercase tracking-wider">Kwamamaza</p>
-                    </div>
-                    <div className="p-3">
-                      <div className="bg-[#0b0e11] rounded-lg border-2 border-dashed border-[#2b2f36] flex flex-col items-center justify-center aspect-square hover:border-[#fcd535]/50 transition-colors">
-                        <p className="text-gray-400 text-xs font-medium">Square Ad</p>
-                        <p className="text-[#fcd535] text-[10px] font-bold">300 x 300 px</p>
-                      </div>
-                    </div>
+                  <div className="bg-[#181a20] rounded-lg overflow-hidden p-3">
+                    <AdSenseUnit slot={ADSENSE_SLOTS.categorySidebar} label="Kwamamaza" minHeight={250} />
                   </div>
                 )}
 
