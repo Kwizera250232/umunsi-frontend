@@ -10,6 +10,7 @@ import {
   getInitialCategoryBundle,
   isRateLimitError,
   writeCategoryPageCache,
+  fetchPostsForCategory,
   type CategoryPageBundle,
 } from '../lib/categoryPageCache';
 import { clearPublicContentCaches } from '../lib/requestCache';
@@ -57,36 +58,45 @@ const CategoryPage = () => {
 
       setFetchError(null);
 
+      let categoriesResponse: Category[] = [];
+      let currentCategory: Category | null = null;
+      const stalePostCount = getInitialCategoryBundle(slug)?.posts?.length ?? posts.length;
+
       try {
-        const categoriesResponse = await apiClient.getCategories({ includeInactive: false });
+        categoriesResponse = await apiClient.getCategories({ includeInactive: false });
         if (cancelled || fetchGeneration.current !== generation) return;
 
-        const currentCategory = findCategoryBySlug(categoriesResponse, slug);
+        currentCategory = findCategoryBySlug(categoriesResponse, slug);
 
         if (!currentCategory) {
           setCategory(null);
           setPosts([]);
           setAllCategories(categoriesResponse);
+          setFetchError(null);
           return;
         }
 
         setAllCategories(categoriesResponse);
         setCategory(currentCategory);
+      } catch (error) {
+        if (cancelled || fetchGeneration.current !== generation) return;
+        console.error('Error fetching categories:', error);
+        if (isRateLimitError(error)) {
+          setFetchError('Sisitemu irahagarara gato (too many requests). Ongera ugerageze mu masegonda make.');
+        } else if (!category) {
+          setFetchError('Ntibyashobotse gukurura category. Ongera ugerageze.');
+        }
+        return;
+      }
 
-        const postsResponse = await apiClient.getPosts({
-          status: 'PUBLISHED',
-          category: currentCategory.id,
-          limit: 50,
-        });
+      try {
+        if (!currentCategory) return;
 
+        const nextPosts = await fetchPostsForCategory(currentCategory, slug);
         if (cancelled || fetchGeneration.current !== generation) return;
 
-        const nextPosts = (postsResponse?.data || []).map((post) => ({
-          ...post,
-          featuredImage: post.featuredImage || extractFirstImageFromHtml(post.content) || undefined,
-        }));
-
         setPosts(nextPosts);
+        setFetchError(null);
 
         writeCategoryPageCache(slug, {
           category: currentCategory,
@@ -96,14 +106,14 @@ const CategoryPage = () => {
       } catch (error) {
         if (cancelled || fetchGeneration.current !== generation) return;
 
-        console.error('Error fetching category data:', error);
+        console.error('Error fetching category posts:', error);
 
         if (isRateLimitError(error)) {
           setFetchError('Sisitemu irahagarara gato (too many requests). Ongera ugerageze mu masegonda make.');
-        } else if (!category) {
-          setFetchError('Ntibyashobotse gukurura category. Ongera ugerageze.');
-        } else {
+        } else if (stalePostCount > 0) {
           setFetchError('Ntibyashobotse kuvugurura amakuru. Amakuru asanzwe ariho aracyagaragara.');
+        } else {
+          setFetchError(null);
         }
       } finally {
         if (!cancelled && fetchGeneration.current === generation) {
@@ -180,7 +190,7 @@ const CategoryPage = () => {
 
   return (
     <div className="min-h-screen bg-[#0b0e11]">
-      {fetchError && (
+      {fetchError && posts.length > 0 && (
         <div className="bg-amber-500/10 border-b border-amber-500/30 px-3 py-2">
           <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-amber-200">
             <span className="inline-flex items-center gap-2">
