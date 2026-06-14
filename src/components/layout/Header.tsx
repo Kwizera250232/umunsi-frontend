@@ -16,7 +16,15 @@ const Header = () => {
     return localStorage.getItem('umunsi_theme') === 'dark' ? 'dark' : 'day';
   });
   const [searchQuery, setSearchQuery] = useState('');
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [categories, setCategories] = useState<Category[]>(() => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const raw = sessionStorage.getItem('umunsi_categories_cache_v1');
+      return raw ? (JSON.parse(raw) as Category[]) : [];
+    } catch {
+      return [];
+    }
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -37,10 +45,16 @@ const Header = () => {
         // Filter to ensure only active categories are shown
         const activeCategories = response.filter(cat => cat.isActive !== false);
         setCategories(activeCategories);
+        try {
+          sessionStorage.setItem('umunsi_categories_cache_v1', JSON.stringify(activeCategories));
+        } catch {
+          // Ignore cache write failures.
+        }
       }
     } catch (error) {
       console.error('Error fetching categories:', error);
-      setCategories([]);
+      // Keep any cached categories rather than blanking the navigation
+      // when the backend is briefly unreachable.
     } finally {
       setLoading(false);
     }

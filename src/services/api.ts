@@ -647,11 +647,20 @@ class ApiClient {
       headers.Authorization = `Bearer ${this.token}`;
     }
 
+    // Abort the request if the backend is unresponsive to avoid hanging UI
+    // (stuck "loading" categories / blank "no articles" homepage).
+    const REQUEST_TIMEOUT_MS = 15000;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
     try {
       const response = await fetch(url, {
         ...options,
         headers,
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       const data = await response.json().catch(() => ({}));
 
@@ -686,8 +695,23 @@ class ApiClient {
 
       return data;
     } catch (error) {
+      clearTimeout(timeoutId);
+
       const errorMessage = error instanceof Error ? error.message : String(error || '');
-      const isNetworkStyleError = /fetch|network|load failed|failed to fetch/i.test(errorMessage);
+      const isAbortError = error instanceof DOMException && error.name === 'AbortError';
+      const isNetworkStyleError = isAbortError
+        || /fetch|network|load failed|failed to fetch|aborted|timeout/i.test(errorMessage);
+
+      // Retry transient network/timeout failures for idempotent (GET) requests.
+      // This prevents a single slow/dropped response from blanking the homepage
+      // or leaving categories stuck on "loading".
+      const method = (options.method || 'GET').toUpperCase();
+      const MAX_NETWORK_RETRIES = 2;
+      if (isNetworkStyleError && method === 'GET' && retryCount < MAX_NETWORK_RETRIES) {
+        const backoffMs = 600 * (retryCount + 1);
+        await new Promise((resolve) => setTimeout(resolve, backoffMs));
+        return this.request<T>(endpoint, options, retryCount + 1);
+      }
 
       if (canUseProdFallback && isNetworkStyleError) {
         const previousBaseUrl = this.baseURL;
