@@ -960,14 +960,24 @@ class ApiClient {
   // Categories Methods
   async getCategories(options?: { includeInactive?: boolean }): Promise<Category[]> {
     const params = new URLSearchParams();
+    params.append('limit', '100');
     if (options?.includeInactive) {
       params.append('includeInactive', 'true');
     }
-    const queryString = params.toString();
-    const url = queryString ? `/categories?${queryString}` : '/categories';
+    const url = `/categories?${params.toString()}`;
     const response = await this.request<{categories: Category[]}>(url);
     // The API returns {success: true, categories: [...]}
-    return response.categories || [];
+    return (response.categories || []).map((category) => {
+      const rawDescription = (category.description || '').trim();
+      const cleanedDescription = /^imported\s+from\s+wordpress\s*:/i.test(rawDescription)
+        ? ''
+        : rawDescription;
+
+      return {
+        ...category,
+        description: cleanedDescription,
+      };
+    });
   }
 
   async createCategory(categoryData: Partial<Category>): Promise<{ success: boolean; category: Category; message?: string }> {
@@ -1251,8 +1261,9 @@ class ApiClient {
   }
 
   async getPost(id: string): Promise<Post> {
-    const response = await this.request<{ success: boolean; data: Post }>(`/posts/${id}`);
-    return response.data;
+    const response = await this.request<{ success: boolean; data: Post; post?: Post }>(`/posts/${id}`);
+    // Backend may return .data or .post
+    return response.data ?? (response as any).post ?? response as unknown as Post;
   }
 
   async trackPostShare(id: string, platform: string): Promise<{ success: boolean; data: { postId: string; platform: string; shareCount: number; shareBreakdown?: Record<string, number> } }> {
@@ -1280,12 +1291,28 @@ class ApiClient {
     tags?: string[];
     metaTitle?: string;
     metaDescription?: string;
+    notifyAdmin?: boolean;
   }): Promise<Post> {
     const response = await this.request<Post>('/posts', {
       method: 'POST',
       body: JSON.stringify(data),
     });
+
+    // If notifyAdmin flag is set, send admin notification
+    if (data.notifyAdmin && response?.id) {
+      await this.notifyAdminNewPost(response.id, data.title).catch(() => {
+        // Silently fail notification - don't block post creation
+      });
+    }
+
     return response;
+  }
+
+  async notifyAdminNewPost(postId: string, postTitle: string): Promise<void> {
+    await this.request('/notifications/admin-new-post', {
+      method: 'POST',
+      body: JSON.stringify({ postId, postTitle }),
+    });
   }
 
   async updatePost(id: string, data: Partial<{

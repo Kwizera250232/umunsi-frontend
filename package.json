@@ -12,6 +12,8 @@
   },
   "dependencies": {
     "@types/node": "^24.3.0",
+    "gifenc": "^1.0.3",
+    "html2canvas": "^1.4.1",
     "lucide-react": "^0.541.0",
     "quill": "^2.0.3",
     "react": "^18.3.1",

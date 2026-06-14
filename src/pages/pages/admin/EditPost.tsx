@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { 
   Save, 
   Eye, 
@@ -19,32 +19,25 @@ import {
   FileText,
   Image as ImageIcon,
   AlertCircle,
-  Sparkles
+  Edit3
 } from 'lucide-react';
-import { apiClient, Category, MediaFile } from '../../services/api';
-
-const DEFAULT_EDITORIAL_CATEGORIES = [
-  { name: 'Inkuru Nyamukuru', description: 'Inkuru zatoranyijwe nk’izingenzi ku rubuga.' },
-  { name: 'Ubuzima', description: 'Inkuru zijyanye n’ubuzima n’imibereho myiza.' },
-  { name: "Inkuru z'Urukundo", description: 'Inkuru zijyanye n’urukundo n’imibanire.' }
-];
+import { apiClient, Category, MediaFile, Post } from '../../services/api';
 import RichTextEditor from '../../components/RichTextEditor';
 import MediaLibraryModal from '../../components/MediaLibraryModal';
-import { useAuth } from '../../contexts/AuthContext';
 
-const AddPost: React.FC = () => {
+const EditPost: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const isAuthorOnly = user?.role === 'AUTHOR';
+  const { id } = useParams<{ id: string }>();
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [post, setPost] = useState<Post | null>(null);
   const [formData, setFormData] = useState({
     title: '',
     content: '',
     excerpt: '',
     featuredImage: '',
     status: 'DRAFT' as 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'DELETED',
-    isPremium: false,
     categoryId: '',
     isFeatured: false,
     isPinned: false,
@@ -60,35 +53,64 @@ const AddPost: React.FC = () => {
   const [selectedFeaturedImage, setSelectedFeaturedImage] = useState<MediaFile | null>(null);
 
   useEffect(() => {
-    fetchCategories();
-  }, [user?.role]);
+    if (id) {
+      fetchPost();
+      fetchCategories();
+    }
+  }, [id]);
+
+  const fetchPost = async () => {
+    try {
+      setInitialLoading(true);
+      const postData = await apiClient.getPost(id!);
+      setPost(postData);
+      
+      const featuredImageUrl = postData.featuredImage ? 
+        postData.featuredImage.replace(/^https?:\/\/[^\/]+/, '') : '';
+      
+      setFormData({
+        title: postData.title,
+        content: postData.content,
+        excerpt: postData.excerpt || '',
+        featuredImage: featuredImageUrl,
+        status: postData.status,
+        categoryId: postData.category?.id || '',
+        isFeatured: postData.isFeatured,
+        isPinned: postData.isPinned,
+        allowComments: postData.allowComments,
+        tags: postData.tags || [],
+        metaTitle: postData.metaTitle || '',
+        metaDescription: postData.metaDescription || ''
+      });
+
+      if (postData.featuredImage) {
+        setSelectedFeaturedImage({
+          id: 'temp',
+          originalName: 'Current Featured Image',
+          filename: 'current',
+          mimeType: 'image/svg+xml',
+          size: 0,
+          url: featuredImageUrl,
+          thumbnailUrl: featuredImageUrl,
+          category: 'featured',
+          tags: [],
+          description: 'Current featured image',
+          uploadedAt: new Date().toISOString(),
+          uploadedBy: { id: 'temp', firstName: 'Current', lastName: 'User' }
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching post:', error);
+      setErrors({ fetch: 'Failed to load post. Please try again.' });
+    } finally {
+      setInitialLoading(false);
+    }
+  };
 
   const fetchCategories = async () => {
     try {
       const response = await apiClient.getCategories();
-      let resolvedCategories = response;
-
-      if (user?.role === 'ADMIN') {
-        const existingNames = new Set(response.map((category) => category.name.trim().toLowerCase()));
-        const missingCategories = DEFAULT_EDITORIAL_CATEGORIES.filter(
-          (category) => !existingNames.has(category.name.trim().toLowerCase())
-        );
-
-        if (missingCategories.length > 0) {
-          await Promise.all(
-            missingCategories.map((category) =>
-              apiClient.createCategory({
-                name: category.name,
-                description: category.description,
-                isActive: true,
-              }).catch(() => null)
-            )
-          );
-          resolvedCategories = await apiClient.getCategories();
-        }
-      }
-
-      setCategories(resolvedCategories);
+      setCategories(response);
     } catch (error) {
       console.error('Error fetching categories:', error);
     }
@@ -110,7 +132,6 @@ const AddPost: React.FC = () => {
       }));
     }
 
-    // Clear error when user starts typing
     if (errors[name]) {
       setErrors(prev => ({
         ...prev,
@@ -175,27 +196,25 @@ const AddPost: React.FC = () => {
 
     setLoading(true);
     try {
-      await apiClient.createPost({
+      await apiClient.updatePost(id!, {
         title: formData.title,
         content: formData.content,
         excerpt: formData.excerpt || undefined,
         featuredImage: formData.featuredImage || undefined,
-        status: isAuthorOnly ? 'DRAFT' : formData.status,
-        isPremium: formData.isPremium,
+        status: formData.status,
         categoryId: formData.categoryId || undefined,
         isFeatured: formData.isFeatured,
         isPinned: formData.isPinned,
         allowComments: formData.allowComments,
         tags: formData.tags,
         metaTitle: formData.metaTitle || undefined,
-        metaDescription: formData.metaDescription || undefined,
-        notifyAdmin: isAuthorOnly // Notify admin when author submits article
+        metaDescription: formData.metaDescription || undefined
       });
 
       navigate('/admin/posts');
     } catch (error) {
-      console.error('Error creating post:', error);
-      setErrors({ submit: 'Failed to create post. Please try again.' });
+      console.error('Error updating post:', error);
+      setErrors({ submit: 'Failed to update post. Please try again.' });
     } finally {
       setLoading(false);
     }
@@ -232,9 +251,13 @@ const AddPost: React.FC = () => {
 
   const handleFeaturedImageSelect = (media: MediaFile) => {
     setSelectedFeaturedImage(media);
+    const getServerBaseUrl = () => {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      return apiUrl.replace('/api', '');
+    };
     setFormData(prev => ({
       ...prev,
-      featuredImage: media.url || ''
+      featuredImage: `${getServerBaseUrl()}${media.url}`
     }));
   };
 
@@ -245,6 +268,36 @@ const AddPost: React.FC = () => {
       featuredImage: ''
     }));
   };
+
+  if (initialLoading) {
+    return (
+      <div className="p-6 bg-[#0b0e11] min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-2 border-[#fcd535]/20 border-t-[#fcd535] rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-400">Loading article...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!post) {
+    return (
+      <div className="p-6 bg-[#0b0e11] min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-white mb-2">Article Not Found</h2>
+          <p className="text-gray-400 mb-4">The article you're looking for doesn't exist.</p>
+          <button
+            onClick={() => navigate('/admin/posts')}
+            className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-[#fcd535] to-[#f0b90b] text-[#0b0e11] font-semibold rounded-xl hover:from-[#f0b90b] hover:to-[#d4a00a] transition-all"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Posts
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 bg-[#0b0e11] min-h-screen">
@@ -261,12 +314,12 @@ const AddPost: React.FC = () => {
             </button>
             <div>
               <div className="flex items-center space-x-3">
-                <div className="p-2 bg-gradient-to-br from-[#fcd535]/20 to-[#f0b90b]/20 rounded-xl">
-                  <Sparkles className="w-6 h-6 text-[#fcd535]" />
+                <div className="p-2 bg-gradient-to-br from-blue-500/20 to-blue-600/20 rounded-xl">
+                  <Edit3 className="w-6 h-6 text-blue-400" />
                 </div>
                 <div>
-                  <h1 className="text-2xl font-bold text-white">Create New Article</h1>
-                  <p className="text-gray-300 mt-1">{isAuthorOnly ? 'Andika inkuru yawe uyishyire muri Draft, admin ni we uyipubulisha.' : 'Write and publish a new news article'}</p>
+                  <h1 className="text-2xl font-bold text-white">Edit Article</h1>
+                  <p className="text-gray-400 mt-1">Update your news article</p>
                 </div>
               </div>
             </div>
@@ -284,24 +337,24 @@ const AddPost: React.FC = () => {
               type="submit"
               form="post-form"
               disabled={loading}
-              className="flex items-center px-6 py-2.5 bg-gradient-to-r from-[#fcd535] to-[#f0b90b] text-[#0b0e11] font-semibold rounded-xl hover:from-[#f0b90b] hover:to-[#d4a00a] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-[#fcd535]/20"
+              className="flex items-center px-6 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold rounded-xl hover:from-blue-600 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-blue-500/20"
             >
               {loading ? (
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#0b0e11] mr-2"></div>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
               ) : (
                 <Save className="w-4 h-4 mr-2" />
               )}
-              {loading ? 'Saving...' : isAuthorOnly ? 'Save as Draft' : 'Publish Article'}
+              {loading ? 'Saving...' : 'Update Article'}
             </button>
           </div>
         </div>
       </div>
 
       {/* Error Message */}
-      {errors.submit && (
+      {(errors.submit || errors.fetch) && (
         <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl flex items-center">
           <AlertCircle className="w-5 h-5 text-red-400 mr-2" />
-          <span className="text-red-400">{errors.submit}</span>
+          <span className="text-red-400">{errors.submit || errors.fetch}</span>
         </div>
       )}
 
@@ -312,7 +365,7 @@ const AddPost: React.FC = () => {
             <form id="post-form" onSubmit={handleSubmit} className="p-6">
               {/* Title */}
               <div className="mb-6">
-                <label htmlFor="title" className="block text-sm font-medium text-white mb-2">
+                <label htmlFor="title" className="block text-sm font-medium text-gray-300 mb-2">
                   Article Title *
                 </label>
                 <input
@@ -337,7 +390,7 @@ const AddPost: React.FC = () => {
 
               {/* Content */}
               <div className="mb-6">
-                <label htmlFor="content" className="block text-sm font-medium text-white mb-2">
+                <label htmlFor="content" className="block text-sm font-medium text-gray-300 mb-2">
                   Content *
                 </label>
                 <RichTextEditor
@@ -354,7 +407,7 @@ const AddPost: React.FC = () => {
               {/* Excerpt */}
               <div className="mb-6">
                 <div className="flex items-center justify-between mb-2">
-                  <label htmlFor="excerpt" className="block text-sm font-medium text-white">
+                  <label htmlFor="excerpt" className="block text-sm font-medium text-gray-300">
                     Excerpt
                   </label>
                   <button
@@ -387,7 +440,7 @@ const AddPost: React.FC = () => {
 
               {/* Featured Image */}
               <div className="mb-6">
-                <label className="block text-sm font-medium text-white mb-2">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
                   Featured Image
                 </label>
                 
@@ -399,7 +452,6 @@ const AddPost: React.FC = () => {
                         alt="Featured image preview"
                         className="w-full h-48 object-cover rounded-xl border border-[#2b2f36]"
                         onError={(e) => {
-                          console.error('Failed to load featured image:', e);
                           (e.target as HTMLImageElement).style.display = 'none';
                         }}
                       />
@@ -430,7 +482,7 @@ const AddPost: React.FC = () => {
                 ) : (
                   <div className="border-2 border-dashed border-[#2b2f36] rounded-xl p-6 text-center hover:border-[#fcd535]/50 transition-colors bg-[#0b0e11]">
                     <ImageIcon className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-                    <p className="text-white mb-2">No featured image selected</p>
+                    <p className="text-gray-400 mb-2">No featured image selected</p>
                     <button
                       type="button"
                       onClick={() => setShowMediaLibrary(true)}
@@ -458,7 +510,7 @@ const AddPost: React.FC = () => {
             <div className="space-y-4">
               {/* Status */}
               <div>
-                <label htmlFor="status" className="block text-sm font-medium text-white mb-2">
+                <label htmlFor="status" className="block text-sm font-medium text-gray-300 mb-2">
                   Status
                 </label>
                 <select
@@ -466,19 +518,17 @@ const AddPost: React.FC = () => {
                   name="status"
                   value={formData.status}
                   onChange={handleInputChange}
-                  disabled={isAuthorOnly}
                   className="w-full px-3 py-2.5 bg-[#0b0e11] border border-[#2b2f36] rounded-xl focus:ring-2 focus:ring-[#fcd535]/50 focus:border-[#fcd535] text-white"
                 >
                   <option value="DRAFT">Draft</option>
-                  {!isAuthorOnly && <option value="PUBLISHED">Published</option>}
-                  {!isAuthorOnly && <option value="ARCHIVED">Archived</option>}
+                  <option value="PUBLISHED">Published</option>
+                  <option value="ARCHIVED">Archived</option>
                 </select>
-                {isAuthorOnly && <p className="mt-1 text-xs text-gray-500">Author account ishobora kubika Draft gusa. Admin ni we ukora approve/publish.</p>}
               </div>
 
               {/* Category */}
               <div>
-                <label htmlFor="categoryId" className="block text-sm font-medium text-white mb-2">
+                <label htmlFor="categoryId" className="block text-sm font-medium text-gray-300 mb-2">
                   Category
                 </label>
                 <select
@@ -499,19 +549,7 @@ const AddPost: React.FC = () => {
 
               {/* Options */}
               <div className="space-y-3 pt-2">
-                {!isAuthorOnly && <label className="flex items-center p-3 bg-[#0b0e11] rounded-xl border border-[#2b2f36] cursor-pointer hover:border-[#fcd535]/50 transition-colors">
-                  <input
-                    type="checkbox"
-                    name="isPremium"
-                    checked={formData.isPremium}
-                    onChange={handleInputChange}
-                    className="w-4 h-4 text-[#fcd535] bg-[#0b0e11] border-[#2b2f36] rounded focus:ring-[#fcd535]"
-                  />
-                  <Lock className="w-4 h-4 ml-3 text-[#fcd535]" />
-                  <span className="ml-2 text-sm text-white">Premium Article (paywall)</span>
-                </label>}
-
-                {!isAuthorOnly && <label className="flex items-center p-3 bg-[#0b0e11] rounded-xl border border-[#2b2f36] cursor-pointer hover:border-[#fcd535]/50 transition-colors">
+                <label className="flex items-center p-3 bg-[#0b0e11] rounded-xl border border-[#2b2f36] cursor-pointer hover:border-[#fcd535]/50 transition-colors">
                   <input
                     type="checkbox"
                     name="isFeatured"
@@ -520,10 +558,10 @@ const AddPost: React.FC = () => {
                     className="w-4 h-4 text-[#fcd535] bg-[#0b0e11] border-[#2b2f36] rounded focus:ring-[#fcd535]"
                   />
                   <Star className="w-4 h-4 ml-3 text-yellow-500" />
-                  <span className="ml-2 text-sm text-white">Featured Article</span>
-                </label>}
+                  <span className="ml-2 text-sm text-gray-300">Featured Article</span>
+                </label>
 
-                {!isAuthorOnly && <label className="flex items-center p-3 bg-[#0b0e11] rounded-xl border border-[#2b2f36] cursor-pointer hover:border-[#fcd535]/50 transition-colors">
+                <label className="flex items-center p-3 bg-[#0b0e11] rounded-xl border border-[#2b2f36] cursor-pointer hover:border-[#fcd535]/50 transition-colors">
                   <input
                     type="checkbox"
                     name="isPinned"
@@ -532,8 +570,8 @@ const AddPost: React.FC = () => {
                     className="w-4 h-4 text-[#fcd535] bg-[#0b0e11] border-[#2b2f36] rounded focus:ring-[#fcd535]"
                   />
                   <Pin className="w-4 h-4 ml-3 text-blue-500" />
-                  <span className="ml-2 text-sm text-white">Pinned Article</span>
-                </label>}
+                  <span className="ml-2 text-sm text-gray-300">Pinned Article</span>
+                </label>
 
                 <label className="flex items-center p-3 bg-[#0b0e11] rounded-xl border border-[#2b2f36] cursor-pointer hover:border-[#fcd535]/50 transition-colors">
                   <input
@@ -544,7 +582,7 @@ const AddPost: React.FC = () => {
                     className="w-4 h-4 text-[#fcd535] bg-[#0b0e11] border-[#2b2f36] rounded focus:ring-[#fcd535]"
                   />
                   <MessageCircle className="w-4 h-4 ml-3 text-emerald-500" />
-                  <span className="ml-2 text-sm text-white">Allow Comments</span>
+                  <span className="ml-2 text-sm text-gray-300">Allow Comments</span>
                 </label>
               </div>
             </div>
@@ -609,7 +647,7 @@ const AddPost: React.FC = () => {
               {/* Meta Title */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label htmlFor="metaTitle" className="block text-sm font-medium text-white">
+                  <label htmlFor="metaTitle" className="block text-sm font-medium text-gray-300">
                     Meta Title
                   </label>
                   <button
@@ -634,7 +672,7 @@ const AddPost: React.FC = () => {
               {/* Meta Description */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label htmlFor="metaDescription" className="block text-sm font-medium text-white">
+                  <label htmlFor="metaDescription" className="block text-sm font-medium text-gray-300">
                     Meta Description
                   </label>
                   <button
@@ -673,4 +711,4 @@ const AddPost: React.FC = () => {
   );
 };
 
-export default AddPost;
+export default EditPost;

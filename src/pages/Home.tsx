@@ -481,14 +481,6 @@ const Home = () => {
             </div>
 
             <div className="lg:col-span-6 space-y-3">
-              {middleTop && (
-                <Link to={`/post/${middleTop.slug}`} className="block bg-[#0b0e11] rounded p-2 group">
-                  <h3 className="text-white font-semibold text-base line-clamp-2 group-hover:text-[#fcd535] transition-colors">
-                    {middleTop.title}
-                  </h3>
-                </Link>
-              )}
-
               {mainHighlight && (
                 <Link to={`/post/${mainHighlight.slug}`} className="block group">
                   <div className="relative overflow-hidden bg-[#0b0e11] rounded">

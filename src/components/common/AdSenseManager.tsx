@@ -8,6 +8,19 @@ declare global {
   }
 }
 
+// Remove Adsterra Social Bar script
+const removeAdsterraScript = () => {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return;
+
+  // Remove Adsterra scripts (effectivecpmnetwork.com)
+  const adsterraScripts = Array.from(document.querySelectorAll('script[src*="effectivecpmnetwork.com"]'));
+  adsterraScripts.forEach((script) => script.remove());
+
+  // Remove any elements injected by Adsterra Social Bar
+  const adsterraElements = document.querySelectorAll('[id*="adsterra"], [class*="adsterra"], [data-adsterra]');
+  adsterraElements.forEach((el) => el.remove());
+};
+
 const ADS_CLIENT = 'ca-pub-3584259871242471';
 const ADS_SCRIPT_ID = 'umunsi-adsbygoogle-script';
 const ADS_SCRIPT_SRC = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADS_CLIENT}`;
@@ -29,6 +42,9 @@ const AdSenseManager = () => {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
+
+    // Remove Adsterra Social Bar script (keep AdSense paragraph ads)
+    removeAdsterraScript();
 
     if (location.pathname.startsWith('/admin')) return;
 

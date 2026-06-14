@@ -1,15 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Clock, Eye, Heart, ChevronRight, ArrowLeft, TrendingUp, Calendar, User } from 'lucide-react';
-import { apiClient, Post, Category, resolveAssetUrl, extractFirstImageFromHtml } from '../services/api';
-import { useAuth } from '../contexts/AuthContext';
-
-const normalizeText = (value: string) =>
-  value
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .trim();
+import { Clock, Eye, Heart, ChevronRight, ArrowLeft, Loader2, TrendingUp, Calendar, User } from 'lucide-react';
+import { apiClient, Post, Category } from '../services/api';
 
 const getServerBaseUrl = () => {
   if (import.meta.env.DEV) {
@@ -18,24 +10,9 @@ const getServerBaseUrl = () => {
   return (import.meta.env.VITE_API_URL || '').replace('/api', '');
 };
 
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-const slugToLabel = (value: string) =>
-  value
-    .split('-')
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ');
-
 const CategoryPage = () => {
-  const { user } = useAuth();
-  const showAds = user?.role !== 'ADMIN';
-  const canSeeViews = user?.role === 'ADMIN';
-
   const { slug } = useParams<{ slug: string }>();
   const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [categoryLookupReady, setCategoryLookupReady] = useState(false);
   const [posts, setPosts] = useState<Post[]>([]);
   const [category, setCategory] = useState<Category | null>(null);
   const [allCategories, setAllCategories] = useState<Category[]>([]);
@@ -47,88 +24,30 @@ const CategoryPage = () => {
   }, [slug]);
 
   const fetchCategoryData = async () => {
-    if (!slug) return;
-
-    const normalizedSlug = normalizeText(slug);
-    setLoadError(null);
-    setLoading(true);
-
-    let categoriesResponse: Category[] | null = null;
-    let lastError: unknown = null;
-    for (let attempt = 1; attempt <= 3; attempt += 1) {
-      try {
-        const response = await apiClient.getCategories({ includeInactive: false });
-        if (!response || !Array.isArray(response)) {
-          throw new Error('Invalid categories response');
-        }
-        categoriesResponse = response;
-        break;
-      } catch (error) {
-        lastError = error;
-        // Retry a few times because Vercel security checks can briefly interrupt API calls.
-        if (attempt < 3) {
-          await sleep(500 * attempt);
-          continue;
-        }
-      }
-    }
-
-    const hasCategoryList = Array.isArray(categoriesResponse) && categoriesResponse.length >= 0;
-    setCategoryLookupReady(hasCategoryList);
-    setAllCategories(categoriesResponse || []);
-
-    const matchedCategory = categoriesResponse?.find((cat) => {
-      if (cat.slug === slug) return true;
-      return normalizeText(cat.slug || '') === normalizedSlug || normalizeText(cat.name) === normalizedSlug;
-    }) || null;
-
-    const effectiveCategory = matchedCategory || (!hasCategoryList
-      ? {
-          id: slug,
-          name: slugToLabel(slug),
-          slug,
-          color: '#3B82F6',
-          description: '',
-        }
-      : null);
-
-    setCategory(effectiveCategory);
-
-    if (!effectiveCategory) {
-      setPosts([]);
-      setLoading(false);
-      return;
-    }
-
     try {
-      const postsResponse = await apiClient.getPosts({
-        status: 'PUBLISHED',
-        category: matchedCategory?.id || slug,
-        limit: 50,
-      });
+      setLoading(true);
+      const categoriesResponse = await apiClient.getCategories({ includeInactive: false });
+      if (categoriesResponse && Array.isArray(categoriesResponse)) {
+        setAllCategories(categoriesResponse);
+        const currentCategory = categoriesResponse.find(cat => cat.slug === slug);
+        setCategory(currentCategory || null);
 
-      if (postsResponse?.data) {
-        setPosts(
-          postsResponse.data.map((post) => ({
-            ...post,
-            featuredImage: post.featuredImage || extractFirstImageFromHtml(post.content) || undefined,
-          }))
-        );
-      } else {
-        setPosts([]);
+        if (currentCategory) {
+          const postsResponse = await apiClient.getPosts({
+            status: 'PUBLISHED',
+            category: currentCategory.id,
+            limit: 50
+          });
+          if (postsResponse?.data) {
+            setPosts(postsResponse.data);
+          }
+        }
       }
     } catch (error) {
-      console.error('Error fetching category posts:', error);
-      setPosts([]);
-      setLoadError('Habaye ikibazo cyo kubona inkuru z’iki cyiciro.');
+      console.error('Error fetching category data:', error);
+    } finally {
+      setLoading(false);
     }
-
-    if (!hasCategoryList) {
-      console.error('Error fetching category data:', lastError);
-      setLoadError((prev) => prev || 'Hari ikibazo cy’itumanaho, ariko urupapuro rwafunguwe.');
-    }
-
-    setLoading(false);
   };
 
   const formatDate = (dateString?: string) => {
@@ -146,14 +65,23 @@ const CategoryPage = () => {
   };
 
   const getImageUrl = (url?: string) => {
-    return resolveAssetUrl(url) || 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=600&h=400&fit=crop';
+    if (!url) return 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=600&h=400&fit=crop';
+    if (url.startsWith('http')) return url;
+    return `${getServerBaseUrl()}${url}`;
   };
 
   if (loading) {
-    return <div className="min-h-screen bg-[#0b0e11]" />;
+    return (
+      <div className="min-h-screen bg-[#0b0e11] flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 text-[#fcd535] animate-spin mx-auto mb-4" />
+          <p className="text-gray-400">Loading...</p>
+        </div>
+      </div>
+    );
   }
 
-  if (!loading && categoryLookupReady && !category) {
+  if (!category) {
     return (
       <div className="min-h-screen bg-[#0b0e11] flex items-center justify-center">
         <div className="text-center">
@@ -181,7 +109,7 @@ const CategoryPage = () => {
     <div className="min-h-screen bg-[#0b0e11]">
       {/* Category Header Banner */}
       <div className="bg-gradient-to-r from-[#181a20] via-[#1e2329] to-[#181a20] border-b border-[#2b2f36]">
-        <div className="px-3 py-6">
+        <div className="max-w-7xl mx-auto px-3 py-6">
           {/* Breadcrumb */}
           <div className="flex items-center gap-2 text-sm text-gray-400 mb-4">
             <Link to="/" className="hover:text-[#fcd535] transition-colors">Ahabanza</Link>
@@ -205,13 +133,7 @@ const CategoryPage = () => {
         </div>
       </div>
 
-      <div className="px-3 py-6">
-        {loadError && (
-          <div className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-            {loadError}
-          </div>
-        )}
-
+      <div className="max-w-7xl mx-auto px-3 py-6">
         {posts.length > 0 ? (
           <>
             {/* Hero Section - Featured + Secondary */}
@@ -244,12 +166,10 @@ const CategoryPage = () => {
                             <Clock className="w-4 h-4" />
                             {formatDate(featuredPost.publishedAt || featuredPost.createdAt)}
                           </span>
-                          {canSeeViews && (
-                            <span className="flex items-center gap-1">
-                              <Eye className="w-4 h-4" />
-                              {featuredPost.viewCount}
-                            </span>
-                          )}
+                          <span className="flex items-center gap-1">
+                            <Eye className="w-4 h-4" />
+                            {featuredPost.viewCount}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -318,12 +238,10 @@ const CategoryPage = () => {
                                 <Clock className="w-3 h-3" />
                                 {formatDate(post.publishedAt || post.createdAt)}
                               </span>
-                              {canSeeViews && (
-                                <span className="flex items-center gap-1">
-                                  <Eye className="w-3 h-3" />
-                                  {post.viewCount}
-                                </span>
-                              )}
+                              <span className="flex items-center gap-1">
+                                <Eye className="w-3 h-3" />
+                                {post.viewCount}
+                              </span>
                               <span className="flex items-center gap-1">
                                 <Heart className="w-3 h-3" />
                                 {post.likeCount || 0}
@@ -342,19 +260,18 @@ const CategoryPage = () => {
                   </div>
                 )}
 
-                {showAds && (
-                  <div className="bg-[#181a20] rounded-lg overflow-hidden">
-                    <div className="p-2 border-b border-[#2b2f36]">
-                      <p className="text-gray-500 text-[10px] text-center uppercase tracking-wider">Kwamamaza</p>
-                    </div>
-                    <div className="p-4">
-                      <div className="bg-[#0b0e11] rounded-lg border-2 border-dashed border-[#2b2f36] flex flex-col items-center justify-center h-[100px] hover:border-[#fcd535]/50 transition-colors">
-                        <p className="text-gray-400 text-sm font-medium">Banner Ad</p>
-                        <p className="text-[#fcd535] text-xs font-bold">728 x 90 px</p>
-                      </div>
+                {/* Ad Space */}
+                <div className="bg-[#181a20] rounded-lg overflow-hidden">
+                  <div className="p-2 border-b border-[#2b2f36]">
+                    <p className="text-gray-500 text-[10px] text-center uppercase tracking-wider">Kwamamaza</p>
+                  </div>
+                  <div className="p-4">
+                    <div className="bg-[#0b0e11] rounded-lg border-2 border-dashed border-[#2b2f36] flex flex-col items-center justify-center h-[100px] hover:border-[#fcd535]/50 transition-colors">
+                      <p className="text-gray-400 text-sm font-medium">Banner Ad</p>
+                      <p className="text-[#fcd535] text-xs font-bold">728 x 90 px</p>
                     </div>
                   </div>
-                )}
+                </div>
 
                 {/* Second Batch - More Articles After Ad */}
                 {secondBatchPosts.length > 0 && (
@@ -388,12 +305,10 @@ const CategoryPage = () => {
                                 <Clock className="w-3 h-3" />
                                 {formatDate(post.publishedAt || post.createdAt)}
                               </span>
-                              {canSeeViews && (
-                                <span className="flex items-center gap-1">
-                                  <Eye className="w-3 h-3" />
-                                  {post.viewCount}
-                                </span>
-                              )}
+                              <span className="flex items-center gap-1">
+                                <Eye className="w-3 h-3" />
+                                {post.viewCount}
+                              </span>
                               <span className="flex items-center gap-1">
                                 <Heart className="w-3 h-3" />
                                 {post.likeCount || 0}
@@ -430,12 +345,10 @@ const CategoryPage = () => {
                           <h3 className="text-gray-300 text-sm group-hover:text-[#fcd535] transition-colors line-clamp-2">
                             {post.title}
                           </h3>
-                          {canSeeViews && (
-                            <p className="text-gray-500 text-xs mt-1">
-                              <Eye className="w-3 h-3 inline mr-1" />
-                              {post.viewCount}
-                            </p>
-                          )}
+                          <p className="text-gray-500 text-xs mt-1">
+                            <Eye className="w-3 h-3 inline mr-1" />
+                            {post.viewCount}
+                          </p>
                         </div>
                       </Link>
                     ))}
@@ -464,19 +377,18 @@ const CategoryPage = () => {
                   </div>
                 </div>
 
-                {showAds && (
-                  <div className="bg-[#181a20] rounded-lg overflow-hidden">
-                    <div className="p-2 border-b border-[#2b2f36]">
-                      <p className="text-gray-500 text-[10px] text-center uppercase tracking-wider">Kwamamaza</p>
-                    </div>
-                    <div className="p-3">
-                      <div className="bg-[#0b0e11] rounded-lg border-2 border-dashed border-[#2b2f36] flex flex-col items-center justify-center aspect-square hover:border-[#fcd535]/50 transition-colors">
-                        <p className="text-gray-400 text-xs font-medium">Square Ad</p>
-                        <p className="text-[#fcd535] text-[10px] font-bold">300 x 300 px</p>
-                      </div>
+                {/* Sidebar Ad */}
+                <div className="bg-[#181a20] rounded-lg overflow-hidden">
+                  <div className="p-2 border-b border-[#2b2f36]">
+                    <p className="text-gray-500 text-[10px] text-center uppercase tracking-wider">Kwamamaza</p>
+                  </div>
+                  <div className="p-3">
+                    <div className="bg-[#0b0e11] rounded-lg border-2 border-dashed border-[#2b2f36] flex flex-col items-center justify-center aspect-square hover:border-[#fcd535]/50 transition-colors">
+                      <p className="text-gray-400 text-xs font-medium">Square Ad</p>
+                      <p className="text-[#fcd535] text-[10px] font-bold">300 x 300 px</p>
                     </div>
                   </div>
-                )}
+                </div>
 
                 {/* Back to Home */}
                 <Link 
