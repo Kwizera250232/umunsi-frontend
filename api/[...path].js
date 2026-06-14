@@ -1,5 +1,7 @@
 const BACKEND_BASE_URL = 'http://93.127.186.217';
 const BACKEND_HOST = 'api.umunsi.com';
+// Fail fast so Vercel doesn't hang the entire page load when the backend is down.
+const PROXY_FETCH_TIMEOUT_MS = 10000;
 const DEFAULT_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0 Safari/537.36';
 
 async function readRawBody(req) {
@@ -54,10 +56,13 @@ export default async function handler(req, res) {
       : (forwardedFor || clientIp);
 
     const method = (req.method || 'GET').toUpperCase();
+    const abortController = new AbortController();
+    const timeoutId = setTimeout(() => abortController.abort(), PROXY_FETCH_TIMEOUT_MS);
     const requestInit = {
       method,
       headers,
       redirect: 'manual',
+      signal: abortController.signal,
     };
 
     if (!['GET', 'HEAD'].includes(method)) {
@@ -79,8 +84,14 @@ export default async function handler(req, res) {
       }
     }
 
-    const upstreamResponse = await fetch(targetUrl, requestInit);
+    let upstreamResponse;
+    try {
+      upstreamResponse = await fetch(targetUrl, requestInit);
+    } finally {
+      clearTimeout(timeoutId);
+    }
     const responseBuffer = Buffer.from(await upstreamResponse.arrayBuffer());
+
 
     res.status(upstreamResponse.status);
 

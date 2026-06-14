@@ -20,6 +20,10 @@ async function readRawBody(req) {
   });
 }
 
+// Fail fast: if the backend doesn't respond within 10 s, return 503 immediately
+// rather than leaving Vercel's function (and the browser) hanging for 30 s+.
+const PROXY_TIMEOUT_MS = 10000;
+
 function proxyRequest({ method, path, headers, body }) {
   return new Promise((resolve, reject) => {
     const upstream = http.request(
@@ -29,6 +33,7 @@ function proxyRequest({ method, path, headers, body }) {
         method,
         path,
         headers,
+        timeout: PROXY_TIMEOUT_MS,
       },
       (response) => {
         const chunks = [];
@@ -46,6 +51,11 @@ function proxyRequest({ method, path, headers, body }) {
         });
       }
     );
+
+    upstream.on('timeout', () => {
+      upstream.destroy();
+      reject(new Error(`Backend connection timed out after ${PROXY_TIMEOUT_MS}ms`));
+    });
 
     upstream.on('error', reject);
 

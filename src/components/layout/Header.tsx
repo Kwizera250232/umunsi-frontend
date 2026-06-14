@@ -39,8 +39,16 @@ const Header = () => {
   const fetchCategories = async () => {
     try {
       setLoading(true);
-      // Fetch only active categories from database
-      const response = await apiClient.getCategories({ includeInactive: false });
+      // Use a short race timeout so a dead backend fails fast (< 8 s)
+      // instead of leaving the nav stuck on "loading" for the full 15-second
+      // API client timeout.
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Categories fetch timed out')), 7000)
+      );
+      const response = await Promise.race([
+        apiClient.getCategories({ includeInactive: false }),
+        timeoutPromise,
+      ]);
       if (response && Array.isArray(response)) {
         // Filter to ensure only active categories are shown
         const activeCategories = response.filter(cat => cat.isActive !== false);
