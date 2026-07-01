@@ -1,4 +1,4 @@
-const BACKEND_BASE_URL = 'http://93.127.186.217';
+const BACKEND_BASE_URL = 'https://api.umunsi.com';
 const BACKEND_HOST = 'api.umunsi.com';
 // Fail fast so Vercel doesn't hang the entire page load when the backend is down.
 const PROXY_FETCH_TIMEOUT_MS = 10000;
